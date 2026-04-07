@@ -1,0 +1,273 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// ── Lookup / Reference ────────────────────────────────────────────────────────
+
+model Location {
+  id        String   @id @default(cuid())
+  name      String
+  key       String   @unique
+  suite     String?
+  street    String
+  city      String
+  state     String
+  zip       String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  doctors   Doctor[]
+  nurses    Nurse[]
+  patients  Patient[]
+
+  dates     LocationDate[]
+}
+
+model LocationDate {
+  id         String   @id @default(cuid())
+  locationId String
+  type       String   // lease_start | lease_expiration | last_inspection | go_live
+  date       DateTime
+  notes      String?
+  createdAt  DateTime @default(now())
+  location   Location @relation(fields: [locationId], references: [id])
+}
+
+model Doctor {
+  id         String   @id @default(cuid())
+  honorific  String?
+  firstName  String
+  lastName   String
+  locationId String?
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  deletedAt  DateTime?
+
+  location   Location? @relation(fields: [locationId], references: [id])
+  patients   Patient[]
+  dates      DoctorDate[]
+}
+
+model DoctorDate {
+  id       String   @id @default(cuid())
+  doctorId String
+  type     String   // hire_date | license_expiration | last_credentialing_review
+  date     DateTime
+  notes    String?
+  createdAt DateTime @default(now())
+  doctor   Doctor   @relation(fields: [doctorId], references: [id])
+}
+
+model Nurse {
+  id         String   @id @default(cuid())
+  honorific  String?
+  firstName  String
+  lastName   String
+  locationId String?
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  deletedAt  DateTime?
+
+  location   Location? @relation(fields: [locationId], references: [id])
+}
+
+// ── Patient ───────────────────────────────────────────────────────────────────
+
+model Patient {
+  id               String   @id @default(cuid())
+  patientId        String   @unique // PAT-XXXXXXXX
+  honorific        String?
+  firstName        String
+  lastName         String
+  dob              DateTime
+  email            String?
+  cellPhone        String?
+  homePhone        String?
+  homeAddress      String?
+  city             String?
+  state            String?
+  zip              String?
+
+  // Emergency contact
+  emergencyName    String?
+  emergencyPhone   String?
+  emergencyEmail   String?
+  emergencyRelation String?
+
+  // Insurance
+  insuranceId      String?
+  insuranceProvider String?
+  insuranceGroup   String?
+
+  // Clinical
+  doctorId         String?
+  locationId       String?
+  notes            String?
+  status           String   @default("registered") // registered | tested | consented | complete
+
+  active           Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  deletedAt        DateTime?
+
+  doctor           Doctor?  @relation(fields: [doctorId], references: [id])
+  location         Location? @relation(fields: [locationId], references: [id])
+
+  dates            PatientDate[]
+  testResults      AllergyTestResult[]
+  videoActivity    VideoActivity[]
+  formActivity     FormActivity[]
+  auditLogs        AuditLog[]
+}
+
+model PatientDate {
+  id        String   @id @default(cuid())
+  patientId String
+  type      String   // registration | first_visit | last_visit | next_appointment | insurance_expiration | consent_signed
+  date      DateTime
+  notes     String?
+  createdAt DateTime @default(now())
+  patient   Patient  @relation(fields: [patientId], references: [id])
+}
+
+// ── Allergy Testing ───────────────────────────────────────────────────────────
+
+model Allergen {
+  id           String   @id @default(cuid())
+  name         String
+  category     String?  // pollen | mold | dust | animal | insect | food | other
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  testResults  AllergyTestResult[]
+}
+
+model AllergyTestResult {
+  id          String   @id @default(cuid())
+  patientId   String
+  allergenId  String
+  testType    String   // scratch | intradermal
+  reaction    Int      @default(0)  // 0-4 scale
+  wheal       String?  // mm measurement
+  notes       String?
+  testedAt    DateTime @default(now())
+  readAt      DateTime?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  patient     Patient  @relation(fields: [patientId], references: [id])
+  allergen    Allergen @relation(fields: [allergenId], references: [id])
+  dates       TestDate[]
+}
+
+model TestDate {
+  id       String   @id @default(cuid())
+  testId   String
+  type     String   // administered | results_read | follow_up | retest
+  date     DateTime
+  notes    String?
+  createdAt DateTime @default(now())
+  test     AllergyTestResult @relation(fields: [testId], references: [id])
+}
+
+// ── Videos ────────────────────────────────────────────────────────────────────
+
+model Video {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  url         String   // video URL or embed
+  duration    Int?     // seconds
+  category    String?  // what | why | how | consent
+  order       Int      @default(0)
+  active      Boolean  @default(true)
+  publishedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  activity    VideoActivity[]
+}
+
+model VideoActivity {
+  id          String   @id @default(cuid())
+  patientId   String
+  videoId     String
+  watchedAt   DateTime @default(now())
+  completed   Boolean  @default(false)
+  acknowledged Boolean @default(false) // consent acknowledged
+  createdAt   DateTime @default(now())
+
+  patient     Patient  @relation(fields: [patientId], references: [id])
+  video       Video    @relation(fields: [videoId], references: [id])
+}
+
+// ── Forms / Consent ───────────────────────────────────────────────────────────
+
+model Form {
+  id          String   @id @default(cuid())
+  name        String
+  type        String   // consent | testing | intake
+  template    String   // HTML/markdown template content
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  activity    FormActivity[]
+}
+
+model FormActivity {
+  id          String   @id @default(cuid())
+  patientId   String
+  formId      String
+  signedAt    DateTime?
+  signature   String?  // base64 signature image
+  printedAt   DateTime?
+  emailedAt   DateTime?
+  pdfUrl      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  patient     Patient  @relation(fields: [patientId], references: [id])
+  form        Form     @relation(fields: [formId], references: [id])
+}
+
+// ── Audit Log ─────────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  action    String
+  entity    String?
+  entityId  String?
+  patientId String?
+  details   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+  restoredAt DateTime?
+
+  patient   Patient? @relation(fields: [patientId], references: [id])
+}
+
+// ── Staff Auth ────────────────────────────────────────────────────────────────
+
+model StaffUser {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         String   @default("staff") // admin | staff
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
