@@ -4,6 +4,7 @@ generator client {
 
 datasource db {
   provider = "sqlite"
+  // provider = "libsql" for Turso production
 }
 
 // ── Lookup / Reference ────────────────────────────────────────────────────────
