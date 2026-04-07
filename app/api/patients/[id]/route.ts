@@ -40,13 +40,14 @@ export async function GET(
     })
 
     if (!patient) {
-      return NextResponse.json({ error: 'Patient not found' }, { status: 404 })
+      return NextResponse.json({ error: 'Patient not found', id }, { status: 404 })
     }
 
     return NextResponse.json(patient, { headers: HIPAA_HEADERS })
   } catch (error) {
-    console.error('GET /api/patients/[id] error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    const err = error as Error
+    console.error('GET /api/patients/[id] error:', err.message)
+    return NextResponse.json({ error: err.message, id: 'unknown' }, { status: 500 })
   }
 }
 
