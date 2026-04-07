@@ -10,6 +10,8 @@ const navItems = [
   { href: '/', label: 'Dashboard', icon: '🏠' },
   { href: '/patients', label: 'Patients', icon: '👥' },
   { href: '/testing', label: 'Testing', icon: '🧪' },
+  { href: '/doctors', label: 'Doctors', icon: '👨‍⚕️' },
+  { href: '/nurses', label: 'Nurses', icon: '👩‍⚕️' },
   { href: '/videos', label: 'Videos', icon: '🎬' },
   { href: '/settings', label: 'Settings', icon: '⚙️' },
 ];
