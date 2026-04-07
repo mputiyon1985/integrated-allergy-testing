@@ -7,13 +7,11 @@ import { useRouter } from 'next/navigation';
 interface Patient {
   id: string;
   patientId?: string;
-  honorific?: string;
-  firstName: string;
-  lastName: string;
-  dateOfBirth?: string;
+  name: string;
   dob?: string;
   status: string;
-  location?: string;
+  clinicLocation?: string;
+  physician?: string;
   email?: string;
 }
 
@@ -47,8 +45,7 @@ export default function PatientsPage() {
 
   const filtered = patients.filter((p) => {
     const q = search.toLowerCase();
-    const fullName = `${p.honorific ?? ''} ${p.firstName} ${p.lastName}`.toLowerCase();
-    return fullName.includes(q) || (p.patientId ?? p.id).toLowerCase().includes(q);
+    return (p.name ?? '').toLowerCase().includes(q) || (p.patientId ?? p.id).toLowerCase().includes(q);
   });
 
   function formatDOB(val?: string) {
@@ -127,7 +124,7 @@ export default function PatientsPage() {
                     </td>
                     <td>
                       <div style={{ fontWeight: 600 }}>
-                        {[p.honorific, p.firstName, p.lastName].filter(Boolean).join(' ')}
+                        {p.name}
                       </div>
                       {p.email && <div style={{ fontSize: 12, color: '#64748b' }}>{p.email}</div>}
                     </td>
@@ -137,7 +134,7 @@ export default function PatientsPage() {
                         {p.status ?? 'unknown'}
                       </span>
                     </td>
-                    <td>{p.location ?? '—'}</td>
+                    <td>{p.clinicLocation ?? '—'}</td>
                     <td onClick={(e) => e.stopPropagation()}>
                       <div className="flex gap-2">
                         <Link href={`/patients/${p.id}`} className="btn btn-sm btn-secondary">View</Link>
