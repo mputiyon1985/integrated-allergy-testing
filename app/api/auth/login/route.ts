@@ -6,7 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import prisma from '@/lib/db'
-import { signSession, setSessionCookie } from '@/lib/auth/session'
+import { signSession } from '@/lib/auth/session'
 
 export const dynamic = 'force-dynamic'
 
@@ -32,11 +32,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 })
     }
 
-    // Success: sign JWT and set session cookie
+    // Sign JWT
     const token = await signSession({ userId: user.id, email: user.email, role: user.role, name: user.name })
-    await setSessionCookie(token)
 
-    return NextResponse.json({ ok: true, role: user.role, name: user.name })
+    // Set cookie directly on the response
+    const response = NextResponse.json({ ok: true, role: user.role, name: user.name })
+    response.cookies.set('iat_session', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 60 * 60 * 8,
+      path: '/',
+    })
+
+    return response
   } catch (error) {
     console.error('POST /api/auth/login error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
