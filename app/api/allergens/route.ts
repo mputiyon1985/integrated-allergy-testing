@@ -1,8 +1,8 @@
 /**
  * @file /api/allergens — Allergen reference list
  * @description Manages the allergen catalog used for allergy testing panels.
- *   GET  — Return all active allergens sorted by category and name.
- *   POST — Create a new allergen entry (name required, category optional).
+ *   GET  — Return all active allergens sorted by type and name.
+ *   POST — Create a new allergen entry (name required, type optional).
  * @security Requires authenticated session (iat_session cookie via proxy.ts)
  */
 import { NextRequest, NextResponse } from 'next/server'
@@ -14,7 +14,7 @@ export async function GET() {
   try {
     const allergens = await prisma.allergen.findMany({
       where: { active: true },
-      orderBy: [{ category: 'asc' }, { name: 'asc' }],
+      orderBy: [{ type: 'asc' }, { name: 'asc' }],
     })
 
     return NextResponse.json(allergens)
@@ -26,15 +26,15 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json() as { name?: string; category?: string }
-    const { name, category } = body
+    const body = await request.json() as { name?: string; type?: string }
+    const { name, type } = body
 
     if (!name) {
       return NextResponse.json({ error: 'name is required' }, { status: 400 })
     }
 
     const allergen = await prisma.allergen.create({
-      data: { name, category },
+      data: { name, ...(type ? { type } : {}) },
     })
 
     return NextResponse.json(allergen, { status: 201 })

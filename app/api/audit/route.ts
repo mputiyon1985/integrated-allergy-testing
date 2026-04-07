@@ -23,8 +23,7 @@ export async function GET(request: NextRequest) {
           select: {
             id: true,
             patientId: true,
-            firstName: true,
-            lastName: true,
+            name: true,
           },
         },
       },

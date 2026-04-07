@@ -29,13 +29,16 @@ export async function GET(req: NextRequest) {
     const patient = await prisma.patient.findFirst({
       where: {
         OR: [{ id: patientId }, { patientId }],
-        active: true,
       },
     })
 
     if (!patient) {
       return NextResponse.json({ error: 'Patient not found' }, { status: 404 })
     }
+
+    // Parse name into firstName/lastName for PDF compatibility
+    const [firstName, ...rest] = patient.name.split(' ')
+    const lastName = rest.join(' ')
 
     let pdfBlob: Blob
     let filename: string
@@ -49,9 +52,8 @@ export async function GET(req: NextRequest) {
 
       pdfBlob = generateConsentPDF(
         {
-          firstName: patient.firstName,
-          lastName: patient.lastName,
-          honorific: patient.honorific,
+          firstName,
+          lastName,
           dob: patient.dob,
           email: patient.email,
           patientId: patient.patientId,
@@ -77,9 +79,8 @@ export async function GET(req: NextRequest) {
 
       pdfBlob = generateTestResultsPDF(
         {
-          firstName: patient.firstName,
-          lastName: patient.lastName,
-          honorific: patient.honorific,
+          firstName,
+          lastName,
           patientId: patient.patientId,
           dob: patient.dob,
         },

@@ -1,8 +1,8 @@
 /**
  * @file /api/doctors — Doctor/physician directory
  * @description Manages the referring physician list for patient assignments.
- *   GET  — List all active doctors with their associated location.
- *   POST — Create a new doctor record (firstName and lastName required).
+ *   GET  — List all active doctors.
+ *   POST — Create a new doctor record (name required).
  * @security Requires authenticated session (iat_session cookie via proxy.ts)
  */
 import { NextRequest, NextResponse } from 'next/server'
@@ -14,8 +14,7 @@ export async function GET() {
   try {
     const doctors = await prisma.doctor.findMany({
       where: { active: true },
-      include: { location: true },
-      orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+      orderBy: [{ name: 'asc' }],
     })
 
     return NextResponse.json(doctors)
@@ -28,27 +27,33 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json() as {
-      honorific?: string
-      firstName?: string
-      lastName?: string
-      locationId?: string
+      name?: string
+      title?: string
+      specialty?: string
+      email?: string
+      phone?: string
+      clinicLocation?: string
+      npi?: string
     }
 
-    const { firstName, lastName } = body
+    const { name } = body
 
-    if (!firstName || !lastName) {
+    if (!name) {
       return NextResponse.json(
-        { error: 'firstName and lastName are required' },
+        { error: 'name is required' },
         { status: 400 }
       )
     }
 
     const doctor = await prisma.doctor.create({
       data: {
-        honorific: body.honorific,
-        firstName,
-        lastName,
-        locationId: body.locationId,
+        name,
+        ...(body.title ? { title: body.title } : {}),
+        ...(body.specialty ? { specialty: body.specialty } : {}),
+        ...(body.email ? { email: body.email } : {}),
+        ...(body.phone ? { phone: body.phone } : {}),
+        ...(body.clinicLocation ? { clinicLocation: body.clinicLocation } : {}),
+        ...(body.npi ? { npi: body.npi } : {}),
       },
     })
 

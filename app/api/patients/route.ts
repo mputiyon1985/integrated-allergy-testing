@@ -1,8 +1,8 @@
 /**
  * @file /api/patients — Patient list and creation
  * @description Manages the patient roster.
- *   GET  — List all active patients; supports ?search= and ?locationId= query params.
- *   POST — Create a new patient record (firstName, lastName, dob required).
+ *   GET  — List all active patients; supports ?search= query param.
+ *   POST — Create a new patient record (name, dob required).
  * @security Requires authenticated session (iat_session cookie via proxy.ts)
  */
 import { NextRequest, NextResponse } from 'next/server'
@@ -15,17 +15,13 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const search = searchParams.get('search')
-    const locationId = searchParams.get('locationId')
 
     const patients = await prisma.patient.findMany({
       where: {
-        active: true,
-        ...(locationId ? { locationId } : {}),
         ...(search
           ? {
               OR: [
-                { firstName: { contains: search } },
-                { lastName: { contains: search } },
+                { name: { contains: search } },
                 { patientId: { contains: search } },
                 { email: { contains: search } },
               ],
@@ -35,15 +31,14 @@ export async function GET(request: NextRequest) {
       select: {
         id: true,
         patientId: true,
-        firstName: true,
-        lastName: true,
-        honorific: true,
+        name: true,
         dob: true,
         status: true,
         doctorId: true,
-        locationId: true,
+        clinicLocation: true,
+        physician: true,
       },
-      orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+      orderBy: [{ name: 'asc' }],
     })
 
     return NextResponse.json(patients, { headers: HIPAA_HEADERS })
@@ -56,31 +51,24 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json() as {
-      firstName?: string
-      lastName?: string
+      name?: string
       dob?: string
-      honorific?: string
       email?: string
-      cellPhone?: string
-      homePhone?: string
-      homeAddress?: string
-      city?: string
-      state?: string
-      zip?: string
-      emergencyName?: string
-      emergencyPhone?: string
-      emergencyRelation?: string
+      phone?: string
+      physician?: string
+      clinicLocation?: string
+      diagnosis?: string
+      notes?: string
       insuranceId?: string
       insuranceProvider?: string
       doctorId?: string
-      locationId?: string
     }
 
-    const { firstName, lastName, dob } = body
+    const { name, dob } = body
 
-    if (!firstName || !lastName || !dob) {
+    if (!name || !dob) {
       return NextResponse.json(
-        { error: 'firstName, lastName, and dob are required' },
+        { error: 'name and dob are required' },
         { status: 400 }
       )
     }
@@ -90,24 +78,16 @@ export async function POST(request: NextRequest) {
     const patient = await prisma.patient.create({
       data: {
         patientId,
-        firstName,
-        lastName,
+        name,
         dob: new Date(dob),
-        honorific: body.honorific,
         email: body.email,
-        cellPhone: body.cellPhone,
-        homePhone: body.homePhone,
-        homeAddress: body.homeAddress,
-        city: body.city,
-        state: body.state,
-        zip: body.zip,
-        emergencyName: body.emergencyName,
-        emergencyPhone: body.emergencyPhone,
-        emergencyRelation: body.emergencyRelation,
+        phone: body.phone,
+        physician: body.physician,
+        clinicLocation: body.clinicLocation,
+        diagnosis: body.diagnosis,
+        notes: body.notes,
         insuranceId: body.insuranceId,
-        insuranceProvider: body.insuranceProvider,
         doctorId: body.doctorId,
-        locationId: body.locationId,
       },
     })
 
@@ -117,7 +97,7 @@ export async function POST(request: NextRequest) {
         entity: 'Patient',
         entityId: patient.id,
         patientId: patient.id,
-        details: `Created patient ${patientId}: ${firstName} ${lastName}`,
+        details: `Created patient ${patientId}: ${name}`,
       },
     })
 

@@ -40,10 +40,8 @@ export async function POST(request: NextRequest) {
     // 2. Create doctor
     await prisma.doctor.create({
       data: {
-        honorific: 'Dr.',
-        firstName: 'Robert',
-        lastName: 'Sikora',
-        locationId: location.id,
+        name: 'Dr. Robert Sikora',
+        clinicLocation: location.name,
       },
     })
 
