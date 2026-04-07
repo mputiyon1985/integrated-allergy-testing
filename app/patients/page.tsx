@@ -128,7 +128,7 @@ export default function PatientsPage() {
                       </div>
                       {p.email && <div style={{ fontSize: 12, color: '#64748b' }}>{p.email}</div>}
                     </td>
-                    <td>{formatDOB(p.dateOfBirth ?? p.dob)}</td>
+                    <td>{formatDOB(p.dob)}</td>
                     <td>
                       <span className={`badge ${STATUS_BADGE[p.status?.toLowerCase()] ?? 'badge-gray'}`}>
                         {p.status ?? 'unknown'}
