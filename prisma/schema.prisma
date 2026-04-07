@@ -227,9 +227,6 @@ model AuditLog {
   patientId String?
   details   String?
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  deletedAt DateTime?
-  restoredAt DateTime?
   patient   Patient? @relation(fields: [patientId], references: [id])
 }
 
