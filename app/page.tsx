@@ -1,65 +1,186 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+
+interface Patient {
+  id: string;
+  firstName: string;
+  lastName: string;
+  status: string;
+}
+
+interface AuditEntry {
+  id: string;
+  action: string;
+  entityType?: string;
+  entityId?: string;
+  createdAt: string;
+  userId?: string;
+}
+
+export default function DashboardPage() {
+  const [patientCount, setPatientCount] = useState<number | null>(null);
+  const [auditLogs, setAuditLogs] = useState<AuditEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const [patientsRes, auditRes] = await Promise.allSettled([
+          fetch('/api/patients'),
+          fetch('/api/audit'),
+        ]);
+
+        if (patientsRes.status === 'fulfilled' && patientsRes.value.ok) {
+          const data = await patientsRes.value.json();
+          const patients: Patient[] = Array.isArray(data) ? data : (data.patients ?? []);
+          setPatientCount(patients.length);
+        } else {
+          setPatientCount(0);
+        }
+
+        if (auditRes.status === 'fulfilled' && auditRes.value.ok) {
+          const data = await auditRes.value.json();
+          const logs: AuditEntry[] = Array.isArray(data) ? data : (data.logs ?? []);
+          setAuditLogs(logs.slice(0, 10));
+        }
+      } catch {
+        setPatientCount(0);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, []);
+
+  function formatTime(ts: string) {
+    try {
+      return new Date(ts).toLocaleString('en-US', {
+        month: 'short', day: 'numeric',
+        hour: 'numeric', minute: '2-digit',
+      });
+    } catch {
+      return ts;
+    }
+  }
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <>
+      <div className="page-header">
+        <div>
+          <div className="page-title">Dashboard</div>
+          <div className="page-subtitle">Welcome to Integrated Allergy Testing</div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+        <div className="flex gap-2">
+          <Link href="/patients/new" className="btn-secondary btn-sm btn">
+            + Register Patient
+          </Link>
+          <Link href="/testing" className="btn btn-sm">
+            🧪 Start Testing
+          </Link>
         </div>
-      </main>
-    </div>
+      </div>
+
+      <div className="page-body">
+        {/* KPI Cards */}
+        <div className="kpi-grid">
+          <div className="kpi-card">
+            <div className="kpi-icon">👥</div>
+            <div className="kpi-label">Total Patients</div>
+            {loading ? (
+              <div className="spinner" />
+            ) : (
+              <div className="kpi-value">{patientCount ?? 0}</div>
+            )}
+          </div>
+          <div className="kpi-card">
+            <div className="kpi-icon">🧪</div>
+            <div className="kpi-label">Tests Today</div>
+            <div className="kpi-value">—</div>
+          </div>
+          <div className="kpi-card">
+            <div className="kpi-icon">🎬</div>
+            <div className="kpi-label">Videos Watched</div>
+            <div className="kpi-value">—</div>
+          </div>
+          <div className="kpi-card">
+            <div className="kpi-icon">📝</div>
+            <div className="kpi-label">Forms Signed</div>
+            <div className="kpi-value">—</div>
+          </div>
+        </div>
+
+        {/* Content Grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '24px' }}>
+          {/* Recent Activity */}
+          <div className="card">
+            <div className="card-title">Recent Activity</div>
+            {loading ? (
+              <div className="loading-center"><div className="spinner" /><span>Loading...</span></div>
+            ) : auditLogs.length === 0 ? (
+              <div className="empty-state">
+                <div className="empty-state-icon">📋</div>
+                <div className="empty-state-title">No activity yet</div>
+                <div>Activity will appear here as patients are registered and tested.</div>
+              </div>
+            ) : (
+              <div>
+                {auditLogs.map((log, i) => (
+                  <div className="activity-item" key={log.id ?? i}>
+                    <div className="activity-dot" />
+                    <div className="activity-text">
+                      <strong>{log.action}</strong>
+                      {log.entityType && (
+                        <span className="text-muted"> — {log.entityType}{log.entityId ? ` #${log.entityId}` : ''}</span>
+                      )}
+                    </div>
+                    <div className="activity-time">{formatTime(log.createdAt)}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Quick Actions */}
+          <div>
+            <div className="card">
+              <div className="card-title">Quick Actions</div>
+              <div className="flex flex-col gap-3">
+                <Link href="/patients/new" className="btn w-full" style={{ justifyContent: 'flex-start' }}>
+                  👤 Register New Patient
+                </Link>
+                <Link href="/testing" className="btn-secondary w-full" style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start' }}>
+                  🧪 Start Testing
+                </Link>
+                <Link href="/patients" className="btn-secondary w-full" style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start' }}>
+                  👥 View All Patients
+                </Link>
+                <Link href="/videos" className="btn-secondary w-full" style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start' }}>
+                  🎬 Manage Videos
+                </Link>
+              </div>
+            </div>
+
+            {/* System Status */}
+            <div className="card mt-4">
+              <div className="card-title">System Status</div>
+              <div className="flex flex-col gap-3">
+                {[
+                  { label: 'API Server', status: 'Operational' },
+                  { label: 'Database', status: 'Operational' },
+                  { label: 'Video Service', status: 'Operational' },
+                ].map((s) => (
+                  <div key={s.label} className="flex justify-between items-center">
+                    <span className="text-sm">{s.label}</span>
+                    <span className="badge badge-teal">{s.status}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
   );
 }
