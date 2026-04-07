@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic'
 export async function GET() {
   try {
     const allergens = await prisma.allergen.findMany({
-      where: { active: true },
+      where: { deletedAt: null },
       orderBy: [{ type: 'asc' }, { name: 'asc' }],
     })
 
