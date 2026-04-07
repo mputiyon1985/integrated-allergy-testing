@@ -1,3 +1,9 @@
+/**
+ * @file /api/test-results/[id] — Update a single allergy test result
+ * @description Partial update of a test result record (reaction, wheal, notes, readAt).
+ *   PUT — Update test result fields by internal ID.
+ * @security Requires authenticated session (iat_session cookie via proxy.ts)
+ */
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 
@@ -27,6 +33,16 @@ export async function PUT(
         ...(readAt !== undefined ? { readAt: new Date(readAt) } : {}),
       },
       include: { allergen: true },
+    })
+
+    await prisma.auditLog.create({
+      data: {
+        action: 'UPDATE',
+        entity: 'AllergyTestResult',
+        entityId: testResult.id,
+        patientId: testResult.patientId,
+        details: `Updated test result for allergen ${testResult.allergenId}`,
+      },
     })
 
     return NextResponse.json(testResult)

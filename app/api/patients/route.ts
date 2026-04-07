@@ -1,5 +1,13 @@
+/**
+ * @file /api/patients — Patient list and creation
+ * @description Manages the patient roster.
+ *   GET  — List all active patients; supports ?search= and ?locationId= query params.
+ *   POST — Create a new patient record (firstName, lastName, dob required).
+ * @security Requires authenticated session (iat_session cookie via proxy.ts)
+ */
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
+import { HIPAA_HEADERS } from '@/lib/hipaaHeaders'
 
 export const dynamic = 'force-dynamic'
 
@@ -38,7 +46,7 @@ export async function GET(request: NextRequest) {
       orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
     })
 
-    return NextResponse.json(patients)
+    return NextResponse.json(patients, { headers: HIPAA_HEADERS })
   } catch (error) {
     console.error('GET /api/patients error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -113,7 +121,7 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    return NextResponse.json(patient, { status: 201 })
+    return NextResponse.json(patient, { status: 201, headers: HIPAA_HEADERS })
   } catch (error) {
     console.error('POST /api/patients error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

@@ -1,5 +1,13 @@
+/**
+ * @file /api/patients/[id] — Single patient record operations
+ * @description Retrieves and updates a specific patient by internal ID.
+ *   GET — Fetch full patient record including test results, forms, videos, and audit logs.
+ *   PUT — Update patient demographic, clinical, or status fields (partial update supported).
+ * @security Requires authenticated session (iat_session cookie via proxy.ts)
+ */
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
+import { HIPAA_HEADERS } from '@/lib/hipaaHeaders'
 
 export const dynamic = 'force-dynamic'
 
@@ -36,7 +44,7 @@ export async function GET(
       return NextResponse.json({ error: 'Patient not found' }, { status: 404 })
     }
 
-    return NextResponse.json(patient)
+    return NextResponse.json(patient, { headers: HIPAA_HEADERS })
   } catch (error) {
     console.error('GET /api/patients/[id] error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -110,7 +118,7 @@ export async function PUT(
       },
     })
 
-    return NextResponse.json(patient)
+    return NextResponse.json(patient, { headers: HIPAA_HEADERS })
   } catch (error) {
     console.error('PUT /api/patients/[id] error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

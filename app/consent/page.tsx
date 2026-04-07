@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useEffect, useState, useCallback } from 'react'
+import { useRef, useEffect, useState, useCallback, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 
 const CONSENT_ITEMS = [
@@ -12,7 +12,7 @@ const CONSENT_ITEMS = [
   'I confirm that all information I have provided is accurate to the best of my knowledge.',
 ]
 
-export default function ConsentPage() {
+function ConsentPageInner() {
   const searchParams = useSearchParams()
   const patientId = searchParams.get('patientId') || ''
   const formId = searchParams.get('formId') || ''
@@ -294,5 +294,14 @@ export default function ConsentPage() {
         </p>
       </div>
     </div>
+  )
+}
+
+
+export default function ConsentPage() {
+  return (
+    <Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', fontSize: '18px', color: '#6b7280' }}>Loading consent form...</div>}>
+      <ConsentPageInner />
+    </Suspense>
   )
 }

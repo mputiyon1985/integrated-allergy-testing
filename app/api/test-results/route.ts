@@ -1,5 +1,14 @@
+/**
+ * @file /api/test-results — Allergy test result list and creation
+ * @description Manages allergy test results across patients.
+ *   GET  — List test results; supports ?patientId= filter.
+ *   POST — Record a new test result (patientId, allergenId, testType, reaction required).
+ *          testType must be 'scratch' or 'intradermal'; reaction must be 0–4.
+ * @security Requires authenticated session (iat_session cookie via proxy.ts)
+ */
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
+import { HIPAA_HEADERS } from '@/lib/hipaaHeaders'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,7 +36,7 @@ export async function GET(request: NextRequest) {
       orderBy: { testedAt: 'desc' },
     })
 
-    return NextResponse.json(testResults)
+    return NextResponse.json(testResults, { headers: HIPAA_HEADERS })
   } catch (error) {
     console.error('GET /api/test-results error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -90,7 +99,7 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    return NextResponse.json(testResult, { status: 201 })
+    return NextResponse.json(testResult, { status: 201, headers: HIPAA_HEADERS })
   } catch (error) {
     console.error('POST /api/test-results error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
