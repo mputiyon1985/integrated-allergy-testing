@@ -44,26 +44,6 @@ function UserCard() {
   );
 }
 
-function UserCard() {
-  const [user, setUser] = useState<{ name: string; role: string } | null>(null)
-
-  useEffect(() => {
-    fetch('/api/auth/me')
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data: { name: string; role: string } | null) => setUser(data))
-      .catch(() => null)
-  }, [])
-
-  if (!user) return null
-
-  return (
-    <div style={{ padding: '12px 16px', borderTop: '1px solid #374151', marginTop: 'auto' }}>
-      <div style={{ fontSize: 13, fontWeight: 600, color: '#f9fafb' }}>{user.name}</div>
-      <div style={{ fontSize: 11, color: '#9ca3af', textTransform: 'capitalize' }}>{user.role}</div>
-    </div>
-  )
-}
-
 function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
   const pathname = usePathname();
 
