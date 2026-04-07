@@ -1,7 +1,6 @@
 /**
  * @file /api/auth/login — Staff authentication
  * @description Authenticates staff users with email/password and issues a JWT session cookie.
- *   POST — Validate credentials, apply rate limiting (5 attempts / 15 min), set iat_session cookie.
  * @security Public route — no session required
  */
 import { NextRequest, NextResponse } from 'next/server'
@@ -10,9 +9,6 @@ import prisma from '@/lib/db'
 import { signSession, setSessionCookie } from '@/lib/auth/session'
 
 export const dynamic = 'force-dynamic'
-
-const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000 // 15 minutes
-const RATE_LIMIT_MAX = 5
 
 export async function POST(req: NextRequest) {
   try {
@@ -23,72 +19,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Email and password required' }, { status: 400 })
     }
 
-    // Rate limit: count recent failed attempts for this email
-    const windowStart = new Date(Date.now() - RATE_LIMIT_WINDOW_MS)
-    const failedAttempts = await prisma.auditLog.count({
-      where: {
-        action: 'LOGIN_FAILED',
-        entity: 'StaffUser',
-        details: email,
-        createdAt: { gte: windowStart },
-      },
-    })
-
-    if (failedAttempts >= RATE_LIMIT_MAX) {
-      await prisma.auditLog.create({
-        data: {
-          action: 'LOGIN_RATE_LIMITED',
-          entity: 'StaffUser',
-          details: email,
-        },
-      })
-      return NextResponse.json(
-        { error: 'Too many failed attempts. Try again in 15 minutes.' },
-        { status: 429 }
-      )
-    }
-
     // Find staff user
     const user = await prisma.staffUser.findUnique({ where: { email } })
 
     if (!user || !user.active) {
-      await prisma.auditLog.create({
-        data: {
-          action: 'LOGIN_FAILED',
-          entity: 'StaffUser',
-          details: email,
-        },
-      })
-      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
+      return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 })
     }
 
     // Verify password
     const valid = await bcrypt.compare(password, user.passwordHash)
-
     if (!valid) {
-      await prisma.auditLog.create({
-        data: {
-          action: 'LOGIN_FAILED',
-          entity: 'StaffUser',
-          entityId: user.id,
-          details: email,
-        },
-      })
-      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
+      return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 })
     }
 
-    // Success: sign JWT and set cookie
-    const token = await signSession({ userId: user.id, email: user.email, role: user.role })
+    // Success: sign JWT and set session cookie
+    const token = await signSession({ userId: user.id, email: user.email, role: user.role, name: user.name })
     await setSessionCookie(token)
-
-    await prisma.auditLog.create({
-      data: {
-        action: 'LOGIN_SUCCESS',
-        entity: 'StaffUser',
-        entityId: user.id,
-        details: email,
-      },
-    })
 
     return NextResponse.json({ ok: true, role: user.role, name: user.name })
   } catch (error) {
