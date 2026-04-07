@@ -91,18 +91,27 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
   );
 }
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+function AppShell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const pathname = usePathname();
+  const isAuthPage = pathname === '/login' || pathname?.startsWith('/login') || pathname === '/consent' || pathname?.startsWith('/consent');
 
-  // Close sidebar on route change
-  useEffect(() => {
-    setSidebarOpen(false);
-  }, []);
+  useEffect(() => { setSidebarOpen(false); }, [pathname]);
 
+  if (isAuthPage) {
+    return <>{children}</>;
+  }
+
+  return (
+    <div className="app-shell">
+      <button className="sidebar-toggle" onClick={() => setSidebarOpen((v) => !v)} aria-label="Toggle navigation">☰</button>
+      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <div className="main-content">{children}</div>
+    </div>
+  );
+}
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <head>
@@ -110,21 +119,7 @@ export default function RootLayout({
         <title>Integrated Allergy Testing</title>
       </head>
       <body>
-        <div className="app-shell">
-          <button
-            className="sidebar-toggle"
-            onClick={() => setSidebarOpen((v) => !v)}
-            aria-label="Toggle navigation"
-          >
-            ☰
-          </button>
-
-          <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-
-          <div className="main-content">
-            {children}
-          </div>
-        </div>
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );
