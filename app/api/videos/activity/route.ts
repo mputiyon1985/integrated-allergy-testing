@@ -1,3 +1,9 @@
+/**
+ * @file /api/videos/activity — Patient video watch activity tracking
+ * @description Records video interactions (watched, completed, acknowledged) for a patient.
+ *   POST — Create a video activity record (patientId and videoId required).
+ * @security Requires authenticated session (iat_session cookie via proxy.ts)
+ */
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 
@@ -38,6 +44,16 @@ export async function POST(request: NextRequest) {
             lastName: true,
           },
         },
+      },
+    })
+
+    await prisma.auditLog.create({
+      data: {
+        action: 'VIDEO_ACTIVITY',
+        entity: 'VideoActivity',
+        entityId: activity.id,
+        patientId,
+        details: `Patient ${patientId} watched video ${videoId}; completed=${activity.completed}; acknowledged=${activity.acknowledged}`,
       },
     })
 

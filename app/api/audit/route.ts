@@ -1,3 +1,9 @@
+/**
+ * @file /api/audit — HIPAA audit log viewer
+ * @description Read-only access to the AuditLog table for compliance review.
+ *   GET — Return up to 50 recent audit events; supports ?patientId= filter.
+ * @security Requires authenticated session (iat_session cookie via proxy.ts)
+ */
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 

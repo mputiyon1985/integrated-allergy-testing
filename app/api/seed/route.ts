@@ -1,7 +1,18 @@
+/**
+ * @file /api/seed — Full database seeder
+ * @description Seeds the database with initial reference data for a fresh deployment.
+ *   POST — Creates location, doctor, sample videos, form templates, and allergens. Idempotent.
+ * @security Public route — used during initial setup only
+ */
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
+
+// Allow GET for easy browser-based seeding
+export async function GET(request: NextRequest) {
+  return POST(request)
+}
 
 export async function POST(request: NextRequest) {
   try {

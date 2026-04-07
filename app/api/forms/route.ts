@@ -1,3 +1,10 @@
+/**
+ * @file /api/forms — Form template management
+ * @description Manages form templates used for patient consent and intake.
+ *   GET  — Return all active form templates.
+ *   POST — Create a new form template (name, type, and template required).
+ * @security Requires authenticated session (iat_session cookie via proxy.ts)
+ */
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 

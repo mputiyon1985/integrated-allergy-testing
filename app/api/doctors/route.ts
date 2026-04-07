@@ -1,3 +1,10 @@
+/**
+ * @file /api/doctors — Doctor/physician directory
+ * @description Manages the referring physician list for patient assignments.
+ *   GET  — List all active doctors with their associated location.
+ *   POST — Create a new doctor record (firstName and lastName required).
+ * @security Requires authenticated session (iat_session cookie via proxy.ts)
+ */
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 

@@ -1,3 +1,11 @@
+/**
+ * @file lib/pdf.ts — PDF generation utilities
+ * @description Generates patient-facing PDF documents using jsPDF.
+ *   - `generateConsentPDF` — Patient consent form with optional signature image.
+ *   - `generateTestResultsPDF` — Tabular allergy test results report.
+ *   Both functions return a Blob suitable for streaming via NextResponse.
+ * @usage `import { generateConsentPDF, generateTestResultsPDF } from '@/lib/pdf'`
+ */
 import { jsPDF } from 'jspdf'
 
 export function generateConsentPDF(

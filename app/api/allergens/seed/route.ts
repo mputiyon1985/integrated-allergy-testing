@@ -1,3 +1,9 @@
+/**
+ * @file /api/allergens/seed — Allergen reference data seeder
+ * @description Seeds the allergen catalog with the standard IAT panel (25 allergens across 5 categories).
+ *   POST — Idempotent: skips if allergens already exist.
+ * @security Public route — used during initial database setup
+ */
 import { NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 

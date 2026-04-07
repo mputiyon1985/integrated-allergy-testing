@@ -1,3 +1,13 @@
+/**
+ * @file lib/auth/session.ts — JWT session management
+ * @description Handles JWT creation, verification, and cookie management for staff authentication.
+ *   - `signSession(payload)` — Creates a signed 8-hour JWT.
+ *   - `verifySession(req)` — Validates the iat_session cookie from a request.
+ *   - `setSessionCookie(token)` — Sets the HttpOnly session cookie.
+ *   - `clearSessionCookie()` — Deletes the session cookie on logout.
+ *   Secret is read from JWT_SECRET env var; falls back to a dev-only default.
+ * @usage `import { verifySession } from '@/lib/auth/session'`
+ */
 import { SignJWT, jwtVerify } from 'jose'
 import { cookies } from 'next/headers'
 

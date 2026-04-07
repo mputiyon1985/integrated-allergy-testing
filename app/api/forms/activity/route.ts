@@ -1,3 +1,10 @@
+/**
+ * @file /api/forms/activity — Patient form activity tracking
+ * @description Records form interactions (signing, printing, emailing) for a patient.
+ *   POST — Create a new form activity record (patientId and formId required).
+ *          Logs a CONSENT_SIGNED audit event when signedAt is provided.
+ * @security Requires authenticated session (iat_session cookie via proxy.ts)
+ */
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 
@@ -42,6 +49,18 @@ export async function POST(request: NextRequest) {
             lastName: true,
           },
         },
+      },
+    })
+
+    // Audit consent signing — critical PHI mutation
+    const action = body.signedAt ? 'CONSENT_SIGNED' : 'FORM_ACTIVITY_CREATED'
+    await prisma.auditLog.create({
+      data: {
+        action,
+        entity: 'FormActivity',
+        entityId: activity.id,
+        patientId,
+        details: `Form ${formId} activity recorded for patient ${patientId}`,
       },
     })
 

@@ -1,3 +1,10 @@
+/**
+ * @file /api/staff — Staff user administration
+ * @description Admin-only endpoints for managing staff accounts.
+ *   GET  — List all staff users (admin only).
+ *   POST — Create a new staff user with email, name, password, and optional role (admin only).
+ * @security Requires authenticated session with admin role (iat_session cookie via proxy.ts)
+ */
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import prisma from '@/lib/db'

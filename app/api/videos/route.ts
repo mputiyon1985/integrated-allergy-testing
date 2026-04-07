@@ -1,3 +1,10 @@
+/**
+ * @file /api/videos — Patient education video library
+ * @description Manages the video library used in the patient kiosk education workflow.
+ *   GET  — Return all active videos ordered by display order.
+ *   POST — Create a new video entry (title and url required).
+ * @security Requires authenticated session (iat_session cookie via proxy.ts)
+ */
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 

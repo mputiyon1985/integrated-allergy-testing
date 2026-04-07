@@ -1,3 +1,9 @@
+/**
+ * @file /api/auth/login — Staff authentication
+ * @description Authenticates staff users with email/password and issues a JWT session cookie.
+ *   POST — Validate credentials, apply rate limiting (5 attempts / 15 min), set iat_session cookie.
+ * @security Public route — no session required
+ */
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import prisma from '@/lib/db'

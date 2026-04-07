@@ -1,3 +1,10 @@
+/**
+ * @file /api/allergens — Allergen reference list
+ * @description Manages the allergen catalog used for allergy testing panels.
+ *   GET  — Return all active allergens sorted by category and name.
+ *   POST — Create a new allergen entry (name required, category optional).
+ * @security Requires authenticated session (iat_session cookie via proxy.ts)
+ */
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 

@@ -2,6 +2,13 @@
  * Prisma client singleton for Next.js / serverless environments.
  * Uses libSQL adapter for both local SQLite (dev) and Turso (prod).
  */
+/**
+ * @file lib/db.ts — Prisma database client singleton
+ * @description Exports a single PrismaClient instance shared across all API routes.
+ *   In development, attaches to `globalThis` to prevent client proliferation during hot reload.
+ *   In production, each server process gets a fresh client.
+ * @usage `import prisma from '@/lib/db'`
+ */
 import { PrismaClient } from '@prisma/client'
 import { PrismaLibSql } from '@prisma/adapter-libsql'
 

@@ -1,3 +1,10 @@
+/**
+ * @file /api/locations — Clinical location management
+ * @description Manages clinic/office locations used for doctor and patient assignments.
+ *   GET  — List all active locations sorted by name.
+ *   POST — Create a new location (name, key, street, city, state, zip required).
+ * @security Requires authenticated session (iat_session cookie via proxy.ts)
+ */
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 

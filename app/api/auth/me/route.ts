@@ -1,3 +1,9 @@
+/**
+ * @file /api/auth/me — Current session user info
+ * @description Returns the authenticated staff user's profile.
+ *   GET — Verify session and return id, email, name, role for the logged-in user.
+ * @security Requires authenticated session (iat_session cookie via proxy.ts)
+ */
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import { verifySession } from '@/lib/auth/session'

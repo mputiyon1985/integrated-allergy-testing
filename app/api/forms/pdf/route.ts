@@ -1,6 +1,14 @@
+/**
+ * @file /api/forms/pdf — PDF document generation for patient forms
+ * @description Generates and streams PDF files for patient consent or test results.
+ *   GET — Generate a PDF given ?patientId= and ?type= ('consent' | 'results').
+ *         Consent PDFs include the patient's stored signature if available.
+ * @security Requires authenticated session (iat_session cookie via proxy.ts)
+ */
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import { generateConsentPDF, generateTestResultsPDF } from '@/lib/pdf'
+import { HIPAA_HEADERS } from '@/lib/hipaaHeaders'
 
 export const dynamic = 'force-dynamic'
 
@@ -83,12 +91,23 @@ export async function GET(req: NextRequest) {
     const arrayBuffer = await pdfBlob.arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)
 
+    await prisma.auditLog.create({
+      data: {
+        action: 'PDF_GENERATED',
+        entity: 'Patient',
+        entityId: patient.id,
+        patientId: patient.id,
+        details: `Generated ${type} PDF for patient ${patient.patientId}`,
+      },
+    })
+
     return new NextResponse(buffer, {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `attachment; filename="${filename}"`,
         'Content-Length': String(buffer.length),
+        ...HIPAA_HEADERS,
       },
     })
   } catch (error) {
