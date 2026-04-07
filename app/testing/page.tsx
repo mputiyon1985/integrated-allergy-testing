@@ -257,6 +257,7 @@ function TestPanel({
                 return (
                   <div
                     key={row.allergenId}
+                    className={row.grade === null ? 'untested-row' : ''}
                     style={{
                       display: 'grid',
                       gridTemplateColumns: '24px 1fr 52px 142px 40px 40px',
@@ -727,6 +728,12 @@ function TestingPageInner() {
           .sidebar, .sidebar-toggle, .sidebar-overlay { display: none !important; }
           .main-content { margin-left: 0 !important; }
           body { background: #fff !important; }
+          /* Hide rows that were not tested (no grade entered) */
+          .untested-row { display: none !important; }
+          /* Hide action inputs/buttons in print */
+          .no-print { display: none !important; }
+          /* Compact layout for print */
+          input, select, button { border: none !important; background: transparent !important; }
         }
       `}</style>
     </div>
