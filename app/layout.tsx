@@ -2,7 +2,7 @@
 
 import './globals.css';
 import Link from 'next/link';
-import Image from 'next/image';
+
 import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
 
@@ -52,13 +52,11 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
       <div className={`sidebar-overlay ${open ? 'open' : ''}`} onClick={onClose} />
       <nav className={`sidebar ${open ? 'open' : ''}`}>
         <div className="sidebar-logo">
-          <Image
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
             src="/integrated-allergy-logo.jpg"
             alt="Integrated Allergy Testing"
-            width={160}
-            height={55}
             style={{ height: 55, width: 'auto', display: 'block' }}
-            priority
           />
           <div style={{ color: '#9ca3af', fontSize: 10, marginTop: 4 }}>Testing Suite v1.0</div>
         </div>
