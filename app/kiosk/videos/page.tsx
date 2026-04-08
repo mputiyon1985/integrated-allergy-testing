@@ -51,11 +51,37 @@ export default function KioskVideosPage() {
       sessionStorage.removeItem('kiosk_videos_watched');
     }
 
+    // Get patient ID for DB check
+    const currentPatientId = (() => {
+      try {
+        const r = sessionStorage.getItem('kiosk_patient') || ''
+        return r.startsWith('{') ? JSON.parse(r).id : r
+      } catch { return '' }
+    })()
+
     fetch('/api/videos?active=true')
       .then(r => r.json())
-      .then(data => {
+      .then(async data => {
         const list: Video[] = Array.isArray(data) ? data : (data.videos ?? []);
-        setVideos(list.filter((v: Video) => v.isActive !== false));
+        const activeVideos = list.filter((v: Video) => v.isActive !== false);
+        setVideos(activeVideos);
+
+        // Check DB for already-watched videos this session
+        if (currentPatientId && activeVideos.length > 0) {
+          try {
+            const watchRes = await fetch(`/api/kiosk/videos-watched?patientId=${currentPatientId}`);
+            if (watchRes.ok) {
+              const watchData = await watchRes.json();
+              const watchedIds: string[] = watchData.watchedIds ?? [];
+              if (watchedIds.length > 0) {
+                setWatched(new Set(watchedIds));
+                sessionStorage.setItem('kiosk_watched_ids', JSON.stringify(watchedIds));
+                sessionStorage.setItem('kiosk_watched_for_patient', currentPatientId);
+                sessionStorage.setItem('kiosk_videos_watched', String(watchedIds.length));
+              }
+            }
+          } catch { /* non-blocking */ }
+        }
         setLoading(false);
       })
       .catch(() => {
