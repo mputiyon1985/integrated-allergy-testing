@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 
 type Step = 'credentials' | 'mfa-verify' | 'mfa-setup' | 'mfa-setup-verify';
 
@@ -11,6 +12,10 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // SSO error from URL
+  const searchParams = useSearchParams();
+  const ssoError = searchParams?.get('error');
 
   // MFA state
   const [tempToken, setTempToken] = useState('');
@@ -165,6 +170,49 @@ export default function LoginPage() {
               <h2 style={{ fontSize: 17, fontWeight: 600, color: '#1f2937', marginBottom: 20, textAlign: 'center' }}>
                 Sign in to your account
               </h2>
+
+              {/* SSO domain error */}
+              {ssoError === 'unauthorized_domain' && (
+                <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: 8, padding: '10px 14px', fontSize: 13, marginBottom: 16 }}>
+                  ⚠️ Your Microsoft account domain is not authorized. Contact your administrator.
+                </div>
+              )}
+              {ssoError === 'account_disabled' && (
+                <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: 8, padding: '10px 14px', fontSize: 13, marginBottom: 16 }}>
+                  ⚠️ Your account has been disabled. Contact your administrator.
+                </div>
+              )}
+              {ssoError === 'sso_failed' && (
+                <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: 8, padding: '10px 14px', fontSize: 13, marginBottom: 16 }}>
+                  ⚠️ Microsoft sign-in failed. Please try again or use email and password.
+                </div>
+              )}
+
+              {/* Microsoft SSO button */}
+              <a
+                href="/api/auth/signin/azure-ad?callbackUrl=/api/auth/azure-callback"
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                  width: '100%', padding: '12px',
+                  background: '#0055A5', color: '#fff',
+                  border: 'none', borderRadius: 10,
+                  fontSize: 15, fontWeight: 700,
+                  textDecoration: 'none', marginBottom: 16,
+                  cursor: 'pointer',
+                }}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="https://upload.wikimedia.org/wikipedia/commons/4/44/Microsoft_logo.svg" alt="" style={{ width: 20, height: 20 }} />
+                Sign in with Microsoft 365
+              </a>
+
+              {/* Divider */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+                <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
+                <span style={{ fontSize: 13, color: '#94a3b8', whiteSpace: 'nowrap' }}>or sign in with email</span>
+                <div style={{ flex: 1, height: 1, background: '#e2e8f0' }} />
+              </div>
+
               <form onSubmit={handleCredentials}>
                 <div style={{ marginBottom: 16 }}>
                   <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>
