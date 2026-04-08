@@ -27,8 +27,13 @@ export default function KioskVideosPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    const raw = sessionStorage.getItem('kiosk_patient');
-    if (raw) setPatient(JSON.parse(raw));
+    const raw = sessionStorage.getItem('kiosk_patient') || '';
+    if (raw) {
+      try {
+        const parsed = raw.startsWith('{') ? JSON.parse(raw) : { id: raw, name: raw };
+        setPatient(parsed);
+      } catch { /* ignore parse error */ }
+    }
 
     fetch('/api/videos?active=true')
       .then(r => r.json())
