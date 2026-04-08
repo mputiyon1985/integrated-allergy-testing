@@ -27,11 +27,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid date format' }, { status: 400 });
     }
 
-    // Find patients matching this DOB
+    // Search ±1 day to handle timezone offset issues (SQLite stores UTC, input is local)
+    const dayBefore = new Date(dobDate.getTime() - 86400000);
+    const dayAfter = new Date(dobDate.getTime() + 86400000);
+
     const patients = await prisma.patient.findMany({
       where: {
         deletedAt: null,
-        dob: dobDate,
+        dob: { gte: dayBefore, lte: dayAfter },
       },
       select: {
         id: true,
