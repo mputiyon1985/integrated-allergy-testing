@@ -1,6 +1,5 @@
 import NextAuth from 'next-auth'
 import AzureADProvider from 'next-auth/providers/azure-ad'
-import prisma from '@/lib/db'
 
 // Allowed email domains — add clinic domains here
 const ALLOWED_DOMAINS = [
@@ -13,7 +12,7 @@ const handler = NextAuth({
     AzureADProvider({
       clientId: process.env.AZURE_AD_CLIENT_ID!,
       clientSecret: process.env.AZURE_AD_CLIENT_SECRET!,
-      tenantId: 'common', // multi-tenant — allows any Microsoft org
+      tenantId: process.env.AZURE_AD_TENANT_ID || 'common', // use specific tenant for single-org, 'common' for multi
     }),
   ],
   callbacks: {
