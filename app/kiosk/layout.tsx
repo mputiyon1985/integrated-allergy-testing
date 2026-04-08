@@ -83,6 +83,35 @@ export default function KioskLayout({ children }: { children: React.ReactNode })
 
   return (
     <div style={{ minHeight: '100vh', background: '#F8FAFC', display: 'flex', flexDirection: 'column' }}>
+      {/* Fullscreen guard overlay — shown when patient exits fullscreen */}
+      {!isFullscreen && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 9999,
+          background: 'rgba(0,0,0,0.92)',
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center',
+          gap: 20,
+        }}>
+          <div style={{ fontSize: 64 }}>🔒</div>
+          <div style={{ fontSize: 28, fontWeight: 800, color: '#fff', textAlign: 'center' }}>
+            Please ask a staff member for assistance
+          </div>
+          <div style={{ fontSize: 16, color: 'rgba(255,255,255,0.6)', textAlign: 'center', maxWidth: 400 }}>
+            This kiosk is in protected mode
+          </div>
+          <button
+            onClick={enterFullscreen}
+            style={{
+              marginTop: 12, padding: '16px 40px',
+              background: '#0d9488', color: '#fff',
+              border: 'none', borderRadius: 12,
+              fontSize: 18, fontWeight: 700, cursor: 'pointer',
+            }}
+          >
+            ↩ Return to Kiosk
+          </button>
+        </div>
+      )}
       {/* Header */}
       <div style={{ background: '#0055A5', padding: '12px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
