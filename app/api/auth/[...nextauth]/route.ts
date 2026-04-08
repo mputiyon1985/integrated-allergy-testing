@@ -1,7 +1,7 @@
 import NextAuth from 'next-auth'
 import AzureADProvider from 'next-auth/providers/azure-ad'
 
-// Allowed email domains — add clinic domains here
+// Allowed email domains - add clinic domains here
 const ALLOWED_DOMAINS = [
   'tipinc.ai',
   // Add more clinic domains as they onboard
@@ -19,10 +19,10 @@ const handler = NextAuth({
     async signIn({ user }) {
       const email = user.email || ''
       const domain = email.split('@')[1]?.toLowerCase()
-
-      // Check domain allowlist
+      
+      // Check domain allowlist — return false to block (NextAuth will redirect to error page)
       if (!domain || !ALLOWED_DOMAINS.includes(domain)) {
-        return '/login?error=unauthorized_domain'
+        return false
       }
       return true
     },
@@ -45,6 +45,8 @@ const handler = NextAuth({
     signIn: '/login',
     error: '/login',
   },
+  debug: process.env.NODE_ENV === 'development',
+  secret: process.env.NEXTAUTH_SECRET,
 })
 
 export { handler as GET, handler as POST }
