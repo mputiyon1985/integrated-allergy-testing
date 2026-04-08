@@ -134,6 +134,11 @@ export default function KioskVideosPage() {
     <div style={{ maxWidth: 720, width: '100%' }}>
       {/* Header */}
       <div style={{ textAlign: 'center', marginBottom: 36 }}>
+        {patient?.name && (
+          <div style={{ fontSize: 16, fontWeight: 600, color: '#0d9488', marginBottom: 8, background: '#e8f9f7', display: 'inline-block', padding: '4px 16px', borderRadius: 999 }}>
+            👤 {patient.name}
+          </div>
+        )}
         <h1 style={{ fontSize: 30, fontWeight: 800, color: '#0055A5', marginBottom: 10 }}>
           Before Your Appointment
         </h1>

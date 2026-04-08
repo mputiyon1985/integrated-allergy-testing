@@ -23,6 +23,7 @@ export default function ConsentPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   const [patientId, setPatientId] = useState<string | null>(null)
+  const [patientName, setPatientName] = useState<string>('')
   const [forms, setForms] = useState<ConsentForm[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -38,7 +39,11 @@ export default function ConsentPage() {
     const raw = sessionStorage.getItem('kiosk_patient') || sessionStorage.getItem('kiosk_patient_id') || ''
     let id = raw
     if (raw.startsWith('{')) {
-      try { id = JSON.parse(raw).id || '' } catch { id = '' }
+      try {
+        const parsed = JSON.parse(raw)
+        id = parsed.id || ''
+        setPatientName(parsed.name || parsed.firstName || '')
+      } catch { id = '' }
     }
     if (!id) {
       router.replace('/kiosk')
@@ -220,6 +225,11 @@ export default function ConsentPage() {
         <p style={styles.progress}>Form {currentIndex + 1} of {totalForms}</p>
 
         {/* Title */}
+        {patientName && (
+          <div style={{ fontSize: 16, fontWeight: 600, color: '#0d9488', marginBottom: 12, background: '#e8f9f7', display: 'inline-block', padding: '4px 16px', borderRadius: 999 }}>
+            👤 {patientName}
+          </div>
+        )}
         <h1 style={styles.title}>{form.title}</h1>
 
         {/* Consent text */}
