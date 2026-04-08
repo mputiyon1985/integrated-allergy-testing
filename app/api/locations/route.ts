@@ -6,9 +6,20 @@
  * @security Requires authenticated session (iat_session cookie via proxy.ts)
  */
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import prisma from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
+
+const createLocationSchema = z.object({
+  name: z.string().min(1).max(200),
+  key: z.string().min(1).max(50).regex(/^[A-Z0-9-]+$/, 'Key must be uppercase alphanumeric'),
+  suite: z.string().max(50).optional(),
+  street: z.string().min(1).max(300),
+  city: z.string().min(1).max(100),
+  state: z.string().length(2, 'State must be 2 letters').toUpperCase(),
+  zip: z.string().regex(/^\d{5}(-\d{4})?$/, 'Invalid ZIP code'),
+})
 
 export async function GET(request: NextRequest) {
   try {
@@ -32,30 +43,20 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json() as {
-      name?: string
-      key?: string
-      suite?: string
-      street?: string
-      city?: string
-      state?: string
-      zip?: string
+    const body = await request.json()
+
+    const result = createLocationSchema.safeParse(body)
+    if (!result.success) {
+      return NextResponse.json({ error: result.error.issues[0].message }, { status: 400 })
     }
 
-    const { name, key, street, city, state, zip } = body
-
-    if (!name || !key || !street || !city || !state || !zip) {
-      return NextResponse.json(
-        { error: 'name, key, street, city, state, and zip are required' },
-        { status: 400 }
-      )
-    }
+    const { name, key, suite, street, city, state, zip } = result.data
 
     const location = await prisma.location.create({
       data: {
         name,
         key,
-        suite: body.suite,
+        suite,
         street,
         city,
         state,

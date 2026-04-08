@@ -6,9 +6,19 @@
  * @security Requires authenticated session (iat_session cookie via proxy.ts)
  */
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import prisma from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
+
+const createDoctorSchema = z.object({
+  name: z.string().min(1).max(200),
+  title: z.string().max(50).optional(),
+  specialty: z.string().max(200).optional(),
+  email: z.string().email().optional().or(z.literal('')),
+  phone: z.string().max(20).optional(),
+  clinicLocation: z.string().max(200).optional(),
+})
 
 export async function GET(request: NextRequest) {
   try {
@@ -32,34 +42,24 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json() as {
-      name?: string
-      title?: string
-      specialty?: string
-      email?: string
-      phone?: string
-      clinicLocation?: string
-      npi?: string
+    const body = await request.json()
+
+    const result = createDoctorSchema.safeParse(body)
+    if (!result.success) {
+      return NextResponse.json({ error: result.error.issues[0].message }, { status: 400 })
     }
 
-    const { name } = body
-
-    if (!name) {
-      return NextResponse.json(
-        { error: 'name is required' },
-        { status: 400 }
-      )
-    }
+    const { name, title, specialty, email, phone, clinicLocation } = result.data
 
     const doctor = await prisma.doctor.create({
       data: {
         name,
-        ...(body.title ? { title: body.title } : {}),
-        ...(body.specialty ? { specialty: body.specialty } : {}),
-        ...(body.email ? { email: body.email } : {}),
-        ...(body.phone ? { phone: body.phone } : {}),
-        ...(body.clinicLocation ? { clinicLocation: body.clinicLocation } : {}),
-        ...(body.npi ? { npi: body.npi } : {}),
+        ...(title ? { title } : {}),
+        ...(specialty ? { specialty } : {}),
+        ...(email ? { email } : {}),
+        ...(phone ? { phone } : {}),
+        ...(clinicLocation ? { clinicLocation } : {}),
+        ...(((body as { npi?: string }).npi) ? { npi: (body as { npi?: string }).npi } : {}),
       },
     })
 

@@ -6,10 +6,23 @@
  * @security Requires authenticated session (iat_session cookie via proxy.ts)
  */
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import prisma from '@/lib/db'
 import { HIPAA_HEADERS } from '@/lib/hipaaHeaders'
 
 export const dynamic = 'force-dynamic'
+
+const createPatientSchema = z.object({
+  name: z.string().min(1, 'Name is required').max(200),
+  dob: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'DOB must be YYYY-MM-DD'),
+  email: z.string().email().optional().or(z.literal('')),
+  phone: z.string().max(20).optional(),
+  physician: z.string().max(200).optional(),
+  clinicLocation: z.string().max(200).optional(),
+  diagnosis: z.string().max(500).optional(),
+  insuranceId: z.string().max(100).optional(),
+  notes: z.string().max(2000).optional(),
+})
 
 export async function GET(request: NextRequest) {
   try {
@@ -53,28 +66,14 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json() as {
-      name?: string
-      dob?: string
-      email?: string
-      phone?: string
-      physician?: string
-      clinicLocation?: string
-      diagnosis?: string
-      notes?: string
-      insuranceId?: string
-      insuranceProvider?: string
-      doctorId?: string
+    const body = await request.json()
+
+    const result = createPatientSchema.safeParse(body)
+    if (!result.success) {
+      return NextResponse.json({ error: result.error.issues[0].message }, { status: 400 })
     }
 
-    const { name, dob } = body
-
-    if (!name || !dob) {
-      return NextResponse.json(
-        { error: 'name and dob are required' },
-        { status: 400 }
-      )
-    }
+    const { name, dob } = result.data
 
     const patientId = `PAT-${Date.now().toString(36).toUpperCase()}`
 
@@ -83,14 +82,14 @@ export async function POST(request: NextRequest) {
         patientId,
         name,
         dob: new Date(dob),
-        email: body.email,
-        phone: body.phone,
-        physician: body.physician,
-        clinicLocation: body.clinicLocation,
-        diagnosis: body.diagnosis,
-        notes: body.notes,
-        insuranceId: body.insuranceId,
-        doctorId: body.doctorId,
+        email: result.data.email,
+        phone: result.data.phone,
+        physician: result.data.physician,
+        clinicLocation: result.data.clinicLocation,
+        diagnosis: result.data.diagnosis,
+        notes: result.data.notes,
+        insuranceId: result.data.insuranceId,
+        doctorId: (body as { doctorId?: string }).doctorId,
       },
     })
 
