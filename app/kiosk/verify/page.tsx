@@ -54,19 +54,27 @@ function VerifyContent() {
         const patientData = data.patient || { ...selectedPatient, name: `${firstName.trim()} ${selectedPatient.id}` };
         sessionStorage.setItem('kiosk_patient', JSON.stringify(patientData));
 
-        // Check if patient already watched all videos — skip video page if so
+        // Check videos watched + consent signed — skip steps already completed
         const patId = patientData.id || selectedPatient.id;
         try {
-          const [videosRes, watchedRes] = await Promise.all([
+          const [videosRes, watchedRes, consentRes] = await Promise.all([
             fetch('/api/videos').then(r => r.json()),
             fetch(`/api/kiosk/videos-watched?patientId=${patId}`).then(r => r.json()),
+            fetch(`/api/consent/check?patientId=${patId}`).then(r => r.json()),
           ]);
           const totalVideos = (Array.isArray(videosRes) ? videosRes : videosRes.videos ?? []).filter((v: { active?: boolean }) => v.active !== false).length;
           const watchedCount = (watchedRes.watchedIds ?? []).length;
-          if (totalVideos > 0 && watchedCount >= totalVideos) {
-            // All videos watched — go straight to consent
+          const allVideosDone = totalVideos === 0 || watchedCount >= totalVideos;
+          const allConsentDone = consentRes.allSigned === true;
+
+          if (allVideosDone && allConsentDone) {
+            // Everything done — go straight to done/waiting room
+            router.push('/kiosk/done');
+          } else if (allVideosDone) {
+            // Videos done, consent needed
             router.push('/kiosk/consent');
           } else {
+            // Need to watch videos first
             router.push('/kiosk/videos');
           }
         } catch {
