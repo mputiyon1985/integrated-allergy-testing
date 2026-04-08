@@ -120,6 +120,15 @@ function AppShell({ children }: { children: React.ReactNode }) {
   // Close sidebar on route change — deferred to avoid synchronous setState-in-effect
   useEffect(() => { Promise.resolve().then(() => setSidebarOpen(false)); }, [pathname]);
 
+  // Auto-refresh JWT every 6 hours (expires at 8h) — silent token rotation
+  useEffect(() => {
+    if (isAuthPage) return;
+    const interval = setInterval(() => {
+      fetch('/api/auth/refresh', { method: 'POST' }).catch(() => {});
+    }, 6 * 60 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [isAuthPage]);
+
   if (isAuthPage) {
     return <>{children}</>;
   }
