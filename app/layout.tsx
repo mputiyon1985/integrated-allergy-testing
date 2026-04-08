@@ -119,9 +119,9 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
             style={{
               width: '100%',
               padding: '8px 0',
-              background: 'transparent',
-              color: '#64748b',
-              border: '1px solid #e2e8f0',
+              background: 'rgba(255,255,255,0.1)',
+              color: '#ffffff',
+              border: '1px solid rgba(255,255,255,0.25)',
               borderRadius: 8,
               fontSize: 12,
               fontWeight: 600,
