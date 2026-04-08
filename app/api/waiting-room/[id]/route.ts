@@ -42,7 +42,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
-    await prisma.waitingRoom.delete({ where: { id } })
+    // Soft delete — mark as complete rather than removing
+    await prisma.waitingRoom.update({ where: { id }, data: { status: 'complete', completedAt: new Date() } })
     return NextResponse.json({ ok: true }, { headers: HIPAA_HEADERS })
   } catch (err) {
     console.error('DELETE /api/waiting-room/[id] error:', err)

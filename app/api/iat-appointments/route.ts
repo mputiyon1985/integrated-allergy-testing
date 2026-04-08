@@ -85,6 +85,16 @@ export async function POST(request: NextRequest) {
       },
     })
 
+    prisma.auditLog.create({
+      data: {
+        action: 'APPOINTMENT_CREATED',
+        entity: 'IATAppointment',
+        entityId: appointment.id,
+        patientId: appointment.patientId || null,
+        details: `Appointment: ${appointment.title} at ${appointment.startTime}`,
+      },
+    }).catch(() => {})
+
     return NextResponse.json(appointment, { status: 201 })
   } catch (error) {
     console.error('POST /api/iat-appointments error:', error)

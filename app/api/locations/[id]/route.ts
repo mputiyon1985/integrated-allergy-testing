@@ -68,6 +68,16 @@ export async function PUT(
       },
     })
 
+    prisma.auditLog.create({
+      data: {
+        action: 'LOCATION_UPDATED',
+        entity: 'Location',
+        entityId: location.id,
+        patientId: null,
+        details: `Location updated: ${location.name} (${location.key})`,
+      },
+    }).catch(() => {})
+
     return NextResponse.json(location)
   } catch (error) {
     console.error('PUT /api/locations/[id] error:', error)

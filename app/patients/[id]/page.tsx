@@ -383,6 +383,10 @@ ${sectionsHtml}
             style={{ padding: '8px 16px', borderRadius: 8, background: '#0d9488', color: '#fff', fontSize: 14, fontWeight: 700, textDecoration: 'none' }}>
             🧪 Start Testing
           </Link>
+          <Link href={`/calendar?action=new&patientId=${patient.id}&patientName=${encodeURIComponent(patient.name)}`}
+            style={{ padding: '8px 16px', borderRadius: 8, background: '#7c3aed', color: '#fff', fontSize: 14, fontWeight: 700, textDecoration: 'none' }}>
+            📅 Book Appt
+          </Link>
         </div>
       </div>
 

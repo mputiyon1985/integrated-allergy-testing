@@ -170,6 +170,7 @@ export default function DashboardPage() {
         <div style={{ display: 'flex', gap: 8 }}>
           <Link href="/patients/new" className="btn-secondary btn-sm btn">+ Register Patient</Link>
           <Link href="/testing" className="btn btn-sm">🧪 Start Testing</Link>
+          <Link href="/calendar?action=new" className="btn btn-sm" style={{ background: '#7c3aed', color: '#fff' }}>📅 Book Appointment</Link>
         </div>
       </div>
 

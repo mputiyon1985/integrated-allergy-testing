@@ -64,6 +64,16 @@ export async function POST(request: NextRequest) {
       },
     })
 
+    prisma.auditLog.create({
+      data: {
+        action: 'LOCATION_CREATED',
+        entity: 'Location',
+        entityId: location.id,
+        patientId: null,
+        details: `Location created: ${location.name} (${location.key})`,
+      },
+    }).catch(() => {})
+
     return NextResponse.json(location, { status: 201 })
   } catch (error) {
     console.error('POST /api/locations error:', error)

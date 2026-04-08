@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
 interface Appointment {
@@ -21,17 +22,32 @@ interface Patient {
   name: string;
 }
 
-const TYPE_COLORS: Record<string, { bg: string; border: string; text: string; badge: string }> = {
-  'allergy-test': { bg: '#e8f9f7', border: '#0d9488', text: '#0d9488', badge: '#0d9488' },
-  'consultation': { bg: '#eff6ff', border: '#3b82f6', text: '#1d4ed8', badge: '#3b82f6' },
-  'follow-up':   { bg: '#f5f3ff', border: '#8b5cf6', text: '#7c3aed', badge: '#8b5cf6' },
-};
+interface AppointmentReason {
+  id: string;
+  name: string;
+  color: string;
+  duration: number;
+  active: boolean;
+}
 
-const TYPE_LABELS: Record<string, string> = {
-  'allergy-test': 'Allergy Test',
-  'consultation': 'Consultation',
-  'follow-up': 'Follow-Up',
-};
+function getReasonIcon(name: string): string {
+  const n = name.toLowerCase();
+  if (n.includes('allergy shot') || n === 'shot') return '💉';
+  if (n.includes('allergy test') || n.includes('testing')) return '🧪';
+  if (n.includes('new patient') || n.includes('intake')) return '📋';
+  if (n.includes('follow') || n.includes('follow-up')) return '🔄';
+  if (n.includes('consultation')) return '👨‍⚕️';
+  if (n.includes('test results') || n.includes('results review')) return '📊';
+  if (n.includes('immunotherapy')) return '💊';
+  return '📅';
+}
+
+function hexToRgba(hex: string, alpha: number) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
 
 const HOURS = Array.from({ length: 12 }, (_, i) => i + 7); // 7am–6pm
 
@@ -92,15 +108,18 @@ const EMPTY_FORM = {
   startMin: '00',
   endHour: '10',
   endMin: '00',
-  type: 'allergy-test',
+  reasonId: '',
+  reasonName: '',
   notes: '',
 };
 
-export default function CalendarPage() {
+function CalendarInner() {
+  const searchParams = useSearchParams();
   const [view, setView] = useState<'week' | 'month'>('week');
   const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(new Date()));
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
+  const [reasons, setReasons] = useState<AppointmentReason[]>([]);
   const [loading, setLoading] = useState(false);
 
   // Modal state
@@ -111,6 +130,7 @@ export default function CalendarPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [editMode, setEditMode] = useState(false);
+  const [titleManuallyEdited, setTitleManuallyEdited] = useState(false);
 
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
   const today = new Date();
@@ -138,6 +158,43 @@ export default function CalendarPage() {
       .catch(() => {});
   }, []);
 
+  useEffect(() => {
+    fetch('/api/appointment-reasons')
+      .then(r => r.ok ? r.json() : { reasons: [] })
+      .then(d => setReasons(Array.isArray(d) ? d : d.reasons ?? []))
+      .catch(() => {});
+  }, []);
+
+  // Handle URL params: auto-open modal if ?action=new
+  useEffect(() => {
+    const action = searchParams.get('action');
+    const patientId = searchParams.get('patientId');
+    const patientName = searchParams.get('patientName');
+    if (action === 'new') {
+      const d = isoDate(today);
+      const baseForm = { ...EMPTY_FORM, date: d, startHour: '9', endHour: '10' };
+      if (patientId) {
+        baseForm.patientId = patientId;
+        baseForm.patientName = patientName ?? '';
+      }
+      setForm(baseForm);
+      setSelectedAppt(null);
+      setModalMode('add');
+      setEditMode(false);
+      setTitleManuallyEdited(false);
+      setError('');
+      setShowModal(true);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  // Auto-fill title when patient and reason both selected
+  useEffect(() => {
+    if (!titleManuallyEdited && form.patientName && form.reasonName) {
+      setForm(f => ({ ...f, title: `${form.patientName} - ${form.reasonName}` }));
+    }
+  }, [form.patientName, form.reasonName, titleManuallyEdited]);
+
   function openAddModal(date?: Date, hour?: number) {
     const d = date ? isoDate(date) : isoDate(today);
     const h = hour ?? 9;
@@ -145,6 +202,7 @@ export default function CalendarPage() {
     setSelectedAppt(null);
     setModalMode('add');
     setEditMode(false);
+    setTitleManuallyEdited(false);
     setError('');
     setShowModal(true);
   }
@@ -160,6 +218,7 @@ export default function CalendarPage() {
   function openEditModal(appt: Appointment) {
     const start = new Date(appt.startTime);
     const end = new Date(appt.endTime);
+    const reason = reasons.find(r => r.name === appt.type || r.id === appt.type);
     setForm({
       title: appt.title,
       patientId: appt.patientId ?? '',
@@ -169,44 +228,37 @@ export default function CalendarPage() {
       startMin: String(start.getMinutes()).padStart(2, '0'),
       endHour: String(end.getHours()),
       endMin: String(end.getMinutes()).padStart(2, '0'),
-      type: appt.type,
+      reasonId: reason?.id ?? appt.type,
+      reasonName: reason?.name ?? appt.type,
       notes: appt.notes ?? '',
     });
     setSelectedAppt(appt);
     setModalMode('add');
     setEditMode(true);
+    setTitleManuallyEdited(true);
     setError('');
     setShowModal(true);
-  }
-
-  function buildIso(date: string, hour: string, min: string) {
-    return `${date}T${String(hour).padStart(2, '0')}:${min}:00.000Z`.replace(
-      /(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2}:\d{2}\.\d{3})Z/,
-      (_, datePart, timePart) => {
-        // Use local time ISO
-        return `${datePart}T${timePart.slice(0, 5)}:00`;
-      }
-    );
   }
 
   async function handleSave() {
     if (!form.title.trim()) { setError('Title is required'); return; }
     if (!form.date) { setError('Date is required'); return; }
+    if (!form.patientId) { setError('Patient selection is required'); return; }
 
     setSaving(true);
     setError('');
 
-    // Build ISO datetimes in local timezone
     const startDt = new Date(`${form.date}T${String(form.startHour).padStart(2, '0')}:${form.startMin}:00`);
     const endDt = new Date(`${form.date}T${String(form.endHour).padStart(2, '0')}:${form.endMin}:00`);
 
+    const selectedReason = reasons.find(r => r.id === form.reasonId);
     const body = {
       title: form.title.trim(),
       patientId: form.patientId || undefined,
       patientName: form.patientName || undefined,
       startTime: startDt.toISOString(),
       endTime: endDt.toISOString(),
-      type: form.type,
+      type: selectedReason?.name ?? form.reasonName ?? form.reasonId,
       notes: form.notes || undefined,
     };
 
@@ -254,6 +306,22 @@ export default function CalendarPage() {
     });
     loadAppointments();
     setShowModal(false);
+  }
+
+  function getReasonForAppt(appt: Appointment) {
+    return reasons.find(r => r.name === appt.type || r.id === appt.type);
+  }
+
+  function getApptColors(appt: Appointment) {
+    const reason = getReasonForAppt(appt);
+    if (reason) {
+      return {
+        bg: hexToRgba(reason.color, 0.12),
+        border: reason.color,
+        text: reason.color,
+      };
+    }
+    return { bg: '#e8f9f7', border: '#0d9488', text: '#0d9488' };
   }
 
   // Week view rendering
@@ -363,14 +431,16 @@ export default function CalendarPage() {
                         onMouseLeave={e => (e.currentTarget.style.background = isToday ? '#fafffe' : 'white')}
                       >
                         {slotAppts.map(appt => {
-                          const colors = TYPE_COLORS[appt.type] ?? TYPE_COLORS['allergy-test'];
+                          const colors = getApptColors(appt);
+                          const reason = getReasonForAppt(appt);
+                          const icon = reason ? getReasonIcon(reason.name) : '📅';
                           return (
                             <div
                               key={appt.id}
                               onClick={e => { e.stopPropagation(); openViewModal(appt); }}
                               style={{ background: colors.bg, border: `1.5px solid ${colors.border}`, borderRadius: 6, padding: '3px 6px', marginBottom: 3, cursor: 'pointer', fontSize: 11 }}
                             >
-                              <div style={{ fontWeight: 700, color: colors.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{appt.title}</div>
+                              <div style={{ fontWeight: 700, color: colors.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{icon} {appt.title}</div>
                               {appt.patientName && <div style={{ color: '#374151', fontSize: 10, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{appt.patientName}</div>}
                               <div style={{ color: '#6b7280', fontSize: 10 }}>{formatTime(appt.startTime)}–{formatTime(appt.endTime)}</div>
                             </div>
@@ -415,11 +485,13 @@ export default function CalendarPage() {
                       {i + 1}
                     </div>
                     {dayAppts.slice(0, 3).map(appt => {
-                      const colors = TYPE_COLORS[appt.type] ?? TYPE_COLORS['allergy-test'];
+                      const colors = getApptColors(appt);
+                      const reason = getReasonForAppt(appt);
+                      const icon = reason ? getReasonIcon(reason.name) : '📅';
                       return (
                         <div key={appt.id} onClick={e => { e.stopPropagation(); openViewModal(appt); }}
                           style={{ background: colors.bg, border: `1px solid ${colors.border}`, borderRadius: 4, padding: '2px 5px', marginBottom: 2, fontSize: 10, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600, color: colors.text, cursor: 'pointer' }}>
-                          {formatTime(appt.startTime)} {appt.title}
+                          {icon} {formatTime(appt.startTime)} {appt.title}
                         </div>
                       );
                     })}
@@ -434,17 +506,16 @@ export default function CalendarPage() {
         )}
 
         {/* Legend */}
-        <div style={{ display: 'flex', gap: 16, marginTop: 16, flexWrap: 'wrap' }}>
-          {Object.entries(TYPE_LABELS).map(([key, label]) => {
-            const c = TYPE_COLORS[key];
-            return (
-              <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#374151' }}>
-                <div style={{ width: 14, height: 14, borderRadius: 3, background: c.bg, border: `1.5px solid ${c.border}` }} />
-                {label}
+        {reasons.length > 0 && (
+          <div style={{ display: 'flex', gap: 16, marginTop: 16, flexWrap: 'wrap' }}>
+            {reasons.map(r => (
+              <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#374151' }}>
+                <div style={{ width: 14, height: 14, borderRadius: 3, background: hexToRgba(r.color, 0.15), border: `1.5px solid ${r.color}` }} />
+                {getReasonIcon(r.name)} {r.name}
               </div>
-            );
-          })}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* ── MODAL ── */}
@@ -465,12 +536,14 @@ export default function CalendarPage() {
               {modalMode === 'view' && !editMode && selectedAppt && (
                 <div>
                   {(() => {
-                    const c = TYPE_COLORS[selectedAppt.type] ?? TYPE_COLORS['allergy-test'];
+                    const colors = getApptColors(selectedAppt);
+                    const reason = getReasonForAppt(selectedAppt);
+                    const icon = reason ? getReasonIcon(reason.name) : '📅';
                     return (
                       <>
                         <div style={{ marginBottom: 16 }}>
-                          <span style={{ background: c.bg, color: c.text, border: `1px solid ${c.border}`, borderRadius: 999, padding: '2px 12px', fontSize: 12, fontWeight: 700 }}>
-                            {TYPE_LABELS[selectedAppt.type] ?? selectedAppt.type}
+                          <span style={{ background: colors.bg, color: colors.text, border: `1px solid ${colors.border}`, borderRadius: 999, padding: '2px 12px', fontSize: 12, fontWeight: 700 }}>
+                            {icon} {reason?.name ?? selectedAppt.type}
                           </span>
                           <span style={{ marginLeft: 10, fontSize: 12, padding: '2px 10px', borderRadius: 999, background: '#f1f5f9', color: '#374151', fontWeight: 600 }}>
                             {selectedAppt.status}
@@ -514,7 +587,7 @@ export default function CalendarPage() {
                     </button>
                     <button onClick={() => handleDelete(selectedAppt.id)}
                       style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: '1.5px solid #dc2626', background: '#fff', color: '#dc2626', fontWeight: 700, cursor: 'pointer', fontSize: 14 }}>
-                      🗑 Delete
+                      🗑️ Delete
                     </button>
                   </div>
                 </div>
@@ -528,41 +601,72 @@ export default function CalendarPage() {
                       {error}
                     </div>
                   )}
-                  {/* Title */}
+
+                  {/* Patient — required */}
                   <div style={{ marginBottom: 14 }}>
-                    <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 4 }}>Title *</label>
-                    <input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-                      placeholder="e.g. Scratch Test – Initial"
-                      style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: 14, boxSizing: 'border-box' }} />
-                  </div>
-                  {/* Patient */}
-                  <div style={{ marginBottom: 14 }}>
-                    <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 4 }}>Patient</label>
+                    <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 4 }}>
+                      Patient <span style={{ color: '#dc2626' }}>*</span>
+                    </label>
                     <select value={form.patientId}
                       onChange={e => {
                         const p = patients.find(x => x.id === e.target.value);
-                        setForm(f => ({ ...f, patientId: e.target.value, patientName: p?.name ?? f.patientName }));
+                        setForm(f => ({ ...f, patientId: e.target.value, patientName: p?.name ?? '' }));
                       }}
-                      style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: 14, boxSizing: 'border-box' }}>
-                      <option value="">— Select patient (optional) —</option>
+                      style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: `1.5px solid ${!form.patientId && error ? '#fca5a5' : '#e2e8f0'}`, fontSize: 14, boxSizing: 'border-box' }}>
+                      <option value="">— Select patient —</option>
                       {patients.map(p => <option key={p.id} value={p.id}>{p.name} ({p.patientId})</option>)}
                     </select>
-                    {!form.patientId && (
-                      <input value={form.patientName} onChange={e => setForm(f => ({ ...f, patientName: e.target.value }))}
-                        placeholder="Or type patient name manually"
-                        style={{ width: '100%', marginTop: 6, padding: '8px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: 14, boxSizing: 'border-box' }} />
+                  </div>
+
+                  {/* Reason */}
+                  <div style={{ marginBottom: 14 }}>
+                    <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 4 }}>Reason</label>
+                    <select value={form.reasonId}
+                      onChange={e => {
+                        const r = reasons.find(x => x.id === e.target.value);
+                        setForm(f => ({ ...f, reasonId: e.target.value, reasonName: r?.name ?? '' }));
+                      }}
+                      style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: 14, boxSizing: 'border-box' }}>
+                      <option value="">— Select reason —</option>
+                      {reasons.map(r => (
+                        <option key={r.id} value={r.id}>
+                          {getReasonIcon(r.name)} {r.name} ({r.duration}min)
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Title — auto-filled but editable */}
+                  <div style={{ marginBottom: 14 }}>
+                    <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 4 }}>
+                      Title <span style={{ color: '#dc2626' }}>*</span>
+                      {!titleManuallyEdited && form.patientName && form.reasonName && (
+                        <span style={{ fontWeight: 400, color: '#9ca3af', marginLeft: 6, fontSize: 12 }}>(auto-filled)</span>
+                      )}
+                    </label>
+                    <input value={form.title}
+                      onChange={e => { setTitleManuallyEdited(true); setForm(f => ({ ...f, title: e.target.value })); }}
+                      placeholder="e.g. John Smith - Allergy Testing"
+                      style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: 14, boxSizing: 'border-box' }} />
+                    {titleManuallyEdited && (
+                      <button type="button" onClick={() => { setTitleManuallyEdited(false); }}
+                        style={{ fontSize: 11, color: '#0d9488', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0', marginTop: 2 }}>
+                        ↺ Reset to auto-fill
+                      </button>
                     )}
                   </div>
+
                   {/* Date */}
                   <div style={{ marginBottom: 14 }}>
-                    <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 4 }}>Date *</label>
+                    <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 4 }}>Date <span style={{ color: '#dc2626' }}>*</span></label>
                     <input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
                       style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: 14, boxSizing: 'border-box' }} />
                   </div>
+
                   {/* Time */}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
                     <div>
-                      <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 4 }}>Start Time *</label>
+                      <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 4 }}>Start Time <span style={{ color: '#dc2626' }}>*</span></label>
                       <div style={{ display: 'flex', gap: 4 }}>
                         <select value={form.startHour} onChange={e => setForm(f => ({ ...f, startHour: e.target.value }))}
                           style={{ flex: 1, padding: '8px 6px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: 13 }}>
@@ -575,7 +679,7 @@ export default function CalendarPage() {
                       </div>
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 4 }}>End Time *</label>
+                      <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 4 }}>End Time <span style={{ color: '#dc2626' }}>*</span></label>
                       <div style={{ display: 'flex', gap: 4 }}>
                         <select value={form.endHour} onChange={e => setForm(f => ({ ...f, endHour: e.target.value }))}
                           style={{ flex: 1, padding: '8px 6px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: 13 }}>
@@ -588,16 +692,7 @@ export default function CalendarPage() {
                       </div>
                     </div>
                   </div>
-                  {/* Type */}
-                  <div style={{ marginBottom: 14 }}>
-                    <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 4 }}>Type</label>
-                    <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
-                      style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: 14, boxSizing: 'border-box' }}>
-                      <option value="allergy-test">Allergy Test</option>
-                      <option value="consultation">Consultation</option>
-                      <option value="follow-up">Follow-Up</option>
-                    </select>
-                  </div>
+
                   {/* Notes */}
                   <div style={{ marginBottom: 20 }}>
                     <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 4 }}>Notes</label>
@@ -605,6 +700,7 @@ export default function CalendarPage() {
                       rows={3} placeholder="Optional notes…"
                       style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: 14, resize: 'vertical', boxSizing: 'border-box' }} />
                   </div>
+
                   {/* Actions */}
                   <div style={{ display: 'flex', gap: 10 }}>
                     <button onClick={() => setShowModal(false)}
@@ -623,5 +719,13 @@ export default function CalendarPage() {
         </div>
       )}
     </>
+  );
+}
+
+export default function CalendarPage() {
+  return (
+    <Suspense fallback={<div className="page-body">Loading calendar…</div>}>
+      <CalendarInner />
+    </Suspense>
   );
 }
