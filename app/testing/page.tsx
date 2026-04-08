@@ -230,11 +230,13 @@ function TestPanel({
   color,
   state,
   onChange,
+  locked,
 }: {
   title: string;
   color: string;
   state: PanelState;
   onChange: (rows: AllergenEntry[]) => void;
+  locked?: boolean;
 }) {
   function updateRow(allergenId: string, field: keyof Omit<AllergenEntry, 'allergenId' | 'allergenName' | 'category'>, value: unknown) {
     onChange(state.rows.map(r => r.allergenId === allergenId ? { ...r, [field]: value } : r));
@@ -341,7 +343,7 @@ function TestPanel({
                     <GradeCell
                       grade={row.grade}
                       onChange={g => updateRow(row.allergenId, 'grade', g)}
-                      locked={!testedBy}
+                      locked={locked}
                     />
                     {/* Wheal */}
                     <input
@@ -814,6 +816,7 @@ ${(prickResults.length + idResults.length) === 0 ? '<p style="color:#94a3b8; tex
               color="#0055A5"
               state={prick}
               onChange={rows => setPrick({ rows })}
+              locked={!testedBy}
             />
           </div>
 
@@ -827,6 +830,7 @@ ${(prickResults.length + idResults.length) === 0 ? '<p style="color:#94a3b8; tex
               color="#7c3aed"
               state={intradermal}
               onChange={rows => setIntradermal({ rows })}
+              locked={!testedBy}
             />
           </div>
         </div>
