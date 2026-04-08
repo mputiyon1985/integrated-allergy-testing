@@ -168,8 +168,32 @@ export default function PatientDetailPage() {
 
   return (
     <>
+      <style>{`
+        @media print {
+          .sidebar, .sidebar-toggle, .sidebar-overlay, .page-header, .tabs-bar, .no-print { display: none !important; }
+          .main-content { margin-left: 0 !important; padding: 0 !important; }
+          .print-header { display: block !important; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 2px solid #0055A5; }
+          body { background: #fff !important; }
+        }
+        .print-header { display: none; }
+        .tabs-bar { /* referenced above */ }
+      `}</style>
+
+      {/* Print-only patient header */}
+      <div className="print-header">
+        <div style={{ fontSize: 18, fontWeight: 800, color: '#0055A5', marginBottom: 6 }}>Integrated Allergy Testing — Patient Test Results</div>
+        <div style={{ display: 'flex', gap: 24, fontSize: 13, flexWrap: 'wrap' }}>
+          <span><strong>Patient:</strong> {patient.name}</span>
+          <span><strong>ID:</strong> {patient.patientId ?? patient.id.slice(0,8).toUpperCase()}</span>
+          <span><strong>DOB:</strong> {fmt(patient.dob)}</span>
+          <span><strong>Physician:</strong> {patient.physician ?? '—'}</span>
+          <span><strong>Location:</strong> {patient.clinicLocation ?? '—'}</span>
+          <span><strong>Print Date:</strong> {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
+        </div>
+      </div>
+
       {/* Header */}
-      <div className="page-header">
+      <div className="page-header no-print">
         <div>
           <div className="page-title">{patient.name}</div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 4 }}>
@@ -196,7 +220,7 @@ export default function PatientDetailPage() {
 
       <div className="page-body">
         {/* Tabs */}
-        <div style={{ display: 'flex', gap: 4, borderBottom: '2px solid #e2e8f0', marginBottom: 24 }}>
+        <div className="no-print" style={{ display: 'flex', gap: 4, borderBottom: '2px solid #e2e8f0', marginBottom: 24 }}>
           {(['overview', 'tests', 'videos', 'forms'] as Tab[]).map(t => (
             <button key={t} onClick={() => setTab(t)} style={{
               padding: '10px 20px', border: 'none', background: 'transparent', fontSize: 14, fontWeight: 600,
@@ -240,7 +264,15 @@ export default function PatientDetailPage() {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <div style={{ fontSize: 16, fontWeight: 700, color: '#1a2233' }}>Test Results ({tests.length})</div>
-              <Link href={`/testing?patientId=${patient.id}`} style={{ padding: '8px 16px', borderRadius: 8, background: '#0d9488', color: '#fff', fontSize: 14, fontWeight: 700, textDecoration: 'none' }}>+ New Test Session</Link>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {tests.length > 0 && (
+                  <button onClick={() => window.print()}
+                    style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', color: '#374151', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+                    🖨️ Print Results
+                  </button>
+                )}
+                <Link href={`/testing?patientId=${patient.id}`} style={{ padding: '8px 16px', borderRadius: 8, background: '#0d9488', color: '#fff', fontSize: 14, fontWeight: 700, textDecoration: 'none' }}>+ New Test Session</Link>
+              </div>
             </div>
             {tests.length === 0 ? (
               <div className="card">
