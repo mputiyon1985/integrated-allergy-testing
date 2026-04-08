@@ -29,6 +29,7 @@ interface Patient {
   emergencyName?: string;
   emergencyPhone?: string;
   emergencyRelation?: string;
+  icd10Code?: string;
   createdAt?: string;
   updatedAt?: string;
   doctor?: { id: string; name: string; title?: string } | null;
@@ -101,6 +102,7 @@ export default function PatientDetailPage() {
   const [sessionNurseSaving, setSessionNurseSaving] = useState<Record<string, boolean>>({});
   const [editingRows, setEditingRows] = useState<Record<string, { reaction: number; wheal: string; flare: string; notes: string }>>({});
   const [savingRows, setSavingRows] = useState<Record<string, boolean>>({});
+  const [icd10Codes, setIcd10Codes] = useState<{ id: string; code: string; description: string }[]>([]);
   const locationsFetchedRef = useRef(false);
 
   const load = useCallback(() => {
@@ -118,6 +120,7 @@ export default function PatientDetailPage() {
   useEffect(() => {
     if (editing && !locationsFetchedRef.current) {
       locationsFetchedRef.current = true;
+      fetch('/api/icd10-codes').then(r => r.ok ? r.json() : { codes: [] }).then(d => setIcd10Codes(d.codes ?? [])).catch(() => {});
       Promise.allSettled([
         fetch('/api/locations').then(r => r.ok ? r.json() : []),
         fetch('/api/doctors').then(r => r.ok ? r.json() : []),
@@ -178,6 +181,7 @@ export default function PatientDetailPage() {
           physician: editForm.physician,
           clinicLocation: editForm.clinicLocation,
           diagnosis: editForm.diagnosis,
+          icd10Code: editForm.icd10Code,
           notes: editForm.notes,
           insuranceId: editForm.insuranceId,
           insuranceProvider: editForm.insuranceProvider,
@@ -457,6 +461,7 @@ ${sectionsHtml}
               <InfoRow label="Physician" value={patient.physician || patient.doctor?.name} />
               <InfoRow label="Location" value={patient.clinicLocation} />
               <InfoRow label="Diagnosis" value={patient.diagnosis} />
+              <InfoRow label="ICD-10 Code" value={patient.icd10Code} />
               <InfoRow label="Registered" value={fmt(patient.createdAt)} />
               <InfoRow label="Last Updated" value={fmt(patient.updatedAt)} />
               {patient.notes && <InfoRow label="Notes" value={patient.notes} />}
@@ -724,7 +729,20 @@ ${sectionsHtml}
                     ))}
                   </select>
                 </div>
-                <div style={{ gridColumn: '1/-1' }}><Field label="Diagnosis" field="diagnosis" /></div>
+                                <div style={{ gridColumn: '1/-1' }}><Field label="Diagnosis" field="diagnosis" /></div>
+                <div style={{ gridColumn: '1/-1' }}>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>ICD-10 Diagnosis Code</label>
+                  <input className="form-input" list="icd10-list" value={editForm.icd10Code ?? ''}
+                    onChange={e => {
+                      setEditForm(f => ({ ...f, icd10Code: e.target.value }));
+                      const match = icd10Codes.find(c => c.code === e.target.value);
+                      if (match && !editForm.diagnosis) setEditForm(f => ({ ...f, diagnosis: match.description }));
+                    }}
+                    placeholder="e.g. J30.1" />
+                  <datalist id="icd10-list">
+                    {icd10Codes.map(c => <option key={c.id} value={c.code}>{c.code} — {c.description}</option>)}
+                  </datalist>
+                </div>
                 <div style={{ gridColumn: '1/-1' }}>
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Notes</label>
                   <textarea className="form-input" rows={3} value={editForm.notes ?? ''} onChange={e => setEditForm(f => ({ ...f, notes: e.target.value }))} style={{ resize: 'vertical' }} />
@@ -932,15 +950,24 @@ function AddActivityModal({
     soapAssessment: '',
     soapPlan: '',
   });
+  const [cptCodes, setCptCodes] = useState<{ id: string; code: string; description: string; defaultFee?: number }[]>([]);
+  const [cptInput, setCptInput] = useState('');
   const [saving, setSaving] = useState(false);
   const showSoap = SOAP_TYPES.has(form.activityType);
 
+  useEffect(() => {
+    fetch('/api/cpt-codes').then(r => r.ok ? r.json() : { codes: [] }).then(d => setCptCodes(d.codes ?? [])).catch(() => {});
+  }, []);
+
   async function submit() {
     setSaving(true);
+    const notesWithCpt = cptInput.trim()
+      ? (form.notes ? form.notes + '\nCPT: ' + cptInput.trim() : 'CPT: ' + cptInput.trim())
+      : form.notes;
     await fetch('/api/encounter-activities', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ encounterId, patientId, ...form }),
+      body: JSON.stringify({ encounterId, patientId, ...form, notes: notesWithCpt }),
     });
     setSaving(false);
     onSaved();
@@ -969,6 +996,16 @@ function AddActivityModal({
           <div>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Notes</label>
             <textarea className="form-input" rows={3} value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} style={{ resize: 'vertical' }} />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>CPT Codes</label>
+            <input className="form-input" list="cpt-list-modal" value={cptInput}
+              onChange={e => setCptInput(e.target.value)}
+              placeholder="e.g. 95004, 99213" />
+            <datalist id="cpt-list-modal">
+              {cptCodes.map(c => <option key={c.id} value={c.code}>{c.code} — {c.description}</option>)}
+            </datalist>
+            <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>Comma-separated. Will be appended to notes as &quot;CPT: ...&quot;</div>
           </div>
           {showSoap && (
             <>
