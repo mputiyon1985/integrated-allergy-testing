@@ -40,7 +40,11 @@ function UserCard() {
           <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'capitalize' }}>{user.role}</div>
         </div>
       </div>
-      <button onClick={() => fetch('/api/auth/logout', { method: 'POST' }).then(() => window.location.href = '/login')}
+      <button onClick={async () => {
+          await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+          // Also sign out of NextAuth (SSO sessions)
+          window.location.href = '/api/auth/signout?callbackUrl=/login';
+        }}
         style={{ marginTop: 8, width: '100%', padding: '4px 0', fontSize: 11, color: '#dc2626', background: 'transparent', border: '1px solid #fca5a5', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }}>
         Sign Out
       </button>
