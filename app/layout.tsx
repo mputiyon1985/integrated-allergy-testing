@@ -108,8 +108,17 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
         </div>
 
         <UserCard />
-        <div className="sidebar-footer">
-          © 2026 Integrated Allergy Testing
+        <div className="sidebar-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>© 2026 Integrated Allergy Testing</span>
+          <button
+            onClick={async () => {
+              await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+              window.location.href = '/api/auth/signout?callbackUrl=/login';
+            }}
+            style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: 11, cursor: 'pointer', textDecoration: 'underline' }}
+          >
+            Sign Out
+          </button>
         </div>
       </nav>
     </>
