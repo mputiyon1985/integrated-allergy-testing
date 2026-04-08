@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
       provider: 'azure',
     })
 
-    const response = NextResponse.redirect(new URL('/dashboard', req.url))
+    const response = NextResponse.redirect(new URL('/', req.url))
     response.cookies.set('iat_session', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
