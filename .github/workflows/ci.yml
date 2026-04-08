@@ -43,4 +43,5 @@ jobs:
           DATABASE_URL: 'file:./dev.db'
           DATABASE_AUTH_TOKEN: 'ci-placeholder-not-real'
           JWT_SECRET: 'ci-test-secret-minimum-32-characters-long'
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           NODE_ENV: 'test'
