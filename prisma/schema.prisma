@@ -294,13 +294,15 @@ model StaffUser {
 model IATAppointment {
   id          String    @id @default(cuid())
   title       String
-  patientId   String?
+  patientId   String    // Required — must have a patient
   patientName String?
+  reasonId    String?
+  reasonName  String?
   startTime   DateTime
   endTime     DateTime
   type        String    @default("allergy-test")
   notes       String?
-  status      String    @default("scheduled") // scheduled | in-progress | complete | cancelled
+  status      String    @default("scheduled")
   createdBy   String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -308,4 +310,16 @@ model IATAppointment {
 
   @@index([startTime])
   @@index([deletedAt])
+  @@index([patientId])
+}
+
+model AppointmentReason {
+  id        String   @id @default(cuid())
+  name      String
+  color     String   @default("#0d9488")
+  duration  Int      @default(30)
+  active    Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

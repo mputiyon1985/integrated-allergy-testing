@@ -67,7 +67,7 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
             alt="Integrated Allergy Testing"
             style={{ height: 55, width: 'auto', display: 'block' }}
           />
-          <div style={{ color: '#9ca3af', fontSize: 10, marginTop: 4 }}>Testing Suite v1.0</div>
+          <div style={{ color: '#9ca3af', fontSize: 10, marginTop: 4 }}>Testing Suite v3.0.0</div>
         </div>
 
         <div className="sidebar-nav">

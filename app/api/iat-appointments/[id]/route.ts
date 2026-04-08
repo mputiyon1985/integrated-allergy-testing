@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic'
 
 const updateSchema = z.object({
   title: z.string().min(1).max(200).optional(),
-  patientId: z.string().optional().nullable(),
+  patientId: z.string().optional(),
   patientName: z.string().max(200).optional().nullable(),
   startTime: z.string().datetime().optional(),
   endTime: z.string().datetime().optional(),
