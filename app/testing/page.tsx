@@ -191,27 +191,28 @@ function TestingSetup({ onStart }: {
 
 /* ─── GradeCell ─────────────────────────────────────────────────── */
 
-function GradeCell({ grade, onChange }: { grade: number | null; onChange: (g: number | null) => void }) {
+function GradeCell({ grade, onChange, locked }: { grade: number | null; onChange: (g: number | null) => void; locked?: boolean }) {
   return (
-    <div style={{ display: 'flex', gap: 2 }}>
+    <div style={{ display: 'flex', gap: 2 }} title={locked ? 'Select a nurse before recording results' : undefined}>
       {[0, 1, 2, 3, 4, 5].map(n => {
         const selected = grade === n;
         const c = GRADE_COLORS[n];
         return (
           <button
             key={n}
-            onClick={() => onChange(selected ? null : n)}
-            title={`Grade ${n}`}
+            onClick={() => !locked && onChange(selected ? null : n)}
+            title={locked ? 'Select a nurse first' : `Grade ${n}`}
             style={{
               width: 22, height: 22, borderRadius: 3,
-              border: `1.5px solid ${selected ? c.border : '#cbd5e1'}`,
-              background: selected ? c.bg : '#fff',
-              color: selected ? c.text : '#94a3b8',
+              border: `1.5px solid ${locked ? '#e2e8f0' : selected ? c.border : '#cbd5e1'}`,
+              background: locked ? '#f8fafc' : selected ? c.bg : '#fff',
+              color: locked ? '#d1d5db' : selected ? c.text : '#94a3b8',
               fontSize: 10, fontWeight: 700,
-              cursor: 'pointer', padding: 0,
+              cursor: locked ? 'not-allowed' : 'pointer', padding: 0,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               transition: 'all 0.1s',
               flexShrink: 0,
+              opacity: locked ? 0.5 : 1,
             }}
           >
             {n}
@@ -340,6 +341,7 @@ function TestPanel({
                     <GradeCell
                       grade={row.grade}
                       onChange={g => updateRow(row.allergenId, 'grade', g)}
+                      locked={!testedBy}
                     />
                     {/* Wheal */}
                     <input
@@ -789,6 +791,13 @@ ${(prickResults.length + idResults.length) === 0 ? '<p style="color:#94a3b8; tex
         </div>
       </div>
 
+      {/* ── Nurse required banner ────────────────────────────── */}
+      {!testedBy && (
+        <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '10px 16px', margin: '0 16px 8px', display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: '#92400e', fontWeight: 600 }}>
+          ⚠️ Please select a nurse/clinician in the <strong>"Tested By"</strong> field above before recording results.
+        </div>
+      )}
+
       {/* ── Two-panel table area ──────────────────────────────── */}
       {allergens.length === 0 ? (
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', flexDirection: 'column', gap: 12 }}>
@@ -882,7 +891,7 @@ ${(prickResults.length + idResults.length) === 0 ? '<p style="color:#94a3b8; tex
           <button onClick={handlePrint} style={bottomBtn('#6366f1')}>🖨️ Print</button>
           <button
             onClick={handleSave}
-            disabled={saving || totalGraded === 0}
+            disabled={saving || totalGraded === 0 || !testedBy}
             style={bottomBtn('#2EC4B6', saving || totalGraded === 0)}
           >
             {saving ? '…Saving' : '💾 Save Results'}
