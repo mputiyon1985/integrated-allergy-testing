@@ -41,6 +41,13 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // Fire-and-forget: record encounter activity
+    fetch(`${request.nextUrl.origin}/api/encounter-activities`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ patientId, type: 'video_education', notes: `Watched video: ${videoId}`, performedBy: 'Patient (Kiosk)' }),
+    }).catch(() => {})
+
     return NextResponse.json({ success: true, activity }, { headers: HIPAA_HEADERS });
   } catch (error) {
     console.error('POST /api/kiosk/video-watched error:', error);

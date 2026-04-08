@@ -325,29 +325,57 @@ model IATAppointment {
 }
 
 model Encounter {
-  id              String    @id @default(cuid())
-  patientId       String
-  encounterDate   DateTime  @default(now())
-  doctorId        String?
-  doctorName      String?
-  nurseId         String?
-  nurseName       String?
-  appointmentId   String?
-  chiefComplaint  String
-  subjectiveNotes String?
-  objectiveNotes  String?
-  assessment      String?
-  plan            String?
-  followUpDays    Int?
-  status          String    @default("open")
-  createdBy       String?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  deletedAt       DateTime?
+  id                  String    @id @default(cuid())
+  patientId           String
+  encounterDate       DateTime  @default(now())
+  doctorId            String?
+  doctorName          String?
+  nurseId             String?
+  nurseName           String?
+  appointmentId       String?
+  linkedAppointmentId String?
+  chiefComplaint      String
+  subjectiveNotes     String?
+  objectiveNotes      String?
+  assessment          String?
+  plan                String?
+  followUpDays        Int?
+  status              String    @default("open")
+  createdBy           String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  deletedAt           DateTime?
+
+  activities          EncounterActivity[]
 
   @@index([patientId])
   @@index([encounterDate])
   @@index([deletedAt])
+}
+
+model EncounterActivity {
+  id                  String    @id @default(cuid())
+  encounterId         String
+  patientId           String
+  type                String    // kiosk_checkin | allergy_test | immunotherapy_shot | consent_signed | video_education | phone_call | email | in_person_visit | telehealth | appointment_scheduled | appointment_complete | lab_result | referral | prescription | no_show | note
+  timestamp           DateTime  @default(now())
+  performedBy         String?
+  notes               String?
+  subjectiveNotes     String?
+  objectiveNotes      String?
+  assessment          String?
+  plan                String?
+  linkedTestResultId  String?
+  linkedConsentId     String?
+  linkedAppointmentId String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  deletedAt           DateTime?
+
+  encounter           Encounter @relation(fields: [encounterId], references: [id])
+
+  @@index([encounterId])
+  @@index([patientId])
 }
 
 model AppointmentReason {

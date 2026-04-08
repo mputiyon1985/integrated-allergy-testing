@@ -77,6 +77,13 @@ export async function POST(request: NextRequest) {
       include: { allergen: true },
     })
 
+    // Fire-and-forget: record encounter activity
+    fetch(`${request.nextUrl.origin}/api/encounter-activities`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ patientId, type: 'allergy_test', linkedTestResultId: testResult.id, notes: `${testType} test: ${allergenId}, reaction ${reaction}`, performedBy: nurseName || 'Staff' }),
+    }).catch(() => {})
+
     await prisma.auditLog.create({
       data: {
         action: 'CREATE',

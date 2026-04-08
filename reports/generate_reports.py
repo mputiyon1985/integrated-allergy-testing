@@ -185,7 +185,7 @@ def build_code_review_pdf():
 
     # Overall score badge
     overall_data = [['OVERALL SCORE', '8.5 / 10']]
-    overall_table = Table(overall_data, colWidths=[3*inch, 3*inch])
+    overall_table = Table(overall_data, colWidths=[3*inch, 3*inch], rowHeights=[0.7*inch])
     overall_table.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,-1), TEAL),
         ('TEXTCOLOR', (0,0), (-1,-1), WHITE),
@@ -195,7 +195,8 @@ def build_code_review_pdf():
         ('FONTSIZE', (1,0), (1,0), 18),
         ('ALIGN', (0,0), (-1,-1), 'CENTER'),
         ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-        ('ROWPADDING', (0,0), (-1,-1), 12),
+        ('TOPPADDING', (0,0), (-1,-1), 18),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 18),
         ('ROUNDEDCORNERS', [6,6,6,6]),
     ]))
     story.append(overall_table)

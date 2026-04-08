@@ -85,6 +85,15 @@ export async function POST(request: NextRequest) {
       },
     })
 
+    // Fire-and-forget: record encounter activity (only when patientId is present)
+    if (appointment.patientId) {
+      fetch(`${request.nextUrl.origin}/api/encounter-activities`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ patientId: appointment.patientId, type: 'appointment_scheduled', linkedAppointmentId: appointment.id, notes: `Booked: ${appointment.title}`, performedBy: 'Staff' }),
+      }).catch(() => {})
+    }
+
     prisma.auditLog.create({
       data: {
         action: 'APPOINTMENT_CREATED',

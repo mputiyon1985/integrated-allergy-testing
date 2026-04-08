@@ -58,6 +58,13 @@ export async function POST(req: NextRequest) {
       },
     })
 
+    // Fire-and-forget: record encounter activity
+    fetch(`${req.nextUrl.origin}/api/encounter-activities`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ patientId, type: 'consent_signed', linkedConsentId: record.id, notes: `Signed: ${formId}`, performedBy: 'Patient (Kiosk)' }),
+    }).catch(() => {})
+
     await prisma.auditLog.create({
       data: {
         action: 'CONSENT_SIGNED',
