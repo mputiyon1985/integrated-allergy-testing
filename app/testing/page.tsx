@@ -565,6 +565,8 @@ function TestingPageInner() {
       0: '#64748b', 1: '#ca8a04', 2: '#ea580c', 3: '#dc2626', 4: '#991b1b', 5: '#7f1d1d',
     };
 
+    const testDate = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+
     const renderRows = (rows: typeof prickResults) =>
       rows.map((r, i) => `
         <tr style="border-bottom:1px solid #e2e8f0; background:${(r.grade ?? 0) >= 2 ? '#fff7ed' : i % 2 === 0 ? '#fff' : '#f8fafc'}">
@@ -576,13 +578,14 @@ function TestingPageInner() {
           <td style="padding:6px 10px; color:#374151;">${r.wheal ? r.wheal + ' mm' : '—'}</td>
           <td style="padding:6px 10px; color:#374151;">${r.flare ? r.flare + ' mm' : '—'}</td>
           <td style="padding:6px 10px; color:#64748b;">${r.location}</td>
+          <td style="padding:6px 10px; color:#64748b; font-size:11px;">${testDate}</td>
         </tr>`).join('');
 
     const tableHtml = (title: string, icon: string, rows: typeof prickResults) =>
       rows.length === 0 ? '' : `
         <div style="margin-bottom:24px;">
           <h3 style="font-size:14px; font-weight:700; color:#0055A5; text-transform:uppercase; letter-spacing:0.06em; margin:0 0 8px; padding-bottom:6px; border-bottom:2px solid #0055A5;">
-            ${icon} ${title} — ${rows.length} allergen${rows.length !== 1 ? 's' : ''} tested
+            ${icon} ${title} — ${rows.length} allergen${rows.length !== 1 ? 's' : ''} tested &nbsp;·&nbsp; <span style="font-weight:500; text-transform:none;">${testDate}</span>
           </h3>
           <table style="width:100%; border-collapse:collapse; font-size:13px; font-family:system-ui,sans-serif;">
             <thead>
@@ -595,6 +598,7 @@ function TestingPageInner() {
                 <th style="padding:6px 10px; text-align:left;">Wheal</th>
                 <th style="padding:6px 10px; text-align:left;">Flare</th>
                 <th style="padding:6px 10px; text-align:left;">Site</th>
+                <th style="padding:6px 10px; text-align:left;">Test Date</th>
               </tr>
             </thead>
             <tbody>${renderRows(rows)}</tbody>
@@ -742,11 +746,6 @@ ${(prickResults.length + idResults.length) === 0 ? '<p style="color:#94a3b8; tex
             <span style={{ background: '#10b981', color: '#fff', borderRadius: 6, padding: '6px 14px', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
               ✓ Saved
             </span>
-          )}
-          {saved && (
-            <button onClick={() => { clearAll(); setSaved(false); }} style={topBtn('#6366f1')}>
-              + New Test Session
-            </button>
           )}
           <button onClick={clearAll} style={topBtn('#475569')}>Clear All</button>
           <button
