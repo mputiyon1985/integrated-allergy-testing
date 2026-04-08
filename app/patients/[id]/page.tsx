@@ -273,13 +273,16 @@ ${sectionsHtml}
   }
 
   function Field({ label, field, type = 'text' }: { label: string; field: keyof Patient; type?: string }) {
+    // For date fields, normalize ISO datetime to YYYY-MM-DD
+    const rawVal = (editForm[field] as string) ?? '';
+    const displayVal = type === 'date' && rawVal ? rawVal.split('T')[0] : rawVal;
     return (
       <div style={{ marginBottom: 14 }}>
         <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</label>
         <input
           type={type}
           className="form-input"
-          value={(editForm[field] as string) ?? ''}
+          value={displayVal}
           onChange={e => setEditForm(f => ({ ...f, [field]: e.target.value }))}
         />
       </div>
