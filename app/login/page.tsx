@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
+import { signIn } from 'next-auth/react';
 
 type Step = 'credentials' | 'mfa-verify' | 'mfa-setup' | 'mfa-setup-verify';
 
@@ -190,22 +191,21 @@ function LoginPageInner() {
               )}
 
               {/* Microsoft SSO button */}
-              <a
-                href="/api/auth/signin/azure-ad?callbackUrl=/api/auth/azure-callback"
+              <button
+                onClick={() => signIn('azure-ad', { callbackUrl: '/api/auth/azure-callback' })}
                 style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
                   width: '100%', padding: '12px',
                   background: '#0055A5', color: '#fff',
                   border: 'none', borderRadius: 10,
                   fontSize: 15, fontWeight: 700,
-                  textDecoration: 'none', marginBottom: 16,
-                  cursor: 'pointer',
+                  cursor: 'pointer', marginBottom: 16,
                 }}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src="https://upload.wikimedia.org/wikipedia/commons/4/44/Microsoft_logo.svg" alt="" style={{ width: 20, height: 20 }} />
                 Sign in with Microsoft 365
-              </a>
+              </button>
 
               {/* Divider */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
