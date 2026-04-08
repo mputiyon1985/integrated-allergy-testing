@@ -198,6 +198,10 @@ export default function PatientDetailPage() {
       </div>`;
     }).join('');
 
+    // Extract nurse from first test result notes
+    const nurseMatch = tests[0]?.notes?.match(/Nurse:\s*([^;]+)/i);
+    const nurseName = nurseMatch ? nurseMatch[1].trim() : '—';
+
     const html = `<!DOCTYPE html><html><head><title>Test Results — ${patient.name}</title>
 <style>body{font-family:system-ui,sans-serif;margin:0;padding:20px;color:#1a2233;}</style>
 </head><body>
@@ -208,6 +212,7 @@ export default function PatientDetailPage() {
     <span><strong>ID:</strong> ${patient.patientId ?? patient.id.slice(0,8).toUpperCase()}</span>
     <span><strong>DOB:</strong> ${fmt(patient.dob)}</span>
     <span><strong>Physician:</strong> ${patient.physician ?? '—'}</span>
+    <span><strong>Tested By:</strong> ${nurseName}</span>
     <span><strong>Location:</strong> ${patient.clinicLocation ?? '—'}</span>
     <span><strong>Print Date:</strong> ${new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}</span>
   </div>

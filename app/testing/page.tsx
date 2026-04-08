@@ -535,6 +535,7 @@ function TestingPageInner() {
               notes: [
                 item.flare ? `Flare: ${item.flare}mm` : '',
                 item.location !== 'Back' ? `Location: ${item.location}` : '',
+                testedBy ? `Nurse: ${testedBy}` : '',
               ].filter(Boolean).join('; ') || undefined,
             }),
           })
