@@ -33,6 +33,7 @@ interface TestResult {
   reaction?: number;
   wheal?: string;
   notes?: string;
+  nurseName?: string;
   testedAt?: string;
 }
 
@@ -119,19 +120,13 @@ export default function PatientDetailPage() {
       .catch(() => {});
   }, []);
 
-  async function updateSessionNurse(sessionKey: string, nurseName: string, sessionResults: TestResult[]) {
-    setSessionNurses(prev => ({ ...prev, [sessionKey]: nurseName }));
-    // Update all test results in this session with the new nurse name
+  async function updateSessionNurse(sessionKey: string, nurseNameVal: string, sessionResults: TestResult[]) {
+    setSessionNurses(prev => ({ ...prev, [sessionKey]: nurseNameVal }));
     await Promise.allSettled(sessionResults.map(r =>
       fetch(`/api/test-results/${r.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          notes: [
-            r.notes?.replace(/Nurse:\s*[^;]+;?\s*/i, '').trim() || '',
-            nurseName ? `Nurse: ${nurseName}` : '',
-          ].filter(Boolean).join('; ') || null,
-        }),
+        body: JSON.stringify({ nurseName: nurseNameVal || null }),
       })
     ));
     load();
@@ -228,9 +223,10 @@ export default function PatientDetailPage() {
       </div>`;
     }).join('');
 
-    // Extract nurse from first test result notes
-    const nurseMatch = tests[0]?.notes?.match(/Nurse:\s*([^;]+)/i);
-    const nurseName = nurseMatch ? nurseMatch[1].trim() : '—';
+    // Get nurse from dedicated nurseName field (falls back to notes for legacy data)
+    const nurseFromField = tests[0]?.nurseName;
+    const nurseFromNotes = tests[0]?.notes?.match(/Nurse:\s*([^;]+)/i)?.[1]?.trim();
+    const nurseName = nurseFromField || nurseFromNotes || '—';
 
     const html = `<!DOCTYPE html><html><head><title>Test Results — ${patient.name}</title>
 <style>body{font-family:system-ui,sans-serif;margin:0;padding:20px;color:#1a2233;}</style>
@@ -441,10 +437,7 @@ ${sectionsHtml}
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <span style={{ fontSize: 12, fontWeight: 600, color: '#64748b' }}>Tested By:</span>
                         <select
-                          value={sessionNurses[key] ?? (() => {
-                            const m = results[0]?.notes?.match(/Nurse:\s*([^;]+)/i);
-                            return m ? m[1].trim() : '';
-                          })()}
+                          value={sessionNurses[key] ?? (results[0]?.nurseName ?? '')}
                           onChange={e => updateSessionNurse(key, e.target.value, results)}
                           style={{ fontSize: 13, padding: '4px 10px', borderRadius: 6, border: '1px solid #e2e8f0', color: '#374151', cursor: 'pointer' }}
                         >

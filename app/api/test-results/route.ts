@@ -51,9 +51,10 @@ export async function POST(request: NextRequest) {
       reaction?: number
       wheal?: string
       notes?: string
+      nurseName?: string
     }
 
-    const { patientId, allergenId, testType, reaction, wheal, notes } = body
+    const { patientId, allergenId, testType, reaction, wheal, notes, nurseName } = body
 
     if (!patientId || !allergenId || !testType || reaction === undefined) {
       return NextResponse.json(
@@ -84,6 +85,7 @@ export async function POST(request: NextRequest) {
         reaction,
         wheal,
         notes,
+        nurseName,
       },
       include: { allergen: true },
     })

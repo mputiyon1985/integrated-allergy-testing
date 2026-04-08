@@ -19,10 +19,11 @@ export async function PUT(
       reaction?: number
       wheal?: string
       notes?: string
+      nurseName?: string
       readAt?: string
     }
 
-    const { reaction, wheal, notes, readAt } = body
+    const { reaction, wheal, notes, nurseName, readAt } = body
 
     const testResult = await prisma.allergyTestResult.update({
       where: { id },
@@ -30,6 +31,7 @@ export async function PUT(
         ...(reaction !== undefined ? { reaction } : {}),
         ...(wheal !== undefined ? { wheal } : {}),
         ...(notes !== undefined ? { notes } : {}),
+        ...(nurseName !== undefined ? { nurseName } : {}),
         ...(readAt !== undefined ? { readAt: new Date(readAt) } : {}),
       },
       include: { allergen: true },

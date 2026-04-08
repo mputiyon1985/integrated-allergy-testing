@@ -532,10 +532,10 @@ function TestingPageInner() {
               testType: item.testType,
               reaction: item.reaction,
               wheal: item.wheal,
+              nurseName: testedBy || undefined,
               notes: [
                 item.flare ? `Flare: ${item.flare}mm` : '',
                 item.location !== 'Back' ? `Location: ${item.location}` : '',
-                testedBy ? `Nurse: ${testedBy}` : '',
               ].filter(Boolean).join('; ') || undefined,
             }),
           })

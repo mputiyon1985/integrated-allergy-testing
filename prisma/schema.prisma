@@ -145,6 +145,7 @@ model AllergyTestResult {
   reaction   Int       @default(0)
   wheal      String?
   notes      String?
+  nurseName  String?
   testedAt   DateTime  @default(now())
   readAt     DateTime?
   active     Boolean   @default(true)
