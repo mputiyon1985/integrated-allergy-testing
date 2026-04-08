@@ -184,10 +184,26 @@ export default function KioskVideosPage() {
                 )}
               </div>
 
-              {/* Watch button — opens in new tab, avoids embed restrictions */}
+              {/* Video player */}
               <div style={{ padding: '20px 24px' }}>
-                {false ? (
-                  <div />
+                {embedUrl ? (
+                  <div style={{ marginBottom: 16 }}>
+                    <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, borderRadius: 10, overflow: 'hidden', background: '#000' }}>
+                      <iframe
+                        src={`${embedUrl}&autoplay=0&rel=0&modestbranding=1`}
+                        style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowFullScreen
+                        referrerPolicy="strict-origin-when-cross-origin"
+                        title={video.title}
+                      />
+                    </div>
+                    {/* Fallback link if embed fails */}
+                    <a href={video.url} target="_blank" rel="noopener noreferrer"
+                      style={{ display: 'block', textAlign: 'center', marginTop: 8, fontSize: 13, color: '#64748b', textDecoration: 'underline' }}>
+                      Video not loading? Click here to open in new tab ↗
+                    </a>
+                  </div>
                 ) : (
                   <a
                     href={video.url}
