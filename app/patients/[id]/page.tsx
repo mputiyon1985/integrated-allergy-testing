@@ -275,7 +275,19 @@ ${sectionsHtml}
   function Field({ label, field, type = 'text' }: { label: string; field: keyof Patient; type?: string }) {
     // For date fields, normalize ISO datetime to YYYY-MM-DD
     const rawVal = (editForm[field] as string) ?? '';
-    const displayVal = type === 'date' && rawVal ? rawVal.split('T')[0] : rawVal;
+    // For date inputs: extract YYYY-MM-DD from ISO string, handling timezone
+    const displayVal = type === 'date' && rawVal
+      ? (() => {
+          const s = rawVal.split('T')[0];
+          // Validate it's a real date string
+          if (/^\d{4}-\d{2}-\d{2}$/.test(s) && parseInt(s.substring(0,4)) > 1900) return s;
+          // Fallback: parse and format as UTC
+          try {
+            const d = new Date(rawVal);
+            return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
+          } catch { return s; }
+        })()
+      : rawVal;
     return (
       <div style={{ marginBottom: 14 }}>
         <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</label>
