@@ -16,6 +16,15 @@ export async function POST(request: NextRequest) {
     const body = await request.json() as {
       firstName?: string;
       lastName?: string;
+      phone?: string;
+      email?: string;
+      street?: string;
+      apt?: string;
+      city?: string;
+      state?: string;
+      zip?: string;
+      insuranceProvider?: string;
+      insuranceId?: string;
       dob?: string;
     };
     const { firstName, lastName, dob } = body;
@@ -55,6 +64,15 @@ export async function POST(request: NextRequest) {
         patientId,
         name: fullName,
         dob: dobDate,
+        phone: body.phone?.trim() || null,
+        email: body.email?.trim() || null,
+        street: body.street?.trim() || null,
+        apt: body.apt?.trim() || null,
+        city: body.city?.trim() || null,
+        state: body.state?.trim() || null,
+        zip: body.zip?.trim() || null,
+        insuranceProvider: body.insuranceProvider?.trim() || null,
+        insuranceId: body.insuranceId?.trim() || null,
       },
       select: {
         id: true,

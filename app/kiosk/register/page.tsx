@@ -1,14 +1,6 @@
 /**
  * @file app/kiosk/register/page.tsx
- * @description Kiosk new-patient self-registration page.
- *   Collects first name, last name, and DOB (pre-filled from query params).
- *   Creates patient record via /api/kiosk/register, then routes to /kiosk/videos.
- */
-/**
- * @file app/kiosk/register/page.tsx
- * @description Kiosk step: new patient registration wizard. Shown when DOB lookup returns
- *   no existing patient. Collects name, contact info, and insurance details, creates the
- *   Patient record via /api/patients, then routes into the standard kiosk flow.
+ * @description Kiosk new-patient registration — collects full contact info.
  */
 'use client';
 
@@ -22,255 +14,256 @@ function formatDob(dob: string): string {
   return `${months[parseInt(month, 10) - 1]} ${parseInt(day, 10)}, ${year}`;
 }
 
+const inputStyle: React.CSSProperties = {
+  width: '100%', padding: '14px 16px', fontSize: 18,
+  border: '2px solid #e2e8f0', borderRadius: 10, boxSizing: 'border-box',
+  outline: 'none', color: '#1f2937',
+};
+const labelStyle: React.CSSProperties = {
+  display: 'block', fontSize: 14, fontWeight: 700,
+  color: '#374151', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em',
+};
+
 function RegisterContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const dob = searchParams.get('dob') || '';
 
   const [step, setStep] = useState(1);
-  const [firstName, setFirstName] = useState(searchParams?.get('firstName') || '');
-  const [lastName, setLastName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Step 1: Name
+  const [firstName, setFirstName] = useState(searchParams?.get('firstName') || '');
+  const [lastName, setLastName] = useState('');
+
+  // Step 2: Contact
+  const [cellPhone, setCellPhone] = useState('');
+  const [email, setEmail] = useState('');
+
+  // Step 3: Address
+  const [street, setStreet] = useState('');
+  const [apt, setApt] = useState('');
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
+  const [zip, setZip] = useState('');
+
+  // Step 4: Insurance
+  const [insuranceProvider, setInsuranceProvider] = useState('');
+  const [insuranceId, setInsuranceId] = useState('');
+
   async function handleRegister() {
-    setLoading(true);
-    setError('');
+    setLoading(true); setError('');
     try {
       const res = await fetch('/api/kiosk/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ firstName: firstName.trim(), lastName: lastName.trim(), dob }),
+        body: JSON.stringify({
+          firstName: firstName.trim(), lastName: lastName.trim(), dob,
+          phone: cellPhone, email, street, apt, city, state, zip,
+          insuranceProvider, insuranceId,
+        }),
       });
       const data = await res.json();
       if (res.ok && data.patient) {
         sessionStorage.setItem('kiosk_patient', JSON.stringify(data.patient));
-        setStep(3);
+        setStep(5);
         setTimeout(() => router.push('/kiosk/videos'), 2000);
       } else {
         setError(data.error || 'Registration failed. Please see a staff member.');
-        setStep(2);
       }
     } catch {
       setError('Something went wrong. Please see a staff member.');
-      setStep(2);
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   }
 
-  const cardStyle: React.CSSProperties = {
-    background: '#fff',
-    borderRadius: 20,
-    boxShadow: '0 8px 40px rgba(0,0,0,0.10)',
-    padding: '48px 56px',
-    maxWidth: 580,
-    width: '100%',
-    textAlign: 'center',
+  const primaryBtn: React.CSSProperties = {
+    width: '100%', padding: '18px', fontSize: 20, fontWeight: 800,
+    background: '#0d9488', color: '#fff', border: 'none', borderRadius: 14,
+    cursor: 'pointer', marginTop: 8, minHeight: 64,
+  };
+  const secondaryBtn: React.CSSProperties = {
+    background: 'transparent', border: 'none', color: '#64748b',
+    fontSize: 16, cursor: 'pointer', textDecoration: 'underline', padding: '8px 0',
   };
 
-  const inputStyle: React.CSSProperties = {
-    width: '100%',
-    fontSize: 24,
-    padding: '16px 20px',
-    border: '2px solid #cbd5e1',
-    borderRadius: 12,
-    outline: 'none',
-    color: '#1e293b',
-    background: '#f8fafc',
-    boxSizing: 'border-box',
-    marginBottom: 16,
-  };
+  const TOTAL_STEPS = 4;
+  const progressPct = (step / TOTAL_STEPS) * 100;
 
-  const primaryBtnStyle: React.CSSProperties = {
-    width: '100%',
-    padding: '22px 0',
-    fontSize: 22,
-    fontWeight: 700,
-    background: '#0d9488',
-    color: '#fff',
-    border: 'none',
-    borderRadius: 14,
-    cursor: 'pointer',
-    minHeight: 70,
-    marginBottom: 16,
-  };
-
-  const disabledBtnStyle: React.CSSProperties = {
-    ...primaryBtnStyle,
-    background: '#94a3b8',
-    cursor: 'not-allowed',
-  };
-
-  // Progress indicator
-  const ProgressBar = () => (
-    <div style={{ display: 'flex', gap: 8, marginBottom: 36, justifyContent: 'center' }}>
-      {[1, 2, 3].map(s => (
-        <div key={s} style={{
-          flex: 1,
-          maxWidth: 80,
-          height: 6,
-          borderRadius: 3,
-          background: s <= step ? '#0d9488' : '#e2e8f0',
-          transition: 'background 0.3s',
-        }} />
-      ))}
-    </div>
-  );
-
-  if (step === 1) {
-    return (
-      <div style={cardStyle}>
-        <div style={{ fontSize: 48, marginBottom: 16 }}>📋</div>
-        <h1 style={{ fontSize: 30, fontWeight: 800, color: '#0055A5', marginBottom: 12 }}>
-          Let&apos;s Create Your Record
-        </h1>
-        <p style={{ fontSize: 18, color: '#475569', marginBottom: 32 }}>
-          We couldn&apos;t find you in our system. Please enter your name below.
-        </p>
-        <ProgressBar />
-
-        <div style={{ textAlign: 'left', marginBottom: 24 }}>
-          <label style={{ display: 'block', fontSize: 16, fontWeight: 600, color: '#334155', marginBottom: 8 }}>
-            First Name <span style={{ color: '#dc2626' }}>*</span>
-          </label>
-          <input
-            type="text"
-            value={firstName}
-            onChange={e => setFirstName(e.target.value)}
-            placeholder="First name"
-            autoComplete="off"
-            style={inputStyle}
-            onFocus={e => (e.target.style.borderColor = '#0d9488')}
-            onBlur={e => (e.target.style.borderColor = '#cbd5e1')}
-          />
-          <label style={{ display: 'block', fontSize: 16, fontWeight: 600, color: '#334155', marginBottom: 8 }}>
-            Last Name <span style={{ color: '#dc2626' }}>*</span>
-          </label>
-          <input
-            type="text"
-            value={lastName}
-            onChange={e => setLastName(e.target.value)}
-            placeholder="Last name"
-            autoComplete="off"
-            style={{ ...inputStyle, marginBottom: 0 }}
-            onFocus={e => (e.target.style.borderColor = '#0d9488')}
-            onBlur={e => (e.target.style.borderColor = '#cbd5e1')}
-          />
-        </div>
-
-        <button
-          onClick={() => setStep(2)}
-          disabled={!firstName.trim() || !lastName.trim()}
-          style={!firstName.trim() || !lastName.trim() ? disabledBtnStyle : primaryBtnStyle}
-        >
-          Continue →
-        </button>
-
-        <button
-          onClick={() => router.push('/kiosk')}
-          style={{ background: 'transparent', border: 'none', color: '#64748b', fontSize: 16, cursor: 'pointer', textDecoration: 'underline', minHeight: 44 }}
-        >
-          ← Go back
-        </button>
-      </div>
-    );
-  }
-
-  if (step === 2) {
-    return (
-      <div style={cardStyle}>
-        <div style={{ fontSize: 48, marginBottom: 16 }}>✅</div>
-        <h1 style={{ fontSize: 30, fontWeight: 800, color: '#0055A5', marginBottom: 12 }}>
-          Please Confirm Your Information
-        </h1>
-        <ProgressBar />
-
-        <div style={{
-          background: '#f0f9ff',
-          border: '2px solid #bfdbfe',
-          borderRadius: 14,
-          padding: '28px 32px',
-          textAlign: 'left',
-          marginBottom: 32,
-        }}>
-          <div style={{ marginBottom: 16 }}>
-            <span style={{ fontSize: 14, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1 }}>Name</span>
-            <div style={{ fontSize: 28, fontWeight: 700, color: '#1e293b', marginTop: 4 }}>
-              {firstName} {lastName}
-            </div>
-          </div>
-          <div>
-            <span style={{ fontSize: 14, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: 1 }}>Date of Birth</span>
-            <div style={{ fontSize: 24, fontWeight: 600, color: '#1e293b', marginTop: 4 }}>
-              {formatDob(dob)}
-            </div>
-          </div>
-        </div>
-
-        {error && (
-          <div style={{
-            background: '#fef2f2',
-            border: '1px solid #fca5a5',
-            borderRadius: 10,
-            padding: '14px 18px',
-            color: '#dc2626',
-            fontSize: 16,
-            marginBottom: 24,
-            textAlign: 'left',
-          }}>
-            ⚠️ {error}
-          </div>
-        )}
-
-        <button
-          onClick={handleRegister}
-          disabled={loading}
-          style={loading ? disabledBtnStyle : primaryBtnStyle}
-        >
-          {loading ? 'Registering…' : '✅ This is correct — Register Me'}
-        </button>
-
-        <button
-          onClick={() => { setStep(1); setError(''); }}
-          style={{ background: 'transparent', border: 'none', color: '#64748b', fontSize: 16, cursor: 'pointer', textDecoration: 'underline', minHeight: 44 }}
-        >
-          ← Go back to correct
-        </button>
-      </div>
-    );
-  }
-
-  // Step 3: Done
   return (
-    <div style={cardStyle}>
-      <ProgressBar />
-      <div style={{ fontSize: 72, marginBottom: 24 }}>✅</div>
-      <h1 style={{ fontSize: 36, fontWeight: 800, color: '#0d9488', marginBottom: 16 }}>
-        Welcome, {firstName}!
-      </h1>
-      <p style={{ fontSize: 20, color: '#475569' }}>
-        You&apos;ve been registered. Proceeding to next step…
-      </p>
-      <div style={{ marginTop: 32 }}>
-        <div style={{
-          width: 40,
-          height: 40,
-          border: '4px solid #e2e8f0',
-          borderTopColor: '#0d9488',
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite',
-          margin: '0 auto',
-        }} />
+    <div style={{ width: '100%', maxWidth: 560 }}>
+      <div style={{ background: '#fff', borderRadius: 20, boxShadow: '0 8px 40px rgba(0,0,0,0.10)', overflow: 'hidden' }}>
+        {/* Header */}
+        <div style={{ background: 'linear-gradient(135deg, #0055A5, #0d9488)', padding: '24px 32px' }}>
+          <div style={{ fontSize: 22, fontWeight: 800, color: '#fff', marginBottom: 4 }}>New Patient Registration</div>
+          {step < 5 && (
+            <>
+              <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.75)', marginBottom: 12 }}>
+                Step {step} of {TOTAL_STEPS}
+              </div>
+              <div style={{ height: 6, background: 'rgba(255,255,255,0.2)', borderRadius: 999 }}>
+                <div style={{ height: '100%', width: `${progressPct}%`, background: '#fff', borderRadius: 999, transition: 'width 0.4s' }} />
+              </div>
+            </>
+          )}
+        </div>
+
+        <div style={{ padding: '28px 32px' }}>
+          {error && <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: 8, padding: '12px 16px', fontSize: 14, marginBottom: 16 }}>⚠️ {error}</div>}
+
+          {/* Step 1: Name */}
+          {step === 1 && (
+            <div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: '#0055A5', marginBottom: 20 }}>What is your name?</div>
+              <div style={{ marginBottom: 16 }}>
+                <label style={labelStyle}>First Name *</label>
+                <input style={inputStyle} value={firstName} onChange={e => setFirstName(e.target.value)}
+                  placeholder="Jane" autoFocus
+                  onFocus={e => e.target.style.borderColor = '#0d9488'}
+                  onBlur={e => e.target.style.borderColor = '#e2e8f0'} />
+              </div>
+              <div style={{ marginBottom: 24 }}>
+                <label style={labelStyle}>Last Name *</label>
+                <input style={inputStyle} value={lastName} onChange={e => setLastName(e.target.value)}
+                  placeholder="Smith"
+                  onFocus={e => e.target.style.borderColor = '#0d9488'}
+                  onBlur={e => e.target.style.borderColor = '#e2e8f0'} />
+              </div>
+              <div style={{ background: '#f0f9ff', borderRadius: 8, padding: '10px 14px', fontSize: 14, color: '#0369a1', marginBottom: 20 }}>
+                📅 Date of Birth: <strong>{formatDob(dob)}</strong>
+              </div>
+              <button style={{ ...primaryBtn, opacity: (!firstName.trim() || !lastName.trim()) ? 0.5 : 1 }}
+                disabled={!firstName.trim() || !lastName.trim()}
+                onClick={() => setStep(2)}>Continue →</button>
+            </div>
+          )}
+
+          {/* Step 2: Contact */}
+          {step === 2 && (
+            <div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: '#0055A5', marginBottom: 20 }}>Contact Information</div>
+              <div style={{ marginBottom: 16 }}>
+                <label style={labelStyle}>Cell Phone</label>
+                <input style={inputStyle} type="tel" value={cellPhone} onChange={e => setCellPhone(e.target.value)}
+                  placeholder="(555) 555-0100"
+                  onFocus={e => e.target.style.borderColor = '#0d9488'}
+                  onBlur={e => e.target.style.borderColor = '#e2e8f0'} />
+              </div>
+              <div style={{ marginBottom: 24 }}>
+                <label style={labelStyle}>Email Address</label>
+                <input style={inputStyle} type="email" value={email} onChange={e => setEmail(e.target.value)}
+                  placeholder="jane@example.com"
+                  onFocus={e => e.target.style.borderColor = '#0d9488'}
+                  onBlur={e => e.target.style.borderColor = '#e2e8f0'} />
+              </div>
+              <button style={primaryBtn} onClick={() => setStep(3)}>Continue →</button>
+              <div style={{ textAlign: 'center', marginTop: 12 }}>
+                <button style={secondaryBtn} onClick={() => setStep(1)}>← Back</button>
+              </div>
+            </div>
+          )}
+
+          {/* Step 3: Address */}
+          {step === 3 && (
+            <div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: '#0055A5', marginBottom: 20 }}>Home Address</div>
+              <div style={{ marginBottom: 12 }}>
+                <label style={labelStyle}>Street Address</label>
+                <input style={inputStyle} value={street} onChange={e => setStreet(e.target.value)}
+                  placeholder="123 Main Street"
+                  onFocus={e => e.target.style.borderColor = '#0d9488'}
+                  onBlur={e => e.target.style.borderColor = '#e2e8f0'} />
+              </div>
+              <div style={{ marginBottom: 12 }}>
+                <label style={labelStyle}>Apt / Suite</label>
+                <input style={inputStyle} value={apt} onChange={e => setApt(e.target.value)}
+                  placeholder="Apt 2B (optional)"
+                  onFocus={e => e.target.style.borderColor = '#0d9488'}
+                  onBlur={e => e.target.style.borderColor = '#e2e8f0'} />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 10, marginBottom: 24 }}>
+                <div>
+                  <label style={labelStyle}>City</label>
+                  <input style={inputStyle} value={city} onChange={e => setCity(e.target.value)} placeholder="City"
+                    onFocus={e => e.target.style.borderColor = '#0d9488'}
+                    onBlur={e => e.target.style.borderColor = '#e2e8f0'} />
+                </div>
+                <div>
+                  <label style={labelStyle}>State</label>
+                  <input style={inputStyle} value={state} onChange={e => setState(e.target.value.toUpperCase())} placeholder="VA" maxLength={2}
+                    onFocus={e => e.target.style.borderColor = '#0d9488'}
+                    onBlur={e => e.target.style.borderColor = '#e2e8f0'} />
+                </div>
+                <div>
+                  <label style={labelStyle}>ZIP</label>
+                  <input style={inputStyle} value={zip} onChange={e => setZip(e.target.value)} placeholder="22026" maxLength={10}
+                    onFocus={e => e.target.style.borderColor = '#0d9488'}
+                    onBlur={e => e.target.style.borderColor = '#e2e8f0'} />
+                </div>
+              </div>
+              <button style={primaryBtn} onClick={() => setStep(4)}>Continue →</button>
+              <div style={{ textAlign: 'center', marginTop: 12 }}>
+                <button style={secondaryBtn} onClick={() => setStep(2)}>← Back</button>
+              </div>
+            </div>
+          )}
+
+          {/* Step 4: Insurance + Confirm */}
+          {step === 4 && (
+            <div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: '#0055A5', marginBottom: 20 }}>Insurance Information</div>
+              <div style={{ marginBottom: 12 }}>
+                <label style={labelStyle}>Insurance Provider</label>
+                <input style={inputStyle} value={insuranceProvider} onChange={e => setInsuranceProvider(e.target.value)}
+                  placeholder="e.g. BlueCross BlueShield"
+                  onFocus={e => e.target.style.borderColor = '#0d9488'}
+                  onBlur={e => e.target.style.borderColor = '#e2e8f0'} />
+              </div>
+              <div style={{ marginBottom: 20 }}>
+                <label style={labelStyle}>Member / Insurance ID</label>
+                <input style={inputStyle} value={insuranceId} onChange={e => setInsuranceId(e.target.value)}
+                  placeholder="Member ID number"
+                  onFocus={e => e.target.style.borderColor = '#0d9488'}
+                  onBlur={e => e.target.style.borderColor = '#e2e8f0'} />
+              </div>
+
+              {/* Summary */}
+              <div style={{ background: '#f8fafc', borderRadius: 10, padding: 16, marginBottom: 20, fontSize: 14 }}>
+                <div style={{ fontWeight: 700, marginBottom: 8, color: '#374151' }}>Please confirm your information:</div>
+                <div><strong>Name:</strong> {firstName} {lastName}</div>
+                <div><strong>DOB:</strong> {formatDob(dob)}</div>
+                {cellPhone && <div><strong>Phone:</strong> {cellPhone}</div>}
+                {email && <div><strong>Email:</strong> {email}</div>}
+                {city && <div><strong>Address:</strong> {[street, apt, city, state, zip].filter(Boolean).join(', ')}</div>}
+              </div>
+
+              <button style={{ ...primaryBtn, background: loading ? '#94a3b8' : '#0d9488' }}
+                disabled={loading} onClick={handleRegister}>
+                {loading ? '⏳ Registering…' : '✅ Register & Continue'}
+              </button>
+              <div style={{ textAlign: 'center', marginTop: 12 }}>
+                <button style={secondaryBtn} onClick={() => setStep(3)}>← Back</button>
+              </div>
+            </div>
+          )}
+
+          {/* Step 5: Done */}
+          {step === 5 && (
+            <div style={{ textAlign: 'center', padding: '20px 0' }}>
+              <div style={{ fontSize: 64, marginBottom: 16 }}>✅</div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: '#0d9488', marginBottom: 8 }}>Welcome, {firstName}!</div>
+              <div style={{ fontSize: 16, color: '#64748b' }}>You&apos;ve been registered. Proceeding to next step…</div>
+            </div>
+          )}
+        </div>
       </div>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }
 
 export default function RegisterPage() {
   return (
-    <Suspense fallback={<div style={{ fontSize: 24, color: '#64748b' }}>Loading…</div>}>
+    <Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '50vh', fontSize: 18, color: '#64748b' }}>Loading…</div>}>
       <RegisterContent />
     </Suspense>
   );
