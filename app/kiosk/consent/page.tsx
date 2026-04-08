@@ -5,8 +5,11 @@ import { useRouter } from 'next/navigation'
 
 interface ConsentForm {
   id: string
-  title: string
-  template: string
+  formId?: string
+  title?: string
+  name?: string
+  template?: string
+  signed?: boolean
 }
 
 interface CheckResponse {
@@ -43,22 +46,37 @@ export default function ConsentPage() {
     }
     setPatientId(id)
 
-    fetch(`/api/consent/check?patientId=${encodeURIComponent(id)}`)
-      .then(r => r.json())
-      .then((data: CheckResponse) => {
-        if (data.allSigned) {
-          router.replace('/kiosk/done')
-          return
-        }
-        // Filter to unsigned forms only (API returns signed: boolean per form)
-        const unsigned = data.forms.filter((f: { signed: boolean }) => !f.signed)
-        setForms(unsigned)
+    ;(async () => {
+      try {
+        const [checkRes, formsRes] = await Promise.all([
+          fetch(`/api/consent/check?patientId=${encodeURIComponent(id)}`),
+          fetch('/api/forms'),
+        ])
+        const data: CheckResponse = await checkRes.json()
+        const formsData = await formsRes.json()
+        const allForms: { id: string; name: string; template: string }[] = Array.isArray(formsData) ? formsData : (formsData.forms ?? [])
+
+        if (data.allSigned) { router.replace('/kiosk/done'); return }
+
+        const unsigned = data.forms.filter((f: ConsentForm & { signed?: boolean }) => !f.signed)
+        if (unsigned.length === 0) { router.replace('/kiosk/done'); return }
+
+        const enriched = unsigned.map((u: ConsentForm & { formId?: string; name?: string; signed?: boolean }) => {
+          const match = allForms.find(f => f.id === (u.formId || u.id))
+          return {
+            id: u.formId || u.id,
+            title: u.name || u.title || 'Consent Form',
+            name: u.name || u.title || 'Consent Form',
+            template: match?.template || '<p>Please sign below to consent.</p>',
+          }
+        })
+        setForms(enriched)
         setLoading(false)
-      })
-      .catch(() => {
+      } catch {
         setError('Unable to load consent forms. Please ask staff for assistance.')
         setLoading(false)
-      })
+      }
+    })()
   }, [router])
 
   // Draw watermark when form changes
@@ -207,7 +225,7 @@ export default function ConsentPage() {
         {/* Consent text */}
         <div
           style={styles.consentBox}
-          dangerouslySetInnerHTML={{ __html: form.template }}
+          dangerouslySetInnerHTML={{ __html: form.template ?? '' }}
         />
 
         {/* Signature pad */}
