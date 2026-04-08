@@ -361,16 +361,16 @@ function TestingPageInner() {
   const [applyWheal, setApplyWheal] = useState('');
   const [applyFlare, setApplyFlare] = useState('');
   const [testedBy, setTestedBy] = useState('');
-  const [nurses, setNurses] = useState<{ id: string; name: string; title?: string }[]>([]);
+  const [nurses, setNurses] = useState<{ id: string; name: string; title?: string; active?: boolean }[]>([]);
   const printRef = useRef<HTMLDivElement>(null);
 
   // Load nurses for "Tested By" dropdown
   useEffect(() => {
     fetch('/api/nurses')
       .then(r => r.ok ? r.json() : [])
-      .then((data: { id: string; name: string; title?: string }[] | { nurses?: { id: string; name: string; title?: string }[] }) => {
+      .then((data: { id: string; name: string; title?: string; active?: boolean }[] | { nurses?: { id: string; name: string; title?: string; active?: boolean }[] }) => {
         const list = Array.isArray(data) ? data : (data.nurses ?? []);
-        setNurses(list.filter((n: { active?: boolean }) => n.active !== false));
+        setNurses(list.filter(n => n.active !== false));
       })
       .catch(() => {});
   }, []);
