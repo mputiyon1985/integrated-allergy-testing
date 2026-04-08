@@ -83,6 +83,8 @@ export default function PatientDetailPage() {
   const [saving, setSaving] = useState(false);
   const [editForm, setEditForm] = useState<Partial<Patient>>({});
   const [locationOptions, setLocationOptions] = useState<LocationOption[]>([]);
+  const [nurses, setNurses] = useState<{ id: string; name: string; title?: string }[]>([]);
+  const [sessionNurses, setSessionNurses] = useState<Record<string, string>>({});
   const locationsFetchedRef = useRef(false);
 
   const load = useCallback(() => {
@@ -106,6 +108,34 @@ export default function PatientDetailPage() {
         .catch(() => {});
     }
   }, [editing]);
+
+  // Load nurses once
+  useEffect(() => {
+    fetch('/api/nurses')
+      .then(r => r.ok ? r.json() : [])
+      .then((d: { id: string; name: string; title?: string }[] | { nurses?: { id: string; name: string; title?: string }[] }) => {
+        setNurses(Array.isArray(d) ? d : (d.nurses ?? []));
+      })
+      .catch(() => {});
+  }, []);
+
+  async function updateSessionNurse(sessionKey: string, nurseName: string, sessionResults: TestResult[]) {
+    setSessionNurses(prev => ({ ...prev, [sessionKey]: nurseName }));
+    // Update all test results in this session with the new nurse name
+    await Promise.allSettled(sessionResults.map(r =>
+      fetch(`/api/test-results/${r.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          notes: [
+            r.notes?.replace(/Nurse:\s*[^;]+;?\s*/i, '').trim() || '',
+            nurseName ? `Nurse: ${nurseName}` : '',
+          ].filter(Boolean).join('; ') || null,
+        }),
+      })
+    ));
+    load();
+  }
 
   async function handleSave() {
     if (!patient) return;
@@ -401,11 +431,29 @@ ${sectionsHtml}
                 const [dateLabel, testType] = key.split('||');
                 return (
                   <div key={key} className="card" style={{ marginBottom: 16 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                      <div style={{ fontWeight: 700, fontSize: 15, color: '#0d9488' }}>{dateLabel}</div>
-                      <span style={{ fontSize: 12, fontWeight: 600, padding: '2px 10px', borderRadius: 999, background: '#dbeafe', color: '#1d4ed8', textTransform: 'capitalize' }}>
-                        {testType === 'scratch' ? '🩹 Prick Test' : '💉 Intradermal'}
-                      </span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: 15, color: '#0d9488' }}>{dateLabel}</div>
+                        <span style={{ fontSize: 12, fontWeight: 600, padding: '2px 10px', borderRadius: 999, background: '#dbeafe', color: '#1d4ed8', textTransform: 'capitalize' }}>
+                          {testType === 'scratch' ? '🩹 Prick Test' : '💉 Intradermal'}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: '#64748b' }}>Tested By:</span>
+                        <select
+                          value={sessionNurses[key] ?? (() => {
+                            const m = results[0]?.notes?.match(/Nurse:\s*([^;]+)/i);
+                            return m ? m[1].trim() : '';
+                          })()}
+                          onChange={e => updateSessionNurse(key, e.target.value, results)}
+                          style={{ fontSize: 13, padding: '4px 10px', borderRadius: 6, border: '1px solid #e2e8f0', color: '#374151', cursor: 'pointer' }}
+                        >
+                          <option value="">— Assign Nurse —</option>
+                          {nurses.map(n => (
+                            <option key={n.id} value={n.name}>{n.title ? `${n.title} ${n.name}` : n.name}</option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
                       <thead>
