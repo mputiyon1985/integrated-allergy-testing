@@ -268,7 +268,7 @@ function TestPanel({
                     {/* # */}
                     <div style={{ fontSize: 10, color: '#94a3b8', textAlign: 'center', fontWeight: 600 }}>{num}</div>
                     {/* Name */}
-                    <div style={{ fontSize: 12, fontWeight: positive ? 700 : 400, color: positive ? '#7c2d12' : '#1a2233', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <div style={{ fontSize: 12, fontWeight: positive ? 700 : 400, color: positive ? '#7c2d12' : '#1a2233', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} className="allergen-name">
                       {row.allergenName}
                       {row.category && (
                         <span style={{ fontSize: 10, color: '#94a3b8', marginLeft: 3 }}>({row.category})</span>
@@ -520,6 +520,26 @@ function TestingPageInner() {
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: '#F8FAFC' }} ref={printRef}>
 
       {/* ── Top Bar ──────────────────────────────────────────── */}
+      {/* Print-only patient header */}
+      <div className="no-print" style={{ display: 'none' }} />
+      <style>{`
+        @media print {
+          .print-patient-header { display: block !important; margin-bottom: 16px; border-bottom: 2px solid #0055A5; padding-bottom: 10px; }
+        }
+        .print-patient-header { display: none; }
+      `}</style>
+      <div className="print-patient-header">
+        <div style={{ fontSize: 18, fontWeight: 800, color: '#0055A5', marginBottom: 4 }}>Integrated Allergy Testing — Allergy Test Results</div>
+        <div style={{ display: 'flex', gap: 32, fontSize: 13, flexWrap: 'wrap' }}>
+          <span><strong>Patient:</strong> {fullName}</span>
+          <span><strong>ID:</strong> {patient?.patientId ?? patient?.id?.slice(0,8).toUpperCase()}</span>
+          <span><strong>DOB:</strong> {formatDOB(patient?.dob)}</span>
+          <span><strong>Physician:</strong> {patient?.physician ?? '—'}</span>
+          <span><strong>Location:</strong> {patient?.clinicLocation ?? '—'}</span>
+          <span><strong>Test Date:</strong> {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
+        </div>
+      </div>
+
       <div style={{
         background: '#0055A5', color: '#fff',
         padding: '10px 20px',
@@ -527,7 +547,7 @@ function TestingPageInner() {
         alignItems: 'center', justifyContent: 'space-between',
         position: 'sticky', top: 0, zIndex: 50,
         boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
-      }}>
+      }} className="no-print">
         {/* Patient info */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 20, alignItems: 'center', fontSize: 13 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -727,8 +747,16 @@ function TestingPageInner() {
           .untested-row { display: none !important; }
           /* Hide action inputs/buttons in print */
           .no-print { display: none !important; }
-          /* Compact layout for print */
-          input, select, button { border: none !important; background: transparent !important; }
+          /* Show full allergen names — no truncation */
+          .allergen-name {
+            overflow: visible !important;
+            text-overflow: clip !important;
+            white-space: normal !important;
+            word-break: break-word !important;
+          }
+          /* Compact inputs */
+          input, select { border: none !important; background: transparent !important; font-size: 11px !important; }
+          select { -webkit-appearance: none !important; }
         }
       `}</style>
     </div>
