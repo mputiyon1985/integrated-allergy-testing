@@ -87,6 +87,8 @@ export default function PatientDetailPage() {
   const [nurses, setNurses] = useState<{ id: string; name: string; title?: string }[]>([]);
   const [sessionNurses, setSessionNurses] = useState<Record<string, string>>({});
   const [sessionNurseSaving, setSessionNurseSaving] = useState<Record<string, boolean>>({});
+  const [editingRows, setEditingRows] = useState<Record<string, { reaction: number; wheal: string; flare: string; notes: string }>>({});
+  const [savingRows, setSavingRows] = useState<Record<string, boolean>>({});
   const locationsFetchedRef = useRef(false);
 
   const load = useCallback(() => {
@@ -461,29 +463,88 @@ ${sectionsHtml}
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
                       <thead>
                         <tr style={{ background: '#f8fafc' }}>
-                          {['Allergen', 'Reaction', 'Wheal', 'Flare', 'Location'].map(h => (
+                          {['Allergen', 'Reaction', 'Wheal', 'Flare', 'Site', 'Notes', ''].map(h => (
                             <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontSize: 12, fontWeight: 700, color: '#374151', textTransform: 'uppercase', borderBottom: '2px solid #e2e8f0' }}>{h}</th>
                           ))}
                         </tr>
                       </thead>
                       <tbody>
                         {results.map(r => {
-                          // Parse flare and location out of notes field
-                          const notes = r.notes ?? '';
-                          const flareMatch = notes.match(/Flare:\s*([\d.]+\s*mm?)/i);
-                          const locMatch = notes.match(/Location:\s*([^;]+)/i);
-                          const flare = flareMatch ? flareMatch[1] : '—';
-                          const location = locMatch ? locMatch[1].trim() : 'Back';
+                          const rowNotes = r.notes ?? '';
+                          const flareMatch = rowNotes.match(/Flare:\s*([\d.]+\s*mm?)/i);
+                          const locMatch = rowNotes.match(/Location:\s*([^;]+)/i);
+                          const parsedFlare = flareMatch ? flareMatch[1].replace(/mm?/i,'').trim() : '';
+                          const parsedSite = locMatch ? locMatch[1].trim() : 'Back';
+                          const cleanNotes = rowNotes.replace(/Flare:\s*[\d.]+\s*mm?;?\s*/i,'').replace(/Location:\s*[^;]+;?\s*/i,'').trim();
+
+                          const editing = editingRows[r.id] ?? {
+                            reaction: r.reaction ?? 0,
+                            wheal: r.wheal ?? '',
+                            flare: parsedFlare,
+                            notes: cleanNotes,
+                          };
+
+                          async function saveRow() {
+                            setSavingRows(prev => ({ ...prev, [r.id]: true }));
+                            const newNotes = [
+                              editing.flare ? `Flare: ${editing.flare}mm` : '',
+                              parsedSite !== 'Back' ? `Location: ${parsedSite}` : '',
+                              editing.notes || '',
+                            ].filter(Boolean).join('; ');
+                            await fetch(`/api/test-results/${r.id}`, {
+                              method: 'PUT',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                reaction: editing.reaction,
+                                wheal: editing.wheal || null,
+                                notes: newNotes || null,
+                              }),
+                            });
+                            setSavingRows(prev => ({ ...prev, [r.id]: false }));
+                            setEditingRows(prev => { const n = {...prev}; delete n[r.id]; return n; });
+                            load();
+                          }
+
+                          const changed = editing.reaction !== (r.reaction ?? 0) ||
+                            editing.wheal !== (r.wheal ?? '') ||
+                            editing.flare !== parsedFlare ||
+                            editing.notes !== cleanNotes;
+
                           return (
-                          <tr key={r.id} style={{ borderBottom: '1px solid #f1f5f9', background: (r.reaction ?? 0) >= 2 ? '#fff7ed' : 'transparent' }}>
-                            <td style={{ padding: '10px 12px', fontWeight: 600 }}>{r.allergen?.name ?? '—'}</td>
-                            <td style={{ padding: '10px 12px' }}>
-                              <span style={{ fontWeight: 800, fontSize: 16, color: REACTION_COLOR[r.reaction ?? 0] }}>{r.reaction ?? 0}</span>
-                            </td>
-                            <td style={{ padding: '10px 12px', color: '#64748b' }}>{r.wheal ?? '—'}</td>
-                            <td style={{ padding: '10px 12px', color: '#64748b' }}>{flare}</td>
-                            <td style={{ padding: '10px 12px', color: '#64748b' }}>{location}</td>
-                          </tr>
+                            <tr key={r.id} style={{ borderBottom: '1px solid #f1f5f9', background: editing.reaction >= 2 ? '#fff7ed' : 'transparent' }}>
+                              <td style={{ padding: '8px 12px', fontWeight: 600, fontSize: 13 }}>{r.allergen?.name ?? '—'}</td>
+                              <td style={{ padding: '8px 8px' }}>
+                                <select value={editing.reaction}
+                                  onChange={e => setEditingRows(prev => ({ ...prev, [r.id]: { ...editing, reaction: Number(e.target.value) } }))}
+                                  style={{ fontWeight: 700, fontSize: 14, color: REACTION_COLOR[editing.reaction], border: '1px solid #e2e8f0', borderRadius: 6, padding: '2px 6px', width: 52 }}>
+                                  {[0,1,2,3,4,5].map(g => <option key={g} value={g}>{g}</option>)}
+                                </select>
+                              </td>
+                              <td style={{ padding: '8px 6px' }}>
+                                <input type="text" value={editing.wheal} placeholder="mm"
+                                  onChange={e => setEditingRows(prev => ({ ...prev, [r.id]: { ...editing, wheal: e.target.value } }))}
+                                  style={{ width: 52, padding: '3px 6px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13 }} />
+                              </td>
+                              <td style={{ padding: '8px 6px' }}>
+                                <input type="text" value={editing.flare} placeholder="mm"
+                                  onChange={e => setEditingRows(prev => ({ ...prev, [r.id]: { ...editing, flare: e.target.value } }))}
+                                  style={{ width: 52, padding: '3px 6px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 13 }} />
+                              </td>
+                              <td style={{ padding: '8px 12px', color: '#64748b', fontSize: 13 }}>{parsedSite}</td>
+                              <td style={{ padding: '8px 6px' }}>
+                                <input type="text" value={editing.notes} placeholder="Notes…"
+                                  onChange={e => setEditingRows(prev => ({ ...prev, [r.id]: { ...editing, notes: e.target.value } }))}
+                                  style={{ width: 120, padding: '3px 6px', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 12 }} />
+                              </td>
+                              <td style={{ padding: '8px 8px' }}>
+                                {changed && (
+                                  <button onClick={saveRow} disabled={savingRows[r.id]}
+                                    style={{ padding: '3px 10px', borderRadius: 6, border: 'none', background: '#0d9488', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                                    {savingRows[r.id] ? '⏳' : '💾 Save'}
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
                           );
                         })}
                       </tbody>
