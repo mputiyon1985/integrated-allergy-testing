@@ -98,6 +98,46 @@ export default function DashboardPage() {
     return () => clearInterval(interval);
   }, [loadWaiting]);
 
+  // Load today's appointments
+  useEffect(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    fetch(`/api/iat-appointments?date=${today}`)
+      .then(r => r.ok ? r.json() : [])
+      .then(data => {
+        const arr: TodayAppointment[] = Array.isArray(data) ? data : [];
+        const todayStr = new Date().toDateString();
+        setTodayAppts(arr.filter(a => new Date(a.startTime).toDateString() === todayStr));
+      })
+      .catch(() => {});
+  }, []);
+
+  async function handleQuickAddAppt() {
+    if (!newApptTitle.trim()) return;
+    setAddingAppt(true);
+    const today = new Date().toISOString().slice(0, 10);
+    const startIso = new Date(`${today}T${newApptTime}:00`).toISOString();
+    const endIso = new Date(`${today}T${newApptEndTime}:00`).toISOString();
+    try {
+      const res = await fetch('/api/iat-appointments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: newApptTitle, startTime: startIso, endTime: endIso }),
+      });
+      if (res.ok) {
+        const todayStr = new Date().toDateString();
+        const newAppt = await res.json();
+        if (new Date(newAppt.startTime).toDateString() === todayStr) {
+          setTodayAppts(prev => [...prev, newAppt].sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()));
+        }
+        setShowAddApptModal(false);
+        setNewApptTitle('');
+        setNewApptTime('09:00');
+        setNewApptEndTime('10:00');
+      }
+    } catch {}
+    setAddingAppt(false);
+  }
+
   async function updateStatus(id: string, status: string, nurseName?: string) {
     setUpdatingId(id);
     await fetch(`/api/waiting-room/${id}`, {
@@ -257,6 +297,92 @@ export default function DashboardPage() {
                 ))}
               </tbody>
             </table>
+          )}
+        </div>
+
+        {/* Today's Schedule (mini calendar widget) */}
+        <div className="card" style={{ marginBottom: 24 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <div className="card-title" style={{ margin: 0 }}>📅 Today&apos;s Schedule</div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <button onClick={() => setShowAddApptModal(true)}
+                style={{ padding: '5px 14px', borderRadius: 8, border: 'none', background: '#0d9488', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+                + Add
+              </button>
+              <Link href="/calendar"
+                style={{ padding: '5px 14px', borderRadius: 8, border: '1px solid #0d9488', color: '#0d9488', fontWeight: 600, fontSize: 13, textDecoration: 'none' }}>
+                View Full Calendar →
+              </Link>
+            </div>
+          </div>
+
+          {todayAppts.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '20px 0', color: '#94a3b8' }}>
+              <div style={{ fontSize: 28, marginBottom: 6 }}>📭</div>
+              <div style={{ fontSize: 14, fontWeight: 600 }}>No appointments scheduled for today</div>
+              <div style={{ fontSize: 12, marginTop: 4 }}>
+                <button onClick={() => setShowAddApptModal(true)} style={{ background: 'none', border: 'none', color: '#0d9488', cursor: 'pointer', fontWeight: 600, textDecoration: 'underline', fontSize: 12 }}>
+                  Book one now
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {todayAppts.map(appt => {
+                const c = APPT_TYPE_COLORS[appt.type] ?? APPT_TYPE_COLORS['allergy-test'];
+                return (
+                  <div key={appt.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', background: c.bg, borderRadius: 10, border: `1.5px solid ${c.text}20` }}>
+                    <div style={{ fontWeight: 700, fontSize: 13, color: c.text, minWidth: 56 }}>
+                      {formatApptTime(appt.startTime)}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: '#111827' }}>{appt.title}</div>
+                      {appt.patientName && <div style={{ fontSize: 12, color: '#64748b' }}>{appt.patientName}</div>}
+                    </div>
+                    <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 10px', borderRadius: 999, background: '#fff', color: c.text, border: `1px solid ${c.text}` }}>
+                      {appt.status}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Quick-add modal */}
+          {showAddApptModal && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+              <div style={{ background: '#fff', borderRadius: 14, width: '100%', maxWidth: 400, padding: 24, boxShadow: '0 10px 40px rgba(0,0,0,0.15)' }}>
+                <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 16, color: '#111827' }}>+ Quick Add Appointment</div>
+                <div style={{ marginBottom: 12 }}>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 4 }}>Title *</label>
+                  <input value={newApptTitle} onChange={e => setNewApptTitle(e.target.value)}
+                    placeholder="e.g. Follow-up visit"
+                    style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: 14, boxSizing: 'border-box' }} />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 20 }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 4 }}>Start</label>
+                    <input type="time" value={newApptTime} onChange={e => setNewApptTime(e.target.value)}
+                      style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: 14, boxSizing: 'border-box' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 4 }}>End</label>
+                    <input type="time" value={newApptEndTime} onChange={e => setNewApptEndTime(e.target.value)}
+                      style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: 14, boxSizing: 'border-box' }} />
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button onClick={() => setShowAddApptModal(false)}
+                    style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: '1.5px solid #e2e8f0', background: '#fff', color: '#374151', fontWeight: 700, cursor: 'pointer', fontSize: 14 }}>
+                    Cancel
+                  </button>
+                  <button onClick={handleQuickAddAppt} disabled={addingAppt || !newApptTitle.trim()}
+                    style={{ flex: 2, padding: '10px 0', borderRadius: 10, border: 'none', background: '#0d9488', color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: 14, opacity: addingAppt ? 0.7 : 1 }}>
+                    {addingAppt ? 'Saving…' : 'Book for Today'}
+                  </button>
+                </div>
+              </div>
+            </div>
           )}
         </div>
 
