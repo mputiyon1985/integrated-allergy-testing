@@ -57,6 +57,12 @@ export default function DashboardPage() {
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [todayAppts, setTodayAppts] = useState<TodayAppointment[]>([]);
   const [selectedAppt, setSelectedAppt] = useState<TodayAppointment | null>(null);
+  const [editingAppt, setEditingAppt] = useState<TodayAppointment | null>(null);
+  const [editApptTitle, setEditApptTitle] = useState('');
+  const [editApptStart, setEditApptStart] = useState('');
+  const [editApptEnd, setEditApptEnd] = useState('');
+  const [editApptNotes, setEditApptNotes] = useState('');
+  const [savingAppt, setSavingAppt] = useState(false);
   const [deletingApptId, setDeletingApptId] = useState<string | null>(null);
   const [showAddApptModal, setShowAddApptModal] = useState(false);
   const [newApptTitle, setNewApptTitle] = useState('');
@@ -423,11 +429,19 @@ export default function DashboardPage() {
               </div>
               {/* Actions */}
               <div style={{ padding: '12px 20px', borderTop: '1px solid #e2e8f0', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                <a href={`/calendar?action=edit&id=${selectedAppt.id}`}
-                  style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', color: '#374151', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}
-                  onClick={() => setSelectedAppt(null)}>
+                <button
+                  onClick={() => {
+                    const t = selectedAppt;
+                    setEditApptTitle(t.title);
+                    setEditApptStart(t.startTime ? new Date(t.startTime).toISOString().slice(0,16) : '');
+                    setEditApptEnd(t.endTime ? new Date(t.endTime).toISOString().slice(0,16) : '');
+                    setEditApptNotes(t.notes || '');
+                    setEditingAppt(t);
+                    setSelectedAppt(null);
+                  }}
+                  style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', color: '#374151', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
                   ✏️ Edit
-                </a>
+                </button>
                 <button
                   disabled={deletingApptId === selectedAppt.id}
                   onClick={async () => {
@@ -440,6 +454,54 @@ export default function DashboardPage() {
                   }}
                   style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: '#fef2f2', color: '#b91c1c', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
                   {deletingApptId === selectedAppt.id ? '⏳' : '🗑️ Delete'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Inline Edit Appointment Modal */}
+        {editingAppt && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+            <div style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 440, boxShadow: '0 20px 60px rgba(0,0,0,0.2)', overflow: 'hidden' }}>
+              <div style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ fontWeight: 700, fontSize: 16 }}>✏️ Edit Appointment</div>
+                <button onClick={() => setEditingAppt(null)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#64748b' }}>✕</button>
+              </div>
+              <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Title</label>
+                  <input className="form-input" value={editApptTitle} onChange={e => setEditApptTitle(e.target.value)} />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Start</label>
+                    <input className="form-input" type="datetime-local" value={editApptStart} onChange={e => setEditApptStart(e.target.value)} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>End</label>
+                    <input className="form-input" type="datetime-local" value={editApptEnd} onChange={e => setEditApptEnd(e.target.value)} />
+                  </div>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Notes</label>
+                  <textarea className="form-input" rows={2} value={editApptNotes} onChange={e => setEditApptNotes(e.target.value)} style={{ resize: 'vertical' }} />
+                </div>
+              </div>
+              <div style={{ padding: '12px 20px', borderTop: '1px solid #e2e8f0', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                <button onClick={() => setEditingAppt(null)} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: 13 }}>Cancel</button>
+                <button disabled={savingAppt} onClick={async () => {
+                  setSavingAppt(true);
+                  await fetch(`/api/iat-appointments/${editingAppt.id}`, {
+                    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ title: editApptTitle, startTime: editApptStart, endTime: editApptEnd, notes: editApptNotes }),
+                  });
+                  setSavingAppt(false); setEditingAppt(null);
+                  const today = new Date().toISOString().split('T')[0];
+                  fetch(`/api/iat-appointments?date=${today}`).then(r => r.json()).then(d => setTodayAppts(d.appointments ?? d ?? []));
+                }}
+                  style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: '#0d9488', color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: 13 }}>
+                  {savingAppt ? '⏳' : '💾 Save'}
                 </button>
               </div>
             </div>
