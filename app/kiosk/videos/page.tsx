@@ -35,10 +35,15 @@ export default function KioskVideosPage() {
       } catch { /* ignore parse error */ }
     }
 
+    // Restore watched state from sessionStorage
+    const savedWatched = sessionStorage.getItem('kiosk_watched_ids');
+    if (savedWatched) {
+      try { setWatched(new Set(JSON.parse(savedWatched))); } catch {}
+    }
+
     fetch('/api/videos?active=true')
       .then(r => r.json())
       .then(data => {
-        // Support both array and { videos: [] } shapes
         const list: Video[] = Array.isArray(data) ? data : (data.videos ?? []);
         setVideos(list.filter((v: Video) => v.isActive !== false));
         setLoading(false);
@@ -62,7 +67,8 @@ export default function KioskVideosPage() {
     } finally {
       setWatched(prev => {
         const next = new Set([...prev, videoId]);
-        // Store count for waiting room
+        // Persist watched IDs and count
+        sessionStorage.setItem('kiosk_watched_ids', JSON.stringify([...next]));
         sessionStorage.setItem('kiosk_videos_watched', String(next.size));
         return next;
       });
@@ -71,6 +77,14 @@ export default function KioskVideosPage() {
   }
 
   const allWatched = videos.length > 0 && videos.every(v => watched.has(v.id));
+
+  // Auto-proceed if all videos already watched
+  useEffect(() => {
+    if (allWatched && !loading) {
+      const timer = setTimeout(() => router.push('/kiosk/consent'), 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [allWatched, loading, router]);
   const watchedCount = watched.size;
 
   function getEmbedUrl(url: string): string | null {
