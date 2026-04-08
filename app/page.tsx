@@ -123,8 +123,8 @@ export default function DashboardPage() {
           </div>
           <div className="kpi-card">
             <div className="kpi-icon">👩‍⚕️</div>
-            <div className="kpi-label">Active Staff</div>
-            {loading ? <div className="spinner" /> : <div className="kpi-value">{(doctorCount ?? 0) + (nurseCount ?? 0)}</div>}
+            <div className="kpi-label">Nurses</div>
+            {loading ? <div className="spinner" /> : <div className="kpi-value">{nurseCount ?? 0}</div>}
           </div>
         </div>
 
