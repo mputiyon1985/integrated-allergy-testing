@@ -25,7 +25,7 @@ jobs:
       - name: Generate Prisma client
         run: npx prisma generate
         env:
-          DATABASE_URL: 'file:./prisma/dev.db'
+          DATABASE_URL: 'file:./dev.db'
 
       - name: TypeScript check
         run: npx tsc --noEmit
@@ -40,6 +40,7 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          DATABASE_URL: 'file:./prisma/dev.db'
+          DATABASE_URL: 'file:./dev.db'
+          DATABASE_AUTH_TOKEN: 'ci-placeholder-not-real'
           JWT_SECRET: 'ci-test-secret-minimum-32-characters-long'
-          NODE_ENV: 'production'
+          NODE_ENV: 'test'

@@ -33,8 +33,13 @@ const nextConfig: NextConfig = {
   },
 }
 
-export default withSentryConfig(nextConfig, {
-  silent: true,
-  org: 'tipinc',
-  project: 'integrated-allergy-testing',
-});
+// Only wrap with Sentry when DSN is configured (skips in CI without Sentry token)
+const hasSentry = !!process.env.NEXT_PUBLIC_SENTRY_DSN || !!process.env.SENTRY_AUTH_TOKEN;
+
+export default hasSentry
+  ? withSentryConfig(nextConfig, {
+      silent: true,
+      org: 'tipinc',
+      project: 'integrated-allergy-testing',
+    })
+  : nextConfig;
