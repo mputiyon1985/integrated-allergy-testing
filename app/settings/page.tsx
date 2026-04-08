@@ -1,156 +1,184 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 
-interface AppointmentReason {
+type AuditLogEntry = {
   id: string;
-  name: string;
-  color: string;
-  duration: number;
-  active: boolean;
-  sortOrder: number;
+  action: string;
+  entity: string | null;
+  entityId: string | null;
+  patientId: string | null;
+  details: string | null;
+  createdAt: string;
+  patient?: { id: string; patientId: string; name: string } | null;
+};
+
+function getActionColor(action: string): string {
+  const upper = action.toUpperCase();
+  if (upper.includes('CREATED') || upper.includes('REGISTER') || upper.includes('SIGN')) {
+    return '#16a34a'; // green
+  }
+  if (upper.includes('VIEW') || upper.includes('READ') || upper.includes('ACCESS') || upper.includes('LOGIN') || upper.includes('LOOKUP')) {
+    return '#2563eb'; // blue
+  }
+  if (upper.includes('UPDATED') || upper.includes('MODIFIED') || upper.includes('CHANGED')) {
+    return '#d97706'; // orange
+  }
+  if (upper.includes('DELETED') || upper.includes('REMOVED') || upper.includes('LOGOUT')) {
+    return '#dc2626'; // red
+  }
+  return '#64748b'; // gray default
 }
 
-function AppointmentReasonsSection() {
-  const [reasons, setReasons] = useState<AppointmentReason[]>([]);
+function formatTimestamp(ts: string): string {
+  try {
+    return new Date(ts).toLocaleString('en-US', {
+      month: 'short',
+      day: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    });
+  } catch {
+    return ts;
+  }
+}
+
+function AuditLogSection() {
+  const [logs, setLogs] = useState<AuditLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showAdd, setShowAdd] = useState(false);
-  const [newName, setNewName] = useState('');
-  const [newColor, setNewColor] = useState('#0d9488');
-  const [newDuration, setNewDuration] = useState(30);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
+  const [filter, setFilter] = useState('');
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 50;
 
-  async function loadReasons() {
-    setLoading(true);
-    try {
-      const res = await fetch('/api/appointment-reasons');
-      if (res.ok) {
-        const data = await res.json();
-        // Also load inactive for management
-        setReasons(Array.isArray(data) ? data : data.reasons ?? []);
-      }
-    } catch {}
-    setLoading(false);
-  }
+  useEffect(() => {
+    fetch('/api/audit?limit=200')
+      .then(r => r.json())
+      .then(d => {
+        setLogs(Array.isArray(d) ? d : (d.logs ?? d.entries ?? []));
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
 
-  useEffect(() => { loadReasons(); }, []);
+  const filtered = logs.filter(l =>
+    !filter ||
+    l.action.toLowerCase().includes(filter.toLowerCase()) ||
+    (l.entity || '').toLowerCase().includes(filter.toLowerCase()) ||
+    (l.details || '').toLowerCase().includes(filter.toLowerCase()) ||
+    (l.patientId || '').toLowerCase().includes(filter.toLowerCase())
+  );
 
-  async function toggleActive(r: AppointmentReason) {
-    await fetch(`/api/appointment-reasons/${r.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ active: !r.active }),
-    });
-    loadReasons();
-  }
-
-  async function handleAdd() {
-    if (!newName.trim()) { setError('Name is required'); return; }
-    setSaving(true);
-    setError('');
-    const res = await fetch('/api/appointment-reasons', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: newName.trim(), color: newColor, duration: newDuration }),
-    });
-    if (res.ok) {
-      setShowAdd(false);
-      setNewName('');
-      setNewColor('#0d9488');
-      setNewDuration(30);
-      loadReasons();
-    } else {
-      const d = await res.json();
-      setError(d.error ?? 'Failed to create');
-    }
-    setSaving(false);
-  }
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const paginated = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
   return (
     <div className="card" style={{ gridColumn: '1 / -1' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <div className="card-title" style={{ margin: 0 }}>📋 Appointment Reasons</div>
-        <button onClick={() => setShowAdd(s => !s)}
-          style={{ padding: '6px 16px', borderRadius: 8, border: 'none', background: '#0d9488', color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>
-          {showAdd ? '✕ Cancel' : '+ Add Reason'}
-        </button>
+      <div className="card-title">Audit Log</div>
+      <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
+        HIPAA compliance audit trail — recent activity across the system.
+      </p>
+
+      <div style={{ display: 'flex', gap: 12, marginBottom: 16, alignItems: 'center' }}>
+        <input
+          type="text"
+          className="form-input"
+          placeholder="Filter by action, entity, or details…"
+          value={filter}
+          onChange={e => { setFilter(e.target.value); setPage(0); }}
+          style={{ maxWidth: 360 }}
+        />
+        <span style={{ fontSize: 13, color: '#64748b' }}>
+          {filtered.length} {filtered.length === 1 ? 'entry' : 'entries'}
+        </span>
       </div>
 
-      {showAdd && (
-        <div style={{ background: '#f8fafc', borderRadius: 10, padding: 16, marginBottom: 16, border: '1px solid #e2e8f0' }}>
-          <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 12, color: '#374151' }}>New Appointment Reason</div>
-          {error && <div style={{ color: '#dc2626', fontSize: 13, marginBottom: 8 }}>{error}</div>}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 10, alignItems: 'end' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4 }}>Name *</label>
-              <input value={newName} onChange={e => setNewName(e.target.value)}
-                placeholder="e.g. Allergy Shot"
-                style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: 14, boxSizing: 'border-box' }} />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4 }}>Color</label>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <input type="color" value={newColor} onChange={e => setNewColor(e.target.value)}
-                  style={{ width: 40, height: 36, borderRadius: 6, border: '1.5px solid #e2e8f0', cursor: 'pointer', padding: 2 }} />
-                <span style={{ fontSize: 12, color: '#6b7280', fontFamily: 'monospace' }}>{newColor}</span>
-              </div>
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4 }}>Duration (min)</label>
-              <input type="number" value={newDuration} onChange={e => setNewDuration(Number(e.target.value))} min={5} max={240} step={5}
-                style={{ width: 80, padding: '8px 10px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: 14, boxSizing: 'border-box' }} />
-            </div>
-          </div>
-          <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
-            <button onClick={handleAdd} disabled={saving}
-              style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: '#0d9488', color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: 13, opacity: saving ? 0.7 : 1 }}>
-              {saving ? 'Saving…' : 'Add Reason'}
-            </button>
-          </div>
+      {loading ? (
+        <div style={{ padding: '32px 0', textAlign: 'center', color: '#64748b' }}>Loading audit log…</div>
+      ) : paginated.length === 0 ? (
+        <div style={{ padding: '32px 0', textAlign: 'center', color: '#64748b' }}>
+          {filter ? 'No matching entries.' : 'No audit log entries found.'}
+        </div>
+      ) : (
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <thead>
+              <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+                <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: '#475569', whiteSpace: 'nowrap' }}>Timestamp</th>
+                <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: '#475569' }}>Action</th>
+                <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: '#475569' }}>Entity</th>
+                <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: '#475569' }}>Details</th>
+                <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: '#475569' }}>Patient</th>
+              </tr>
+            </thead>
+            <tbody>
+              {paginated.map((log, i) => (
+                <tr key={log.id} style={{ borderBottom: '1px solid #f1f5f9', background: i % 2 === 0 ? '#fff' : '#f8fafc' }}>
+                  <td style={{ padding: '8px 12px', color: '#64748b', whiteSpace: 'nowrap', fontFamily: 'monospace', fontSize: 12 }}>
+                    {formatTimestamp(log.createdAt)}
+                  </td>
+                  <td style={{ padding: '8px 12px' }}>
+                    <span style={{
+                      display: 'inline-block',
+                      padding: '2px 8px',
+                      borderRadius: 4,
+                      fontSize: 11,
+                      fontWeight: 700,
+                      color: '#fff',
+                      background: getActionColor(log.action),
+                      letterSpacing: '0.03em',
+                    }}>
+                      {log.action}
+                    </span>
+                  </td>
+                  <td style={{ padding: '8px 12px', color: '#475569' }}>{log.entity ?? '—'}</td>
+                  <td style={{ padding: '8px 12px', color: '#334155', maxWidth: 320 }}>
+                    <span title={log.details ?? undefined} style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {log.details ?? '—'}
+                    </span>
+                  </td>
+                  <td style={{ padding: '8px 12px' }}>
+                    {log.patient ? (
+                      <Link href={`/patients/${log.patient.id}`} style={{ color: '#2563eb', textDecoration: 'underline', fontSize: 12 }}>
+                        {log.patient.name || log.patient.patientId}
+                      </Link>
+                    ) : log.patientId ? (
+                      <span style={{ color: '#64748b', fontSize: 12 }}>{log.patientId}</span>
+                    ) : (
+                      <span style={{ color: '#cbd5e1' }}>—</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 
-      {loading ? (
-        <div style={{ textAlign: 'center', padding: '20px 0', color: '#94a3b8' }}>Loading…</div>
-      ) : reasons.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '20px 0', color: '#94a3b8', fontSize: 14 }}>No appointment reasons configured yet.</div>
-      ) : (
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
-          <thead>
-            <tr style={{ background: '#f8fafc' }}>
-              {['Name', 'Color', 'Duration', 'Status', 'Actions'].map(h => (
-                <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontSize: 12, fontWeight: 700, color: '#374151', textTransform: 'uppercase', borderBottom: '2px solid #e2e8f0' }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {reasons.map(r => (
-              <tr key={r.id} style={{ borderBottom: '1px solid #f1f5f9', opacity: r.active ? 1 : 0.5 }}>
-                <td style={{ padding: '12px 14px', fontWeight: 600 }}>{r.name}</td>
-                <td style={{ padding: '12px 14px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div style={{ width: 20, height: 20, borderRadius: 4, background: r.color, border: '1px solid rgba(0,0,0,0.1)' }} />
-                    <span style={{ fontSize: 12, color: '#6b7280', fontFamily: 'monospace' }}>{r.color}</span>
-                  </div>
-                </td>
-                <td style={{ padding: '12px 14px', color: '#374151' }}>{r.duration} min</td>
-                <td style={{ padding: '12px 14px' }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, padding: '2px 10px', borderRadius: 999, background: r.active ? '#e8f9f7' : '#f1f5f9', color: r.active ? '#0d9488' : '#9ca3af' }}>
-                    {r.active ? 'Active' : 'Inactive'}
-                  </span>
-                </td>
-                <td style={{ padding: '12px 14px' }}>
-                  <button onClick={() => toggleActive(r)}
-                    style={{ padding: '4px 12px', borderRadius: 6, border: '1px solid #e2e8f0', background: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer', color: r.active ? '#dc2626' : '#0d9488' }}>
-                    {r.active ? 'Deactivate' : 'Activate'}
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      {totalPages > 1 && (
+        <div style={{ display: 'flex', gap: 8, marginTop: 16, alignItems: 'center', justifyContent: 'flex-end' }}>
+          <button
+            className="btn btn-secondary"
+            onClick={() => setPage(p => Math.max(0, p - 1))}
+            disabled={page === 0}
+            style={{ padding: '6px 14px', fontSize: 13 }}
+          >
+            ← Prev
+          </button>
+          <span style={{ fontSize: 13, color: '#64748b' }}>
+            Page {page + 1} of {totalPages}
+          </span>
+          <button
+            className="btn btn-secondary"
+            onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+            disabled={page >= totalPages - 1}
+            style={{ padding: '6px 14px', fontSize: 13 }}
+          >
+            Next →
+          </button>
+        </div>
       )}
     </div>
   );
@@ -229,7 +257,7 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          <AppointmentReasonsSection />
+          <AuditLogSection />
         </div>
       </div>
     </>

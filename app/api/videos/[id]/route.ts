@@ -15,6 +15,17 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         ...(body.category !== undefined && { category: body.category }),
       },
     })
+
+    prisma.auditLog.create({
+      data: {
+        action: 'VIDEO_UPDATED',
+        entity: 'Video',
+        entityId: video.id,
+        patientId: null,
+        details: `Video updated: ${video.title}`,
+      },
+    }).catch(() => {})
+
     return NextResponse.json({ video })
   } catch (error) {
     console.error('PUT /api/videos/[id] error:', error)

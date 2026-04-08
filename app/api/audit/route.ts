@@ -14,6 +14,8 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const patientId = searchParams.get('patientId')
+    const limitParam = searchParams.get('limit')
+    const limit = limitParam ? Math.min(parseInt(limitParam, 10) || 50, 500) : 50
 
     const logs = await prisma.auditLog.findMany({
       where: {
@@ -29,7 +31,7 @@ export async function GET(request: NextRequest) {
         },
       },
       orderBy: { createdAt: 'desc' },
-      take: 50,
+      take: limit,
     })
 
     return NextResponse.json(logs, { headers: HIPAA_HEADERS })
