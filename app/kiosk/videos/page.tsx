@@ -1,3 +1,9 @@
+/**
+ * @file app/kiosk/videos/page.tsx
+ * @description Kiosk required-video viewing page.
+ *   Loads active videos from /api/videos, tracks completion via /api/kiosk/video-watched,
+ *   and auto-advances to /kiosk/consent once all videos are marked watched.
+ */
 'use client';
 
 import { useState, useEffect } from 'react';

@@ -1,3 +1,15 @@
+/**
+ * @file app/kiosk/verify/page.tsx
+ * @description Kiosk step: identity verification. Patient enters their first name to confirm
+ *   the match against the DOB lookup result. On success, routes to update-info or videos
+ *   depending on whether patient info is complete.
+ */
+/**
+ * @file app/kiosk/verify/page.tsx
+ * @description Kiosk patient identity verification page.
+ *   Prompts the patient to confirm their first name, then calls /api/kiosk/verify.
+ *   On success, checks videos/consent completion and routes to the appropriate next step.
+ */
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';

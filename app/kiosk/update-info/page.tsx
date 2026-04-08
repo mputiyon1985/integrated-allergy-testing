@@ -1,3 +1,9 @@
+/**
+ * @file app/kiosk/update-info/page.tsx
+ * @description Kiosk step: prompts patient to fill in missing contact and insurance info.
+ *   Shown only when the patient record is missing phone, email, address, or insuranceId.
+ *   On save, updates the Patient record and routes to /kiosk/videos.
+ */
 'use client';
 
 import { useState, useEffect } from 'react';

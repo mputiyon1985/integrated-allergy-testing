@@ -1,3 +1,15 @@
+/**
+ * @file app/kiosk/register/page.tsx
+ * @description Kiosk new-patient self-registration page.
+ *   Collects first name, last name, and DOB (pre-filled from query params).
+ *   Creates patient record via /api/kiosk/register, then routes to /kiosk/videos.
+ */
+/**
+ * @file app/kiosk/register/page.tsx
+ * @description Kiosk step: new patient registration wizard. Shown when DOB lookup returns
+ *   no existing patient. Collects name, contact info, and insurance details, creates the
+ *   Patient record via /api/patients, then routes into the standard kiosk flow.
+ */
 'use client';
 
 import { useState, Suspense } from 'react';

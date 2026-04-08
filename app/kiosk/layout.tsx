@@ -1,3 +1,9 @@
+/**
+ * @file app/kiosk/layout.tsx
+ * @description Shared layout for all kiosk routes. Provides the branded header
+ *   and HIPAA compliance footer. No authentication required — kiosk is a
+ *   public-facing touch-screen interface.
+ */
 export default function KioskLayout({ children }: { children: React.ReactNode }) {
   return (
     <div style={{ minHeight: '100vh', background: '#F8FAFC', display: 'flex', flexDirection: 'column' }}>
