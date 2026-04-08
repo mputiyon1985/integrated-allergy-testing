@@ -5,11 +5,13 @@ export const dynamic = 'force-dynamic'
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
-    const body = await req.json() as { status: string; nurseName?: string; nurseId?: string }
+    const body = await req.json() as { status?: string; nurseName?: string; nurseId?: string; videoAckBy?: string }
     
-    const data: Record<string, unknown> = { status: body.status }
+    const data: Record<string, unknown> = {}
+    if (body.status) data.status = body.status
     if (body.nurseName) data.nurseName = body.nurseName
     if (body.nurseId) data.nurseId = body.nurseId
+    if (body.videoAckBy) { data.videoAckBy = body.videoAckBy; data.videoAckAt = new Date() }
     if (body.status === 'in-service') data.calledAt = new Date()
     if (body.status === 'complete') data.completedAt = new Date()
 

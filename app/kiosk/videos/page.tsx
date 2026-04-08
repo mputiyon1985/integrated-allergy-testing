@@ -60,7 +60,12 @@ export default function KioskVideosPage() {
     } catch {
       // Non-blocking — still mark locally
     } finally {
-      setWatched(prev => new Set([...prev, videoId]));
+      setWatched(prev => {
+        const next = new Set([...prev, videoId]);
+        // Store count for waiting room
+        sessionStorage.setItem('kiosk_videos_watched', String(next.size));
+        return next;
+      });
       setMarking(null);
     }
   }

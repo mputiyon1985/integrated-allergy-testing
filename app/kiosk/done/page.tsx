@@ -25,12 +25,14 @@ export default function DonePage() {
     }
     setPatientName(name)
 
-    // Auto-add to waiting room
+    // Auto-add to waiting room with video count
     if (patientId && name) {
+      const watchedRaw = sessionStorage.getItem('kiosk_videos_watched') || '0';
+      const videosWatched = parseInt(watchedRaw, 10) || 0;
       fetch('/api/waiting-room', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ patientId, patientName: name }),
+        body: JSON.stringify({ patientId, patientName: name, videosWatched }),
       }).catch(() => {})
     }
   }, [])

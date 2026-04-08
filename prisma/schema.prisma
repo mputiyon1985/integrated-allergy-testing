@@ -251,18 +251,21 @@ model ConsentRecord {
 }
 
 model WaitingRoom {
-  id           String    @id @default(cuid())
-  patientId    String
-  patientName  String
-  status       String    @default("waiting") // waiting | in-service | complete
-  checkedInAt  DateTime  @default(now())
-  calledAt     DateTime?
-  completedAt  DateTime?
-  nurseId      String?
-  nurseName    String?
-  notes        String?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id            String    @id @default(cuid())
+  patientId     String
+  patientName   String
+  status        String    @default("waiting") // waiting | in-service | complete
+  checkedInAt   DateTime  @default(now())
+  calledAt      DateTime?
+  completedAt   DateTime?
+  nurseId       String?
+  nurseName     String?
+  notes         String?
+  videosWatched Int       @default(0)
+  videoAckBy    String?
+  videoAckAt    DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 }
 
 model StaffUser {

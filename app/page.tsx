@@ -12,6 +12,9 @@ interface WaitingEntry {
   calledAt?: string;
   nurseName?: string;
   notes?: string;
+  videosWatched?: number;
+  videoAckBy?: string;
+  videoAckAt?: string;
 }
 
 interface Nurse { id: string; name: string; title?: string; }
@@ -147,7 +150,7 @@ export default function DashboardPage() {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
               <thead>
                 <tr style={{ background: '#f8fafc' }}>
-                  {['Patient', 'Wait Time', 'Status', 'Nurse', 'Actions'].map(h => (
+                  {['Patient', 'Wait Time', 'Videos', 'Status', 'Nurse', 'Actions'].map(h => (
                     <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontSize: 12, fontWeight: 700, color: '#374151', textTransform: 'uppercase', borderBottom: '2px solid #e2e8f0' }}>{h}</th>
                   ))}
                 </tr>
@@ -160,6 +163,33 @@ export default function DashboardPage() {
                       {e.notes && <div style={{ fontSize: 12, color: '#64748b' }}>{e.notes}</div>}
                     </td>
                     <td style={{ padding: '12px 14px', color: '#64748b', fontSize: 13 }}>{waitTime(e.checkedInAt)}</td>
+                    <td style={{ padding: '12px 14px' }}>
+                      {e.videoAckBy ? (
+                        <div>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: '#15803d' }}>✅ {e.videosWatched ?? 0} watched</div>
+                          <div style={{ fontSize: 11, color: '#64748b' }}>Ack: {e.videoAckBy}</div>
+                        </div>
+                      ) : (
+                        <div>
+                          <div style={{ fontSize: 12, fontWeight: 600, color: (e.videosWatched ?? 0) > 0 ? '#b45309' : '#94a3b8', marginBottom: 4 }}>
+                            {(e.videosWatched ?? 0) > 0 ? `📺 ${e.videosWatched} video${(e.videosWatched ?? 0) !== 1 ? 's' : ''} watched` : '—'}
+                          </div>
+                          {(e.videosWatched ?? 0) > 0 && (
+                            <select
+                              defaultValue=""
+                              onChange={ev => ev.target.value && (async () => {
+                                await fetch(`/api/waiting-room/${e.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ videoAckBy: ev.target.value }) });
+                                loadWaiting();
+                              })()}
+                              style={{ fontSize: 11, padding: '2px 6px', borderRadius: 6, border: '1px solid #fde68a', background: '#fefce8', cursor: 'pointer', color: '#92400e' }}
+                            >
+                              <option value="">✓ Acknowledge</option>
+                              {nurses.map(n => <option key={n.id} value={n.name}>{n.name}</option>)}
+                            </select>
+                          )}
+                        </div>
+                      )}
+                    </td>
                     <td style={{ padding: '12px 14px' }}>
                       <span style={{
                         fontWeight: 700, fontSize: 12, padding: '3px 10px', borderRadius: 999,

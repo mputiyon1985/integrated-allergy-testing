@@ -17,12 +17,13 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json() as { patientId: string; patientName: string; notes?: string }
+    const body = await req.json() as { patientId: string; patientName: string; notes?: string; videosWatched?: number }
     const entry = await prisma.waitingRoom.create({
       data: {
         patientId: body.patientId,
         patientName: body.patientName,
         notes: body.notes,
+        videosWatched: body.videosWatched ?? 0,
         status: 'waiting',
       },
     })
