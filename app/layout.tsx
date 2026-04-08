@@ -118,15 +118,14 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
             }}
             style={{
               width: '100%',
-              padding: '9px 0',
-              background: '#dc2626',
-              color: '#fff',
-              border: 'none',
+              padding: '8px 0',
+              background: 'transparent',
+              color: '#64748b',
+              border: '1px solid #e2e8f0',
               borderRadius: 8,
-              fontSize: 13,
-              fontWeight: 700,
+              fontSize: 12,
+              fontWeight: 600,
               cursor: 'pointer',
-              letterSpacing: '0.03em',
             }}
           >
             🚪 Sign Out
