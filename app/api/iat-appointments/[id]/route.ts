@@ -13,7 +13,7 @@ const updateSchema = z.object({
   patientName: z.string().max(200).optional().nullable(),
   startTime: z.string().datetime().optional(),
   endTime: z.string().datetime().optional(),
-  type: z.enum(['allergy-test', 'consultation', 'follow-up']).optional(),
+  type: z.string().optional(),
   notes: z.string().max(1000).optional().nullable(),
   status: z.enum(['scheduled', 'in-progress', 'complete', 'cancelled']).optional(),
 })

@@ -17,7 +17,7 @@ const createSchema = z.object({
   patientName: z.string().max(200).optional(),
   startTime: z.string().datetime(),
   endTime: z.string().datetime(),
-  type: z.enum(['allergy-test', 'consultation', 'follow-up']).optional(),
+  type: z.string().optional(),
   notes: z.string().max(1000).optional(),
   createdBy: z.string().max(200).optional(),
 })
