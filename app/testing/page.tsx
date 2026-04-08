@@ -542,7 +542,7 @@ function TestingPageInner() {
           </div>
           <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
             <span style={{ opacity: 0.7 }}>DOB:</span>
-            <span style={{ fontWeight: 600 }}>{formatDOB(patient?.dateOfBirth ?? patient?.dob)}</span>
+            <span style={{ fontWeight: 600 }}>{formatDOB(patient?.dob)}</span>
           </div>
           <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
             <span style={{ opacity: 0.7 }}>Date:</span>
