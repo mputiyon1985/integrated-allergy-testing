@@ -110,6 +110,7 @@ model Patient {
   videoActivity   VideoActivity[]
   formActivity    FormActivity[]
   auditLogs       AuditLog[]
+  consentRecords  ConsentRecord[]
 }
 
 model PatientDate {
@@ -203,7 +204,8 @@ model Form {
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  activity  FormActivity[]
+  activity        FormActivity[]
+  consentRecords  ConsentRecord[]
 }
 
 model FormActivity {
@@ -230,6 +232,37 @@ model AuditLog {
   details   String?
   createdAt DateTime @default(now())
   patient   Patient? @relation(fields: [patientId], references: [id])
+}
+
+model ConsentRecord {
+  id          String   @id @default(cuid())
+  patientId   String
+  formId      String
+  signedAt    DateTime @default(now())
+  signature   String?
+  pdfUrl      String?
+  ipAddress   String?
+  userAgent   String?
+  version     String   @default("1.0")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  patient     Patient  @relation(fields: [patientId], references: [id])
+  form        Form     @relation(fields: [formId], references: [id])
+}
+
+model WaitingRoom {
+  id           String    @id @default(cuid())
+  patientId    String
+  patientName  String
+  status       String    @default("waiting") // waiting | in-service | complete
+  checkedInAt  DateTime  @default(now())
+  calledAt     DateTime?
+  completedAt  DateTime?
+  nurseId      String?
+  nurseName    String?
+  notes        String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 }
 
 model StaffUser {

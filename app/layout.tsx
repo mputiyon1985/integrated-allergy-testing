@@ -97,7 +97,7 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
 function AppShell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = usePathname();
-  const isAuthPage = pathname === '/login' || pathname?.startsWith('/login') || pathname === '/consent' || pathname?.startsWith('/consent');
+  const isAuthPage = pathname === '/login' || pathname?.startsWith('/login') || pathname === '/consent' || pathname?.startsWith('/consent') || pathname?.startsWith('/kiosk');
 
   useEffect(() => { setSidebarOpen(false); }, [pathname]);
 

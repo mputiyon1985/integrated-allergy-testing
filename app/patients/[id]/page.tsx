@@ -70,7 +70,7 @@ const REACTION_COLOR: Record<number, string> = {
   0: '#94a3b8', 1: '#ca8a04', 2: '#ea580c', 3: '#dc2626', 4: '#991b1b', 5: '#7f1d1d',
 };
 
-type Tab = 'overview' | 'tests' | 'videos' | 'forms';
+type Tab = 'overview' | 'tests' | 'videos' | 'forms' | 'consent';
 
 export default function PatientDetailPage() {
   const params = useParams();
@@ -359,7 +359,7 @@ ${sectionsHtml}
       <div className="page-body">
         {/* Tabs */}
         <div className="no-print" style={{ display: 'flex', gap: 4, borderBottom: '2px solid #e2e8f0', marginBottom: 24 }}>
-          {(['overview', 'tests', 'videos', 'forms'] as Tab[]).map(t => (
+          {(['overview', 'tests', 'videos', 'forms', 'consent'] as Tab[]).map(t => (
             <button key={t} onClick={() => setTab(t)} style={{
               padding: '10px 20px', border: 'none', background: 'transparent', fontSize: 14, fontWeight: 600,
               color: tab === t ? '#0d9488' : '#64748b', cursor: 'pointer',
@@ -369,6 +369,7 @@ ${sectionsHtml}
               {t === 'tests' && `🧪 Test Results (${tests.length})`}
               {t === 'videos' && `🎬 Videos (${videos.length})`}
               {t === 'forms' && `📝 Forms (${forms.length})`}
+              {t === 'consent' && '📋 Consent'}
             </button>
           ))}
         </div>
@@ -586,6 +587,14 @@ ${sectionsHtml}
             )}
           </div>
         )}
+
+        {/* Consent */}
+        {tab === 'consent' && (
+          <div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: '#1a2233', marginBottom: 16 }}>Consent Forms</div>
+            <ConsentStatus patientId={patient.id} />
+          </div>
+        )}
       </div>
 
       {/* Edit Modal */}
@@ -639,4 +648,62 @@ ${sectionsHtml}
       )}
     </>
   );
+}
+
+function ConsentStatus({ patientId }: { patientId: string }) {
+  const [forms, setForms] = useState<{ formId: string; name: string; signed: boolean; signedAt?: string }[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch(`/api/consent/check?patientId=${patientId}`)
+      .then(r => r.json())
+      .then(d => { setForms(d.forms ?? []); setLoading(false) })
+      .catch(() => setLoading(false))
+  }, [patientId])
+
+  if (loading) return <div className="loading-center"><div className="spinner" /></div>
+  if (forms.length === 0) return (
+    <div className="card">
+      <div className="empty-state">
+        <div className="empty-state-icon">📋</div>
+        <div className="empty-state-title">No consent forms configured</div>
+      </div>
+    </div>
+  )
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {forms.map(f => (
+        <div key={f.formId} className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>{f.name}</div>
+            {f.signed ? (
+              <div style={{ fontSize: 13, color: '#15803d' }}>
+                ✅ Signed on {new Date(f.signedAt!).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+              </div>
+            ) : (
+              <div style={{ fontSize: 13, color: '#b45309' }}>⚠️ Not yet signed</div>
+            )}
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {f.signed && (
+              <a
+                href={`/api/consent/pdf?patientId=${patientId}&formId=${f.formId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', color: '#374151', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}
+              >
+                📄 Download PDF
+              </a>
+            )}
+            {!f.signed && (
+              <span style={{ padding: '6px 14px', borderRadius: 8, background: '#fef9c3', color: '#b45309', fontSize: 13, fontWeight: 600 }}>
+                Pending Patient Signature
+              </span>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
 }
