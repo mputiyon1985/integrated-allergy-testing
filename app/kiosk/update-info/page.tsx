@@ -146,10 +146,11 @@ export default function UpdateInfoPage() {
       }
 
       if (Object.keys(updates).length > 0) {
-        const res = await fetch(`/api/patients/${patient.id}`, {
+        // Use dedicated kiosk endpoint (limited field allowlist, no auth required)
+        const res = await fetch('/api/kiosk/update-patient', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(updates),
+          body: JSON.stringify({ patientId: patient.id, ...updates }),
         });
 
         if (!res.ok) {

@@ -49,6 +49,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Patient not found' }, { status: 404, headers: HIPAA_HEADERS })
     }
 
+    // Dedup: if patient already has an active (waiting/in-service) entry, return it
+    const existing = await prisma.waitingRoom.findFirst({
+      where: { patientId: patient.id, status: { in: ['waiting', 'in-service'] } },
+    })
+    if (existing) {
+      return NextResponse.json({ entry: existing, deduplicated: true }, { headers: HIPAA_HEADERS })
+    }
+
     // Sanitize inputs and use verified name from DB, not user-provided name
     const videosWatched = typeof body.videosWatched === 'number' && body.videosWatched >= 0
       ? Math.floor(body.videosWatched)

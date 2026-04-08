@@ -46,8 +46,12 @@ export async function POST(request: NextRequest) {
     const sanitizedTemplate = template
       .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
       .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
+      .replace(/<object\b[^<]*(?:(?!<\/object>)<[^<]*)*<\/object>/gi, '')
+      .replace(/<embed\b[^>]*>/gi, '')
       .replace(/\bon\w+\s*=/gi, 'data-blocked=')
       .replace(/javascript\s*:/gi, 'blocked:')
+      .replace(/vbscript\s*:/gi, 'blocked:')
+      .replace(/data\s*:\s*text\s*\/\s*html/gi, 'blocked:')
 
     const form = await prisma.form.create({
       data: { name, type, template: sanitizedTemplate },
