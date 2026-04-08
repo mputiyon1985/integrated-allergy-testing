@@ -72,6 +72,23 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
               item.href === '/'
                 ? pathname === '/'
                 : pathname.startsWith(item.href);
+            // Kiosk opens in a new tab
+            if (item.href === '/kiosk') {
+              return (
+                <a
+                  key={item.href}
+                  href={item.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="nav-link"
+                  onClick={onClose}
+                >
+                  <span className="nav-icon">{item.icon}</span>
+                  {item.label}
+                  <span style={{ fontSize: 10, opacity: 0.6, marginLeft: 4 }}>↗</span>
+                </a>
+              );
+            }
             return (
               <Link
                 key={item.href}
