@@ -20,6 +20,11 @@ export default function NewPatientPage() {
     dob: '',
     email: '',
     phone: '',
+    homePhone: '',
+    street: '',
+    city: '',
+    state: '',
+    zip: '',
     // Section 2 — Clinical
     physician: '',
     clinicLocation: '',
@@ -27,6 +32,7 @@ export default function NewPatientPage() {
     // Section 3 — Insurance / Notes
     insuranceId: '',
     insuranceProvider: '',
+    insuranceGroup: '',
     notes: '',
   });
 
@@ -66,8 +72,14 @@ export default function NewPatientPage() {
           clinicLocation: form.clinicLocation || undefined,
           diagnosis: form.diagnosis || undefined,
           insuranceId: form.insuranceId || undefined,
-          insuranceProvider: form.insuranceProvider || undefined,
-          notes: form.notes || undefined,
+          notes: [
+            form.homePhone ? `Home: ${form.homePhone}` : '',
+            form.street || form.city || form.state || form.zip
+              ? `Address: ${[form.street, form.city, form.state, form.zip].filter(Boolean).join(', ')}`
+              : '',
+            form.insuranceProvider ? `Insurance: ${form.insuranceProvider}${form.insuranceGroup ? ` Group: ${form.insuranceGroup}` : ''}` : '',
+            form.notes || '',
+          ].filter(Boolean).join(' | ') || undefined,
         }),
       });
 
@@ -134,26 +146,43 @@ export default function NewPatientPage() {
 
             <div className="form-row form-row-2">
               <div className="form-group">
-                <label className="form-label">Email</label>
-                <input
-                  type="email"
-                  className="form-input"
-                  placeholder="patient@example.com"
-                  value={form.email}
-                  onChange={e => setField('email', e.target.value)}
-                  style={{ fontSize: 16 }}
-                />
+                <label className="form-label">Cell Phone</label>
+                <input type="tel" className="form-input" placeholder="(555) 555-0100"
+                  value={form.phone} onChange={e => setField('phone', e.target.value)} style={{ fontSize: 16 }} />
               </div>
               <div className="form-group">
-                <label className="form-label">Phone</label>
-                <input
-                  type="tel"
-                  className="form-input"
-                  placeholder="(555) 555-0100"
-                  value={form.phone}
-                  onChange={e => setField('phone', e.target.value)}
-                  style={{ fontSize: 16 }}
-                />
+                <label className="form-label">Home Phone</label>
+                <input type="tel" className="form-input" placeholder="(555) 555-0101"
+                  value={form.homePhone} onChange={e => setField('homePhone', e.target.value)} style={{ fontSize: 16 }} />
+              </div>
+            </div>
+            <div className="form-row form-row-2">
+              <div className="form-group">
+                <label className="form-label">Email</label>
+                <input type="email" className="form-input" placeholder="patient@example.com"
+                  value={form.email} onChange={e => setField('email', e.target.value)} style={{ fontSize: 16 }} />
+              </div>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Street Address</label>
+              <input type="text" className="form-input" placeholder="123 Main St"
+                value={form.street} onChange={e => setField('street', e.target.value)} style={{ fontSize: 16 }} />
+            </div>
+            <div className="form-row" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12 }}>
+              <div className="form-group">
+                <label className="form-label">City</label>
+                <input type="text" className="form-input" placeholder="City"
+                  value={form.city} onChange={e => setField('city', e.target.value)} style={{ fontSize: 16 }} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">State</label>
+                <input type="text" className="form-input" placeholder="VA" maxLength={2}
+                  value={form.state} onChange={e => setField('state', e.target.value.toUpperCase())} style={{ fontSize: 16 }} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">ZIP</label>
+                <input type="text" className="form-input" placeholder="22026" maxLength={10}
+                  value={form.zip} onChange={e => setField('zip', e.target.value)} style={{ fontSize: 16 }} />
               </div>
             </div>
           </div>
@@ -219,26 +248,21 @@ export default function NewPatientPage() {
 
             <div className="form-row form-row-2">
               <div className="form-group">
-                <label className="form-label">Insurance ID</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="Member ID"
-                  value={form.insuranceId}
-                  onChange={e => setField('insuranceId', e.target.value)}
-                  style={{ fontSize: 16 }}
-                />
+                <label className="form-label">Insurance Provider</label>
+                <input type="text" className="form-input" placeholder="e.g. BlueCross BlueShield"
+                  value={form.insuranceProvider} onChange={e => setField('insuranceProvider', e.target.value)} style={{ fontSize: 16 }} />
               </div>
               <div className="form-group">
-                <label className="form-label">Insurance Provider</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="e.g. BlueCross BlueShield"
-                  value={form.insuranceProvider}
-                  onChange={e => setField('insuranceProvider', e.target.value)}
-                  style={{ fontSize: 16 }}
-                />
+                <label className="form-label">Insurance ID / Member ID</label>
+                <input type="text" className="form-input" placeholder="Member ID"
+                  value={form.insuranceId} onChange={e => setField('insuranceId', e.target.value)} style={{ fontSize: 16 }} />
+              </div>
+            </div>
+            <div className="form-row form-row-2">
+              <div className="form-group">
+                <label className="form-label">Group Number</label>
+                <input type="text" className="form-input" placeholder="Group #"
+                  value={form.insuranceGroup} onChange={e => setField('insuranceGroup', e.target.value)} style={{ fontSize: 16 }} />
               </div>
             </div>
 
