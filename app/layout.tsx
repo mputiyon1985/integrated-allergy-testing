@@ -108,7 +108,9 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
         </div>
 
         <UserCard />
-        <div className="sidebar-footer" style={{ padding: '8px 16px 12px' }}>
+
+        {/* Sign Out — above the footer line */}
+        <div style={{ padding: '0 12px 10px' }}>
           <button
             onClick={async () => {
               await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
@@ -117,7 +119,6 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
             style={{
               width: '100%',
               padding: '9px 0',
-              marginBottom: 8,
               background: '#dc2626',
               color: '#fff',
               border: 'none',
@@ -130,7 +131,10 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
           >
             🚪 Sign Out
           </button>
-          <div style={{ textAlign: 'center', fontSize: 10, color: '#94a3b8' }}>© 2026 Integrated Allergy Testing</div>
+        </div>
+
+        <div className="sidebar-footer">
+          © 2026 Integrated Allergy Testing
         </div>
       </nav>
     </>
