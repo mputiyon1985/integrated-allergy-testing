@@ -9,12 +9,20 @@ import prisma from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 
-// Allow GET for easy browser-based seeding
+// GET is disabled in production — only allow in development
 export async function GET(request: NextRequest) {
+  if (process.env.NODE_ENV === 'production') {
+    return NextResponse.json({ error: 'Not available in production' }, { status: 403 })
+  }
   return POST(request)
 }
 
 export async function POST(request: NextRequest) {
+  // Block in production — seed endpoints must not be accessible publicly
+  if (process.env.NODE_ENV === 'production') {
+    return NextResponse.json({ error: 'Not available in production' }, { status: 403 })
+  }
+
   try {
     // Check if DB is already seeded
     const locationCount = await prisma.location.count()

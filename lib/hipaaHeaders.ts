@@ -12,4 +12,5 @@ export const HIPAA_HEADERS = {
   'Referrer-Policy': 'no-referrer',
   'Cache-Control': 'no-store, no-cache, must-revalidate',
   'Pragma': 'no-cache',
+  'Strict-Transport-Security': 'max-age=63072000; includeSubDomains; preload',
 } as const

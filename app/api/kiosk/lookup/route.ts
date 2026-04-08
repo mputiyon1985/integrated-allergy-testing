@@ -81,11 +81,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ found: false }, { headers: HIPAA_HEADERS });
     }
 
-    // Return minimal info — only first name for privacy (no last name, no full DOB)
+    // Return minimal info — only first name for privacy (no last name, no DOB)
     const safePatients = patients.map(p => ({
       id: p.id,
       firstName: p.name.split(' ')[0],
-      dob: p.dob,
+      // DOB intentionally omitted — it was used only for lookup, not returned
     }));
 
     return NextResponse.json(

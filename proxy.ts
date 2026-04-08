@@ -5,7 +5,9 @@ const SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET || 'iat-dev-secret-change-in-production-32c'
 )
 const SESSION_COOKIE = 'iat_session'
-const PUBLIC_PATHS = ['/login', '/api/auth', '/consent', '/api/consent', '/api/seed', '/api/allergens/seed', '/api/health', '/kiosk', '/kiosk/update-info', '/api/kiosk', '/api/waiting-room', '/_next', '/favicon']
+const PUBLIC_PATHS = ['/login', '/api/auth', '/consent', '/api/consent', '/api/health', '/kiosk', '/kiosk/update-info', '/api/kiosk', '/_next', '/favicon']
+// Note: /api/seed and /api/allergens/seed are intentionally excluded from PUBLIC_PATHS in production.
+// Waiting room GET (staff) is auth-protected; only POST is kiosk-facing and handled via /api/waiting-room POST with DB validation.
 
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl

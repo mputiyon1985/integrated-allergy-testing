@@ -3,10 +3,12 @@ import prisma from '@/lib/db'
 export const dynamic = 'force-dynamic'
 export async function GET() {
   try {
-    const count = await prisma.staffUser.count()
-    return NextResponse.json({ ok: true, staffUsers: count, dbUrl: process.env.DATABASE_URL, hasToken: !!process.env.DATABASE_AUTH_TOKEN })
+    await prisma.staffUser.count()
+    return NextResponse.json({ ok: true })
   } catch (e) {
     const err = e as Error
-    return NextResponse.json({ ok: false, error: err.message, dbUrl: process.env.DATABASE_URL, hasToken: !!process.env.DATABASE_AUTH_TOKEN }, { status: 500 })
+    // Never expose DB URLs or credentials in health check responses
+    console.error('Health check failed:', err.message)
+    return NextResponse.json({ ok: false }, { status: 500 })
   }
 }

@@ -11,6 +11,9 @@ import { HIPAA_HEADERS } from '@/lib/hipaaHeaders'
 
 export const dynamic = 'force-dynamic'
 
+const VALID_CONSENT_FORM_IDS = ['form-consent-001', 'form-consent-002']
+const MAX_SIGNATURE_BYTES = 500_000 // ~375KB base64-encoded PNG — reject absurdly large payloads
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
@@ -18,6 +21,25 @@ export async function POST(req: NextRequest) {
 
     if (!patientId || !formId) {
       return NextResponse.json({ error: 'patientId and formId are required' }, { status: 400 })
+    }
+
+    // Validate formId is a known consent form — prevents spoofed formIds
+    if (!VALID_CONSENT_FORM_IDS.includes(formId)) {
+      return NextResponse.json({ error: 'Invalid formId' }, { status: 400 })
+    }
+
+    // Validate patientId exists
+    const patient = await prisma.patient.findFirst({
+      where: { id: patientId, deletedAt: null },
+      select: { id: true },
+    })
+    if (!patient) {
+      return NextResponse.json({ error: 'Patient not found' }, { status: 404 })
+    }
+
+    // Limit signature size to prevent DoS via enormous base64 payloads
+    if (signature && typeof signature === 'string' && signature.length > MAX_SIGNATURE_BYTES) {
+      return NextResponse.json({ error: 'Signature data too large' }, { status: 413 })
     }
 
     const ipAddress =

@@ -11,6 +11,9 @@ import { HIPAA_HEADERS } from '@/lib/hipaaHeaders';
 
 export const dynamic = 'force-dynamic';
 
+const VERIFY_RATE_LIMIT_MAX = 5;
+const VERIFY_RATE_LIMIT_WINDOW_MS = 60_000;
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json() as { patientId?: string; firstName?: string };
@@ -18,6 +21,37 @@ export async function POST(request: NextRequest) {
 
     if (!patientId || !firstName) {
       return NextResponse.json({ error: 'patientId and firstName are required' }, { status: 400 });
+    }
+
+    // Rate limit verify attempts per IP to prevent name enumeration
+    const ip =
+      request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+      request.headers.get('x-real-ip') ||
+      'unknown';
+
+    const windowStart = new Date(Date.now() - VERIFY_RATE_LIMIT_WINDOW_MS);
+    const recentCount = await prisma.auditLog.count({
+      where: {
+        action: 'KIOSK_VERIFY_ATTEMPT',
+        details: ip,
+        createdAt: { gte: windowStart },
+      },
+    });
+
+    // Log this attempt
+    await prisma.auditLog.create({
+      data: {
+        action: 'KIOSK_VERIFY_ATTEMPT',
+        entity: 'Patient',
+        details: ip,
+      },
+    }).catch(() => { /* non-blocking */ });
+
+    if (recentCount >= VERIFY_RATE_LIMIT_MAX) {
+      return NextResponse.json(
+        { error: 'Too many attempts. Please wait before trying again.' },
+        { status: 429, headers: HIPAA_HEADERS }
+      );
     }
 
     const patient = await prisma.patient.findFirst({
@@ -55,7 +89,7 @@ export async function POST(request: NextRequest) {
           id: patient.id,
           patientId: patient.patientId,
           firstName: patient.name.split(' ')[0],
-          name: patient.name,
+          // Full name intentionally omitted from kiosk response — first name only for privacy
         },
       },
       { headers: HIPAA_HEADERS }

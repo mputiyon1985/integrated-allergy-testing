@@ -41,8 +41,16 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Sanitize template: strip <script>, <iframe>, on* attributes, and javascript: hrefs
+    // to reduce XSS risk when rendered via dangerouslySetInnerHTML in consent pages.
+    const sanitizedTemplate = template
+      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+      .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
+      .replace(/\bon\w+\s*=/gi, 'data-blocked=')
+      .replace(/javascript\s*:/gi, 'blocked:')
+
     const form = await prisma.form.create({
-      data: { name, type, template },
+      data: { name, type, template: sanitizedTemplate },
     })
 
     return NextResponse.json(form, { status: 201 })

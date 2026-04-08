@@ -27,9 +27,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Input length validation
+    if (typeof firstName !== 'string' || firstName.trim().length < 1 || firstName.trim().length > 100) {
+      return NextResponse.json({ error: 'firstName must be 1-100 characters' }, { status: 400 });
+    }
+    if (typeof lastName !== 'string' || lastName.trim().length < 1 || lastName.trim().length > 100) {
+      return NextResponse.json({ error: 'lastName must be 1-100 characters' }, { status: 400 });
+    }
+
     const dobDate = new Date(dob + 'T00:00:00.000Z');
     if (isNaN(dobDate.getTime())) {
       return NextResponse.json({ error: 'Invalid date format' }, { status: 400 });
+    }
+
+    // Validate DOB is in a reasonable range (born 1900-present)
+    const minDate = new Date('1900-01-01')
+    const today = new Date()
+    if (dobDate < minDate || dobDate > today) {
+      return NextResponse.json({ error: 'Invalid date of birth' }, { status: 400 });
     }
 
     const fullName = `${firstName.trim()} ${lastName.trim()}`;
