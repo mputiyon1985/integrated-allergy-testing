@@ -53,7 +53,9 @@ function VerifyContent() {
         sessionStorage.setItem('kiosk_patient', JSON.stringify(selectedPatient));
         router.push('/kiosk/videos');
       } else {
-        setError("Name doesn't match — please try again or see staff.");
+        // Name doesn't match — automatically take them to new patient registration
+        const dob = sessionStorage.getItem('kiosk_dob') || searchParams?.get('dob') || '';
+        router.push(`/kiosk/register?dob=${encodeURIComponent(dob)}&firstName=${encodeURIComponent(firstName.trim())}`);
       }
     } catch {
       setError('Something went wrong. Please try again or ask a staff member.');
