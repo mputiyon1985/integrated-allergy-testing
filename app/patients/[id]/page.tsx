@@ -86,6 +86,7 @@ export default function PatientDetailPage() {
   const [locationOptions, setLocationOptions] = useState<LocationOption[]>([]);
   const [nurses, setNurses] = useState<{ id: string; name: string; title?: string }[]>([]);
   const [sessionNurses, setSessionNurses] = useState<Record<string, string>>({});
+  const [sessionNurseSaving, setSessionNurseSaving] = useState<Record<string, boolean>>({});
   const locationsFetchedRef = useRef(false);
 
   const load = useCallback(() => {
@@ -120,8 +121,9 @@ export default function PatientDetailPage() {
       .catch(() => {});
   }, []);
 
-  async function updateSessionNurse(sessionKey: string, nurseNameVal: string, sessionResults: TestResult[]) {
-    setSessionNurses(prev => ({ ...prev, [sessionKey]: nurseNameVal }));
+  async function saveSessionNurse(sessionKey: string, sessionResults: TestResult[]) {
+    const nurseNameVal = sessionNurses[sessionKey] ?? (sessionResults[0]?.nurseName ?? '');
+    setSessionNurseSaving(prev => ({ ...prev, [sessionKey]: true }));
     await Promise.allSettled(sessionResults.map(r =>
       fetch(`/api/test-results/${r.id}`, {
         method: 'PUT',
@@ -129,6 +131,7 @@ export default function PatientDetailPage() {
         body: JSON.stringify({ nurseName: nurseNameVal || null }),
       })
     ));
+    setSessionNurseSaving(prev => ({ ...prev, [sessionKey]: false }));
     load();
   }
 
@@ -438,7 +441,7 @@ ${sectionsHtml}
                         <span style={{ fontSize: 12, fontWeight: 600, color: '#64748b' }}>Tested By:</span>
                         <select
                           value={sessionNurses[key] ?? (results[0]?.nurseName ?? '')}
-                          onChange={e => updateSessionNurse(key, e.target.value, results)}
+                          onChange={e => setSessionNurses(prev => ({ ...prev, [key]: e.target.value }))}
                           style={{ fontSize: 13, padding: '4px 10px', borderRadius: 6, border: '1px solid #e2e8f0', color: '#374151', cursor: 'pointer' }}
                         >
                           <option value="">— Assign Nurse —</option>
@@ -446,6 +449,13 @@ ${sectionsHtml}
                             <option key={n.id} value={n.name}>{n.title ? `${n.title} ${n.name}` : n.name}</option>
                           ))}
                         </select>
+                        <button
+                          onClick={() => saveSessionNurse(key, results)}
+                          disabled={sessionNurseSaving[key]}
+                          style={{ padding: '4px 12px', borderRadius: 6, border: 'none', background: '#0d9488', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
+                        >
+                          {sessionNurseSaving[key] ? '⏳' : '💾 Save'}
+                        </button>
                       </div>
                     </div>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
