@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
     const appointment = await prisma.iATAppointment.create({
       data: {
         title,
-        patientId: patientId ?? null,
+        patientId: patientId || '',
         patientName: patientName ?? null,
         startTime: new Date(startTime),
         endTime: new Date(endTime),
