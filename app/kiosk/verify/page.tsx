@@ -50,7 +50,9 @@ function VerifyContent() {
       });
       const data = await res.json();
       if (data.verified) {
-        sessionStorage.setItem('kiosk_patient', JSON.stringify(selectedPatient));
+        // Use full patient data from API response (has full name, not just firstName)
+        const patientData = data.patient || { ...selectedPatient, name: `${firstName.trim()} ${selectedPatient.id}` };
+        sessionStorage.setItem('kiosk_patient', JSON.stringify(patientData));
         router.push('/kiosk/videos');
       } else {
         // Name doesn't match — automatically take them to new patient registration
