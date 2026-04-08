@@ -5,8 +5,9 @@ import prisma from '@/lib/db'
 export async function GET(req: NextRequest) {
   try {
     const search = req.nextUrl.searchParams.get('search') ?? ''
+    const all = req.nextUrl.searchParams.get('all') === 'true'
     const where = {
-      active: true,
+      ...(all ? {} : { active: true }),
       ...(search
         ? {
             OR: [
@@ -23,7 +24,7 @@ export async function GET(req: NextRequest) {
       orderBy: { sortOrder: 'asc' },
     })
 
-    return NextResponse.json(codes)
+    return NextResponse.json({ codes })
   } catch (err) {
     console.error('[ICD10] GET error:', err)
     return NextResponse.json({ error: 'Failed to fetch ICD-10 codes' }, { status: 500 })

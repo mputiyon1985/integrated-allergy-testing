@@ -46,3 +46,6 @@ export async function DELETE(
     return NextResponse.json({ error: 'Failed to deactivate CPT code' }, { status: 500 })
   }
 }
+
+// PATCH alias for Settings page compatibility
+export const PATCH = PUT
