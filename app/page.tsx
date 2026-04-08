@@ -48,7 +48,7 @@ interface Nurse { id: string; name: string; title?: string; }
 
 export default function DashboardPage() {
   const [patientCount, setPatientCount] = useState<number | null>(null);
-
+  const [encounterCount, setEncounterCount] = useState<number | null>(null);
   const [nurseCount, setNurseCount] = useState<number | null>(null);
   const [userName, setUserName] = useState('');
   const [loading, setLoading] = useState(true);
@@ -110,6 +110,7 @@ export default function DashboardPage() {
           const d = await meRes.value.json();
           setUserName(d?.user?.name ?? d?.name ?? '');
         }
+        fetch('/api/encounters?limit=100').then(r => r.json()).then(d => { const today = new Date().toDateString(); setEncounterCount((d.encounters ?? []).filter((e: {encounterDate: string}) => new Date(e.encounterDate).toDateString() === today).length) })
       } catch {}
       finally { setLoading(false); }
     }
@@ -236,6 +237,11 @@ export default function DashboardPage() {
             <div className="kpi-icon">👩‍⚕️</div>
             <div className="kpi-label">Nurses</div>
             {loading ? <div className="spinner" /> : <div className="kpi-value">{nurseCount ?? 0}</div>}
+          </div>
+          <div className="kpi-card">
+            <div className="kpi-icon">🏥</div>
+            <div className="kpi-label">Today&apos;s Encounters</div>
+            <div className="kpi-value">{encounterCount ?? 0}</div>
           </div>
         </div>
 

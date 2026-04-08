@@ -108,6 +108,8 @@ model Patient {
   emergencyRelation String?
   notes            String?
   status           String    @default("build-up")
+  icd10Code        String?   // primary diagnosis ICD-10 code
+  cptCodes         String?   // common CPT codes as JSON array
   doctorId        String?
   entityId        String?
   createdAt       DateTime  @default(now())
@@ -390,3 +392,36 @@ model AppointmentReason {
 }
 
 
+
+model ICD10Code {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  description String
+  category    String?
+  active      Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+}
+
+model CPTCode {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  description String
+  category    String?
+  defaultFee  Float?
+  active      Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+}
+
+model EncounterActivityCode {
+  id          String   @id @default(cuid())
+  activityId  String
+  codeType    String   // 'icd10' | 'cpt'
+  code        String
+  description String
+  units       Int      @default(1)
+  createdAt   DateTime @default(now())
+
+  @@index([activityId])
+}

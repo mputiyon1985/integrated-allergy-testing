@@ -1076,6 +1076,10 @@ function EncounterCard({
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 10px', borderRadius: 999, ...s, textTransform: 'uppercase' }}>{enc.status}</span>
+          <a href={`/api/encounters/${enc.id}/pdf`} target="_blank" rel="noopener noreferrer"
+            style={{ padding: '5px 12px', borderRadius: 7, border: 'none', background: '#64748b', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', textDecoration: 'none', display: 'inline-block' }}>
+            📄 PDF
+          </a>
           <button onClick={() => setShowAdd(true)}
             style={{ padding: '5px 12px', borderRadius: 7, border: 'none', background: '#0d9488', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
             + Add Activity

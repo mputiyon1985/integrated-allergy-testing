@@ -71,6 +71,19 @@ export async function POST(req: NextRequest) {
         status: 'waiting',
       },
     })
+
+    // Auto-create kiosk_checkin encounter activity
+    fetch(`${process.env.NEXTAUTH_URL || 'https://integrated-allergy-testing.vercel.app'}/api/encounter-activities`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        patientId: patient.id,
+        type: 'kiosk_checkin',
+        notes: `Patient checked in via kiosk. Videos watched: ${body.videosWatched ?? 0}`,
+        performedBy: 'Patient (Kiosk)',
+      }),
+    }).catch(() => {})
+
     return NextResponse.json({ entry }, { status: 201, headers: HIPAA_HEADERS })
   } catch (err) {
     console.error('POST /api/waiting-room error:', err)
