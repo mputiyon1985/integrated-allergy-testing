@@ -142,6 +142,90 @@ export default function PatientDetailPage() {
     catch { return val; }
   }
 
+  function handlePrintResults() {
+    if (!patient || tests.length === 0) return;
+    const gradeLabel: Record<number, string> = { 0:'Negative',1:'Trace',2:'Positive',3:'Strong',4:'Very Strong',5:'Extreme' };
+    const gradeColor: Record<number, string> = { 0:'#64748b',1:'#ca8a04',2:'#ea580c',3:'#dc2626',4:'#991b1b',5:'#7f1d1d' };
+
+    // Group by date + testType
+    const groups = new Map<string, TestResult[]>();
+    tests.forEach(r => {
+      const d = r.testedAt ? new Date(r.testedAt).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}) : 'Unknown Date';
+      const key = `${d}||${r.testType ?? 'scratch'}`;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(r);
+    });
+
+    const sectionsHtml = Array.from(groups.entries()).map(([key, results]) => {
+      const [dateLabel, testType] = key.split('||');
+      const icon = testType === 'scratch' ? '🩹' : '💉';
+      const title = testType === 'scratch' ? 'Prick Test' : 'Intradermal Test';
+      const rows = results.map((r, i) => {
+        const notes = r.notes ?? '';
+        const flareMatch = notes.match(/Flare:\s*([\d.]+\s*mm?)/i);
+        const locMatch = notes.match(/Location:\s*([^;]+)/i);
+        const flare = flareMatch ? flareMatch[1] : '—';
+        const location = locMatch ? locMatch[1].trim() : 'Back';
+        const grade = r.reaction ?? 0;
+        return `<tr style="border-bottom:1px solid #e2e8f0; background:${grade >= 2 ? '#fff7ed' : i % 2 === 0 ? '#fff' : '#f8fafc'}">
+          <td style="padding:6px 10px;">${i+1}</td>
+          <td style="padding:6px 10px; font-weight:600;">${r.allergen?.name ?? '—'}</td>
+          <td style="padding:6px 10px; font-weight:800; font-size:16px; color:${gradeColor[grade]};">${grade}</td>
+          <td style="padding:6px 10px; color:#64748b; font-size:12px;">${gradeLabel[grade]}</td>
+          <td style="padding:6px 10px; color:#374151;">${r.wheal ?? '—'}</td>
+          <td style="padding:6px 10px; color:#374151;">${flare}</td>
+          <td style="padding:6px 10px; color:#64748b;">${location}</td>
+          <td style="padding:6px 10px; color:#64748b; font-size:11px;">${dateLabel}</td>
+        </tr>`;
+      }).join('');
+      return `<div style="margin-bottom:24px;">
+        <h3 style="font-size:14px; font-weight:700; color:#0055A5; text-transform:uppercase; letter-spacing:0.06em; margin:0 0 8px; padding-bottom:6px; border-bottom:2px solid #0055A5;">
+          ${icon} ${title} &nbsp;·&nbsp; <span style="font-weight:500; text-transform:none;">${dateLabel}</span>
+        </h3>
+        <table style="width:100%; border-collapse:collapse; font-size:13px; font-family:system-ui,sans-serif;">
+          <thead><tr style="background:#0055A5; color:#fff;">
+            <th style="padding:6px 10px; text-align:left;">#</th>
+            <th style="padding:6px 10px; text-align:left;">Allergen</th>
+            <th style="padding:6px 10px; text-align:left;">Grade</th>
+            <th style="padding:6px 10px; text-align:left;">Result</th>
+            <th style="padding:6px 10px; text-align:left;">Wheal</th>
+            <th style="padding:6px 10px; text-align:left;">Flare</th>
+            <th style="padding:6px 10px; text-align:left;">Site</th>
+            <th style="padding:6px 10px; text-align:left;">Test Date</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+    }).join('');
+
+    const html = `<!DOCTYPE html><html><head><title>Test Results — ${patient.name}</title>
+<style>body{font-family:system-ui,sans-serif;margin:0;padding:20px;color:#1a2233;}</style>
+</head><body>
+<div style="border-bottom:3px solid #0055A5;padding-bottom:12px;margin-bottom:16px;">
+  <div style="font-size:20px;font-weight:800;color:#0055A5;margin-bottom:8px;">Integrated Allergy Testing — Test Results</div>
+  <div style="display:flex;gap:28px;font-size:13px;flex-wrap:wrap;">
+    <span><strong>Patient:</strong> ${patient.name}</span>
+    <span><strong>ID:</strong> ${patient.patientId ?? patient.id.slice(0,8).toUpperCase()}</span>
+    <span><strong>DOB:</strong> ${fmt(patient.dob)}</span>
+    <span><strong>Physician:</strong> ${patient.physician ?? '—'}</span>
+    <span><strong>Location:</strong> ${patient.clinicLocation ?? '—'}</span>
+    <span><strong>Print Date:</strong> ${new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}</span>
+  </div>
+</div>
+<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:8px 14px;margin-bottom:16px;font-size:12px;color:#166534;">
+  <strong>Grade Legend:</strong> 0=Negative &nbsp;|&nbsp; 1=Trace &nbsp;|&nbsp; 2=Positive &nbsp;|&nbsp; 3=Strong &nbsp;|&nbsp; 4=Very Strong &nbsp;|&nbsp; 5=Extreme
+</div>
+${sectionsHtml}
+<div style="margin-top:32px;border-top:1px solid #e2e8f0;padding-top:12px;font-size:11px;color:#94a3b8;display:flex;justify-content:space-between;">
+  <span>Integrated Allergy Testing — HIPAA Compliant</span>
+  <span>Printed: ${new Date().toLocaleString('en-US')}</span>
+</div>
+</body></html>`;
+
+    const w = window.open('', '_blank', 'width=900,height=700');
+    if (w) { w.document.write(html); w.document.close(); w.focus(); setTimeout(() => w.print(), 400); }
+  }
+
   function InfoRow({ label, value }: { label: string; value?: string | null }) {
     return (
       <div style={{ display: 'flex', gap: 16, padding: '10px 0', borderBottom: '1px solid #f1f5f9' }}>
@@ -282,6 +366,12 @@ export default function PatientDetailPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <div style={{ fontSize: 16, fontWeight: 700, color: '#1a2233' }}>Test Results ({tests.length})</div>
               <div style={{ display: 'flex', gap: 8 }}>
+                {tests.length > 0 && (
+                  <button onClick={handlePrintResults}
+                    style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', color: '#374151', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+                    🖨️ Print Results
+                  </button>
+                )}
                 <Link href={`/testing?patientId=${patient.id}`} style={{ padding: '8px 16px', borderRadius: 8, background: '#0d9488', color: '#fff', fontSize: 14, fontWeight: 700, textDecoration: 'none' }}>🧪 Start New Test</Link>
               </div>
             </div>
