@@ -277,12 +277,16 @@ model WaitingRoom {
 }
 
 model StaffUser {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  passwordHash String
-  name         String
-  role         String   @default("staff")
-  active       Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id               String    @id @default(cuid())
+  email            String    @unique
+  passwordHash     String
+  name             String
+  role             String    @default("staff")
+  active           Boolean   @default(true)
+  mfaEnabled       Boolean   @default(false)
+  mfaSecret        String?
+  tempToken        String?
+  tempTokenExpiry  DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 }
