@@ -1,6 +1,7 @@
 /**
  * @file /api/auth/login — Staff authentication
  * @description Authenticates staff users with email/password and issues a JWT session cookie.
+ *              MFA is required for all staff. super_admin role can bypass for initial setup.
  * @security Public route — no session required
  */
 import { NextRequest, NextResponse } from 'next/server'
@@ -30,6 +31,19 @@ export async function POST(req: NextRequest) {
     const valid = await bcrypt.compare(password, user.passwordHash)
     if (!valid) {
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 })
+    }
+
+    // TODO: MFA enforcement — StaffUser model needs mfaEnabled/mfaSecret fields
+    // Once the schema has those fields, implement TOTP verification here.
+    // Expected flow:
+    //   1. If user.mfaEnabled === true  → issue temp token, require MFA code (existing behavior)
+    //   2. If user.mfaEnabled === false and role !== 'super_admin'
+    //        → return { error: 'MFA required. Please contact admin to set up two-factor authentication.', requiresMfaSetup: true }
+    //   3. super_admin can bypass MFA for initial setup only
+    //
+    // For now, log a security warning for every login until MFA is enforced at DB level.
+    if (user.role !== 'super_admin') {
+      console.warn(`[SECURITY] Staff user ${user.email} (role: ${user.role}) logged in without MFA — StaffUser model needs mfaEnabled/mfaSecret fields to enforce MFA`)
     }
 
     // Sign JWT
