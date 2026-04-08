@@ -36,10 +36,19 @@ export default function KioskVideosPage() {
       } catch { /* ignore parse error */ }
     }
 
-    // Restore watched state from sessionStorage
-    const savedWatched = sessionStorage.getItem('kiosk_watched_ids');
-    if (savedWatched) {
-      try { setWatched(new Set(JSON.parse(savedWatched))); } catch {}
+    // Only restore watched state if it's for the SAME patient session
+    // (prevents stale watched state from previous patient carrying over)
+    const savedPatientId = sessionStorage.getItem('kiosk_watched_for_patient');
+    const currentPatientId = raw.startsWith('{') ? (() => { try { return JSON.parse(raw).id } catch { return '' } })() : raw;
+    if (savedPatientId && savedPatientId === currentPatientId) {
+      const savedWatched = sessionStorage.getItem('kiosk_watched_ids');
+      if (savedWatched) {
+        try { setWatched(new Set(JSON.parse(savedWatched))); } catch {}
+      }
+    } else {
+      // Different patient — clear stale watched data
+      sessionStorage.removeItem('kiosk_watched_ids');
+      sessionStorage.removeItem('kiosk_videos_watched');
     }
 
     fetch('/api/videos?active=true')
@@ -68,7 +77,8 @@ export default function KioskVideosPage() {
     } finally {
       setWatched(prev => {
         const next = new Set([...prev, videoId]);
-        // Persist watched IDs and count
+        // Persist watched IDs tied to this patient
+        if (patient?.id) sessionStorage.setItem('kiosk_watched_for_patient', patient.id);
         sessionStorage.setItem('kiosk_watched_ids', JSON.stringify([...next]));
         sessionStorage.setItem('kiosk_videos_watched', String(next.size));
         return next;
