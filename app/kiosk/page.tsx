@@ -1,3 +1,9 @@
+/**
+ * @file app/kiosk/page.tsx
+ * @description Kiosk home page — patient check-in entry point.
+ *   Prompts for date of birth, calls /api/kiosk/lookup, then routes to
+ *   verify (existing patient) or register (new patient).
+ */
 'use client';
 
 import { useState } from 'react';

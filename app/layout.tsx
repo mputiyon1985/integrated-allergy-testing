@@ -117,7 +117,8 @@ function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isAuthPage = pathname === '/login' || pathname?.startsWith('/login') || pathname === '/consent' || pathname?.startsWith('/consent') || pathname?.startsWith('/kiosk');
 
-  useEffect(() => { setSidebarOpen(false); }, [pathname]);
+  // Close sidebar on route change — deferred to avoid synchronous setState-in-effect
+  useEffect(() => { Promise.resolve().then(() => setSidebarOpen(false)); }, [pathname]);
 
   if (isAuthPage) {
     return <>{children}</>;

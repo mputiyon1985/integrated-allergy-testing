@@ -1,5 +1,7 @@
 'use client';
 
+import Link from 'next/link';
+
 export default function SettingsPage() {
   return (
     <>
@@ -67,9 +69,9 @@ export default function SettingsPage() {
           <div className="card">
             <div className="card-title">Quick Links</div>
             <div className="flex flex-col gap-2">
-              <a href="/patients/new" className="btn btn-secondary" style={{ justifyContent: 'flex-start' }}>👤 Register New Patient</a>
-              <a href="/testing" className="btn btn-secondary" style={{ justifyContent: 'flex-start' }}>🧪 Start Testing Session</a>
-              <a href="/videos" className="btn btn-secondary" style={{ justifyContent: 'flex-start' }}>🎬 Manage Videos</a>
+              <Link href="/patients/new" className="btn btn-secondary" style={{ justifyContent: 'flex-start' }}>👤 Register New Patient</Link>
+              <Link href="/testing" className="btn btn-secondary" style={{ justifyContent: 'flex-start' }}>🧪 Start Testing Session</Link>
+              <Link href="/videos" className="btn btn-secondary" style={{ justifyContent: 'flex-start' }}>🎬 Manage Videos</Link>
             </div>
           </div>
         </div>

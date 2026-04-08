@@ -21,7 +21,7 @@ interface Nurse { id: string; name: string; title?: string; }
 
 export default function DashboardPage() {
   const [patientCount, setPatientCount] = useState<number | null>(null);
-  const [doctorCount, setDoctorCount] = useState<number | null>(null);
+
   const [nurseCount, setNurseCount] = useState<number | null>(null);
   const [userName, setUserName] = useState('');
   const [loading, setLoading] = useState(true);
@@ -40,17 +40,14 @@ export default function DashboardPage() {
   useEffect(() => {
     async function loadData() {
       try {
-        const [patientsRes, doctorsRes, nursesRes, meRes] = await Promise.allSettled([
+        const [patientsRes, , nursesRes, meRes] = await Promise.allSettled([
           fetch('/api/patients'), fetch('/api/doctors'), fetch('/api/nurses'), fetch('/api/auth/me'),
         ]);
         if (patientsRes.status === 'fulfilled' && patientsRes.value.ok) {
           const d = await patientsRes.value.json();
           setPatientCount((Array.isArray(d) ? d : d.patients ?? []).length);
         }
-        if (doctorsRes.status === 'fulfilled' && doctorsRes.value.ok) {
-          const d = await doctorsRes.value.json();
-          setDoctorCount((Array.isArray(d) ? d : d.doctors ?? []).filter((x: { active?: boolean }) => x.active !== false).length);
-        }
+
         if (nursesRes.status === 'fulfilled' && nursesRes.value.ok) {
           const d = await nursesRes.value.json();
           const list = Array.isArray(d) ? d : d.nurses ?? [];

@@ -6,6 +6,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
+import { HIPAA_HEADERS } from '@/lib/hipaaHeaders'
 
 export const dynamic = 'force-dynamic'
 
@@ -47,7 +48,7 @@ export async function PUT(
       },
     })
 
-    return NextResponse.json(testResult)
+    return NextResponse.json(testResult, { headers: HIPAA_HEADERS })
   } catch (error) {
     console.error('PUT /api/test-results/[id] error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
+import { HIPAA_HEADERS } from '@/lib/hipaaHeaders'
 
 export const dynamic = 'force-dynamic'
 
@@ -28,7 +29,17 @@ export async function POST(req: NextRequest) {
       },
     })
 
-    return NextResponse.json({ ok: true, recordId: record.id })
+    await prisma.auditLog.create({
+      data: {
+        action: 'CONSENT_SIGNED',
+        entity: 'ConsentRecord',
+        entityId: record.id,
+        patientId,
+        details: `Consent signed for formId: ${formId}`,
+      },
+    }).catch(() => { /* non-blocking */ })
+
+    return NextResponse.json({ ok: true, recordId: record.id }, { headers: HIPAA_HEADERS })
   } catch (error) {
     console.error('Consent sign error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

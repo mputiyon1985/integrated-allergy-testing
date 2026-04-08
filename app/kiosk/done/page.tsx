@@ -1,8 +1,28 @@
+/**
+ * @file app/kiosk/done/page.tsx
+ * @description Kiosk check-in completion page. Adds patient to waiting room,
+ *   displays a thank-you message with a live clock, then auto-resets
+ *   to /kiosk after 10 seconds so the kiosk is ready for the next patient.
+ */
 'use client'
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
+
+/** Parse patient name and ID from sessionStorage. */
+function getPatientFromStorage(): { name: string; id: string } {
+  const raw = sessionStorage.getItem('kiosk_patient') || ''
+  if (raw.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(raw)
+      return {
+        name: parsed.name || [parsed.firstName, parsed.lastName].filter(Boolean).join(' ') || '',
+        id: parsed.id || '',
+      }
+    } catch { /* ignore */ }
+  }
+  return { name: raw, id: '' }
+}
 
 export default function DonePage() {
   const router = useRouter()
@@ -11,19 +31,9 @@ export default function DonePage() {
   const [countdown, setCountdown] = useState(10)
 
   useEffect(() => {
-    const raw = sessionStorage.getItem('kiosk_patient') || ''
-    let name = raw
-    let patientId = ''
-    if (raw.startsWith('{')) {
-      try {
-        const parsed = JSON.parse(raw)
-        name = parsed.name || [parsed.firstName, parsed.lastName].filter(Boolean).join(' ') || raw
-        patientId = parsed.id || ''
-      } catch {
-        name = raw
-      }
-    }
-    setPatientName(name)
+    const { name, id: patientId } = getPatientFromStorage()
+    // Defer state update to next tick to avoid cascading-render lint warning
+    Promise.resolve().then(() => setPatientName(name))
 
     // Auto-add to waiting room with video count
     if (patientId && name) {

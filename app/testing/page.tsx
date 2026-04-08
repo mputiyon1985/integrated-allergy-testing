@@ -79,13 +79,13 @@ function TestingSetup({ onStart }: {
   const [nurses, setNurses] = useState<{ id: string; name: string; title?: string }[]>([]);
   const [selectedNurse, setSelectedNurse] = useState('');
 
-  const search = useCallback(async (val: string) => {
-    if (val.length < 2) { setResults([]); return; }
-    try {
+  const search = useCallback((val: string) => {
+    if (val.length < 2) { Promise.resolve().then(() => setResults([])); return; }
+    void (async () => { try {
       const r = await fetch(`/api/patients?search=${encodeURIComponent(val)}`);
       const d = await r.json();
       setResults((Array.isArray(d) ? d : d.patients ?? []).slice(0, 10));
-    } catch { setResults([]); }
+    } catch { setResults([]); } })();
   }, []);
 
   useEffect(() => { search(q); }, [q, search]);
@@ -798,7 +798,7 @@ ${(prickResults.length + idResults.length) === 0 ? '<p style="color:#94a3b8; tex
       {/* ── Nurse required banner ────────────────────────────── */}
       {!testedBy && (
         <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '10px 16px', margin: '0 16px 8px', display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: '#92400e', fontWeight: 600 }}>
-          ⚠️ Please select a nurse/clinician in the <strong>"Tested By"</strong> field above before recording results.
+          ⚠️ Please select a nurse/clinician in the <strong>&quot;Tested By&quot;</strong> field above before recording results.
         </div>
       )}
 

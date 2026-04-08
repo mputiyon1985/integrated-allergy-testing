@@ -1,6 +1,12 @@
+/**
+ * @file app/kiosk/consent/page.tsx
+ * @description Kiosk consent signing page. Presents unsigned consent forms to the patient
+ *   one at a time with a signature pad. Saves signatures via /api/consent/sign.
+ *   Redirects to /kiosk/done when all forms are signed.
+ */
 'use client'
 
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
 interface ConsentForm {

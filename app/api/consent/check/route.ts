@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
+import { HIPAA_HEADERS } from '@/lib/hipaaHeaders'
 
 const CONSENT_FORMS = [
   { formId: 'form-consent-001', name: 'Patient Consent for Allergy Testing' },
@@ -35,7 +36,7 @@ export async function GET(req: NextRequest) {
 
     const allSigned = forms.every(f => f.signed)
 
-    return NextResponse.json({ allSigned, forms })
+    return NextResponse.json({ allSigned, forms }, { headers: HIPAA_HEADERS })
   } catch (error) {
     console.error('Consent check error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

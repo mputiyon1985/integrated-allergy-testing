@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
+import { HIPAA_HEADERS } from '@/lib/hipaaHeaders'
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
@@ -8,7 +9,7 @@ export async function GET() {
       where: { status: { in: ['waiting', 'in-service'] } },
       orderBy: { checkedInAt: 'asc' },
     })
-    return NextResponse.json({ entries })
+    return NextResponse.json({ entries }, { headers: HIPAA_HEADERS })
   } catch (err) {
     console.error('GET /api/waiting-room error:', err)
     return NextResponse.json({ entries: [] })
@@ -27,7 +28,7 @@ export async function POST(req: NextRequest) {
         status: 'waiting',
       },
     })
-    return NextResponse.json({ entry }, { status: 201 })
+    return NextResponse.json({ entry }, { status: 201, headers: HIPAA_HEADERS })
   } catch (err) {
     console.error('POST /api/waiting-room error:', err)
     return NextResponse.json({ error: 'Failed to add to waiting room' }, { status: 500 })

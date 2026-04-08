@@ -3,7 +3,7 @@
 **Project:** Integrated Allergy Testing  
 **Status:** 🛡️ HIPAA Codebase Compliance: ACTIVE as of 2026-04-07  
 **Maintained by:** Engineering Team  
-**Last reviewed:** 2026-04-07
+**Last reviewed:** 2026-04-08
 
 ---
 
@@ -42,6 +42,23 @@ The following data elements are classified as PHI and are subject to HIPAA prote
 | Consent timestamp | `ConsentRecord` | PHI — audit trail |
 | Consent version | `ConsentRecord` | Compliance record |
 
+### Kiosk Check-In (Patient-Facing)
+| Field | Model / Source | Notes |
+|-------|----------------|-------|
+| Date of birth (lookup input) | `Patient` | Used for DOB-based kiosk lookup; never logged |
+| First name (identity verification) | `Patient` | Entered by patient to confirm identity |
+| Consent signature (base64 PNG) | `ConsentRecord` | Captured on kiosk touchscreen |
+| Consent form ID + timestamp | `ConsentRecord` | Full audit trail per signing |
+| Patient name (display) | `Patient` | Shown briefly on kiosk confirmation screen |
+
+### Waiting Room (Operational PHI)
+| Field | Model | Notes |
+|-------|-------|-------|
+| Patient name | `WaitingRoom` | Display name on staff waiting board |
+| Patient status | `WaitingRoom` | `waiting`, `in-service`, `complete` |
+| Check-in timestamp | `WaitingRoom` | Operational timing record |
+| Videos watched count | `WaitingRoom` | Clinical education compliance tracking |
+
 ### Operational
 | Field | Model | Notes |
 |-------|-------|-------|
@@ -79,13 +96,32 @@ The following data elements are classified as PHI and are subject to HIPAA prote
 ### Audit Logging
 - ✅ **`AuditLog` model** in Prisma schema — records action, entity, entityId, patientId, timestamp
 - ✅ **`lib/audit.ts`** — centralized audit logging utility, non-fatal on failure
-- ✅ All patient record creation, access, and modification should call `audit.log()`
+- ✅ Patient creation logged (`CREATE / Patient`)
+- ✅ Patient updates logged (`UPDATE / Patient`)
+- ✅ Test result creation and updates logged (`CREATE / AllergyTestResult`, `UPDATE / AllergyTestResult`)
+- ✅ Consent form signing logged (`CONSENT_SIGNED / ConsentRecord`)
+- ✅ Kiosk identity verification logged (`KIOSK_CHECKIN / Patient`)
+- ✅ Kiosk DOB lookup attempts logged (`Kiosk DOB Lookup` — IP address only, never the DOB)
 - ✅ Audit records must be retained for **6 years** per HIPAA requirements
 
+### Kiosk Security
+- ✅ **DOB brute-force protection** — `/api/kiosk/lookup` enforces rate limiting: max 10 lookups per IP per 60 seconds; returns HTTP 429 on excess
+- ✅ **Lookup attempt logging** — IP address logged to `AuditLog` on every DOB lookup attempt (DOB value is never logged)
+- ✅ **Identity verification** — kiosk requires first-name confirmation before revealing patient record; verification is audit-logged
+- ✅ **Minimal data disclosure** — lookup returns first name only (no last name, no full DOB)
+
 ### Consent Management
-- ✅ Digital consent capture with signature and timestamp
-- ✅ Consent records linked to patient ID
-- ✅ Consent version tracked for audit trail
+- ✅ Digital consent capture with signature (base64 PNG) and timestamp
+- ✅ Consent records linked to patient ID with full audit trail
+- ✅ Consent version tracked for compliance history
+- ✅ IP address and user agent captured at signing for non-repudiation
+- ✅ PDF generation available for consent records including rendered signature image
+- ✅ Consent signing triggers `CONSENT_SIGNED` audit log entry
+
+### Video Watch Audit Trail
+- ✅ Patient educational video activity tracked via `VideoActivity` model
+- ✅ Videos watched count reflected in waiting room record for nurse verification
+- ✅ `video-watched` and `videos-watched` kiosk endpoints record per-video completion
 
 ---
 
@@ -158,6 +194,7 @@ In the event of a suspected PHI breach:
 - [ ] Audit logging implemented on all PHI access/modification endpoints
 - [ ] No PHI returned in error messages or stack traces
 - [ ] Rate limiting on auth endpoints
+- [x] Rate limiting on kiosk DOB lookup (10 req/IP/min — implemented)
 - [ ] Input validation on all patient data fields
 
 ---
