@@ -9,11 +9,10 @@ import Link from 'next/link';
 interface Patient {
   id: string;
   patientId?: string;
-  honorific?: string;
-  firstName: string;
-  lastName: string;
-  dateOfBirth?: string;
+  name: string;
   dob?: string;
+  physician?: string;
+  clinicLocation?: string;
 }
 
 interface Allergen {
@@ -117,9 +116,7 @@ function PatientSearch({ onSelect }: { onSelect: (p: Patient) => void }) {
                 onMouseLeave={e => (e.currentTarget.style.background = '')}
               >
                 <div>
-                  <span style={{ fontWeight: 600 }}>
-                    {[p.honorific, p.firstName, p.lastName].filter(Boolean).join(' ')}
-                  </span>
+                  <span style={{ fontWeight: 600 }}>{p.name}</span>
                   <span style={{ fontSize: 12, color: '#94a3b8', marginLeft: 8 }}>
                     {p.patientId ?? p.id.slice(0, 8).toUpperCase()}
                   </span>
@@ -514,9 +511,7 @@ function TestingPageInner() {
     );
   }
 
-  const fullName = patient
-    ? [patient.honorific, patient.firstName, patient.lastName].filter(Boolean).join(' ')
-    : '';
+  const fullName = patient?.name ?? '';
   const prickCount = prick.rows.filter(r => r.grade !== null).length;
   const idCount = intradermal.rows.filter(r => r.grade !== null).length;
   const totalGraded = prickCount + idCount;
