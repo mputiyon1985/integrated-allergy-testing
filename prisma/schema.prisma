@@ -313,6 +313,32 @@ model IATAppointment {
   @@index([patientId])
 }
 
+model Encounter {
+  id              String    @id @default(cuid())
+  patientId       String
+  encounterDate   DateTime  @default(now())
+  doctorId        String?
+  doctorName      String?
+  nurseId         String?
+  nurseName       String?
+  appointmentId   String?
+  chiefComplaint  String
+  subjectiveNotes String?
+  objectiveNotes  String?
+  assessment      String?
+  plan            String?
+  followUpDays    Int?
+  status          String    @default("open")
+  createdBy       String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+
+  @@index([patientId])
+  @@index([encounterDate])
+  @@index([deletedAt])
+}
+
 model AppointmentReason {
   id        String   @id @default(cuid())
   name      String
@@ -323,3 +349,5 @@ model AppointmentReason {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+

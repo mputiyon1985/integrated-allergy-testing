@@ -11,6 +11,7 @@ const navItems = [
   { href: '/patients', label: 'Patients', icon: '👥' },
   { href: '/testing', label: 'Testing', icon: '🧪' },
   { href: '/calendar', label: 'Calendar', icon: '📅' },
+  { href: '/encounters', label: 'Encounters', icon: '🏥' },
   { href: '/doctors', label: 'Doctors', icon: '👨‍⚕️' },
   { href: '/nurses', label: 'Nurses', icon: '👩‍⚕️' },
   { href: '/locations', label: 'Locations', icon: '📍' },
@@ -67,7 +68,7 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
             alt="Integrated Allergy Testing"
             style={{ height: 55, width: 'auto', display: 'block' }}
           />
-          <div style={{ color: '#9ca3af', fontSize: 10, marginTop: 4 }}>Testing Suite v3.0.0</div>
+          <div style={{ color: '#9ca3af', fontSize: 10, marginTop: 4 }}>Testing Suite v3.1.0</div>
         </div>
 
         <div className="sidebar-nav">

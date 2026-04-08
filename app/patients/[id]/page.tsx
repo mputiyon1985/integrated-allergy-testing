@@ -70,7 +70,7 @@ const REACTION_COLOR: Record<number, string> = {
   0: '#94a3b8', 1: '#ca8a04', 2: '#ea580c', 3: '#dc2626', 4: '#991b1b', 5: '#7f1d1d',
 };
 
-type Tab = 'overview' | 'tests' | 'videos' | 'forms' | 'consent';
+type Tab = 'overview' | 'tests' | 'videos' | 'forms' | 'consent' | 'encounters';
 
 export default function PatientDetailPage() {
   const params = useParams();
@@ -393,7 +393,7 @@ ${sectionsHtml}
       <div className="page-body">
         {/* Tabs */}
         <div className="no-print" style={{ display: 'flex', gap: 4, borderBottom: '2px solid #e2e8f0', marginBottom: 24 }}>
-          {(['overview', 'tests', 'videos', 'forms', 'consent'] as Tab[]).map(t => (
+          {(['overview', 'tests', 'videos', 'forms', 'consent', 'encounters'] as Tab[]).map(t => (
             <button key={t} onClick={() => setTab(t)} style={{
               padding: '10px 20px', border: 'none', background: 'transparent', fontSize: 14, fontWeight: 600,
               color: tab === t ? '#0d9488' : '#64748b', cursor: 'pointer',
@@ -404,6 +404,7 @@ ${sectionsHtml}
               {t === 'videos' && `🎬 Videos (${videos.length})`}
               {t === 'forms' && `📝 Forms (${forms.length})`}
               {t === 'consent' && '📋 Consent'}
+              {t === 'encounters' && '🏥 Encounters'}
             </button>
           ))}
         </div>
@@ -629,6 +630,10 @@ ${sectionsHtml}
             <ConsentStatus patientId={patient.id} />
           </div>
         )}
+
+        {tab === 'encounters' && (
+          <EncountersTab patientId={patient.id} patientName={patient.name} />
+        )}
       </div>
 
       {/* Edit Modal */}
@@ -784,4 +789,123 @@ function ConsentStatus({ patientId }: { patientId: string }) {
       ))}
     </div>
   )
+}
+
+function EncountersTab({ patientId, patientName }: { patientId: string; patientName: string }) {
+  const [encounters, setEncounters] = useState<{ id: string; encounterDate: string; doctorName?: string; nurseName?: string; chiefComplaint: string; assessment?: string; plan?: string; status: string }[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showNew, setShowNew] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({ chiefComplaint: '', subjectiveNotes: '', objectiveNotes: '', assessment: '', plan: '', doctorName: '', nurseName: '', followUpDays: '', status: 'open' });
+
+  function load() {
+    setLoading(true);
+    fetch(`/api/encounters?patientId=${patientId}`)
+      .then(r => r.json())
+      .then(d => { setEncounters(d.encounters ?? []); setLoading(false); })
+      .catch(() => setLoading(false));
+  }
+  useEffect(() => { load(); }, [patientId]);
+
+  async function saveEncounter() {
+    setSaving(true);
+    await fetch('/api/encounters', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ patientId, ...form, followUpDays: form.followUpDays ? Number(form.followUpDays) : null }) });
+    setSaving(false); setShowNew(false);
+    setForm({ chiefComplaint: '', subjectiveNotes: '', objectiveNotes: '', assessment: '', plan: '', doctorName: '', nurseName: '', followUpDays: '', status: 'open' });
+    load();
+  }
+
+  const STATUS = { open: { bg: '#fef9c3', color: '#b45309' }, complete: { bg: '#dcfce7', color: '#15803d' }, cancelled: { bg: '#f3f4f6', color: '#64748b' } } as Record<string, { bg: string; color: string }>;
+  const fmt = (d: string) => { try { return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); } catch { return d; }};
+
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <div style={{ fontSize: 16, fontWeight: 700, color: '#1a2233' }}>Encounter Records ({encounters.length})</div>
+        <button onClick={() => setShowNew(true)} style={{ padding: '8px 16px', borderRadius: 8, background: '#0d9488', color: '#fff', border: 'none', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>+ New Encounter</button>
+      </div>
+      {loading ? <div className="loading-center"><div className="spinner" /></div> :
+       encounters.length === 0 ? (
+        <div className="card" style={{ textAlign: 'center', padding: 32 }}>
+          <div style={{ fontSize: 32, marginBottom: 8 }}>🏥</div>
+          <div style={{ fontWeight: 700, marginBottom: 4 }}>No encounters yet</div>
+          <button onClick={() => setShowNew(true)} className="btn" style={{ marginTop: 12 }}>Create First Encounter</button>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {encounters.map(e => {
+            const s = STATUS[e.status] ?? STATUS.open;
+            return (
+              <div key={e.id} className="card" style={{ padding: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                  <div style={{ fontWeight: 700, fontSize: 15 }}>{e.chiefComplaint}</div>
+                  <span style={{ fontSize: 12, fontWeight: 700, padding: '2px 10px', borderRadius: 999, ...s }}>{e.status}</span>
+                </div>
+                <div style={{ fontSize: 13, color: '#64748b', marginBottom: 8 }}>
+                  📅 {fmt(e.encounterDate)} {e.doctorName && `· 👨‍⚕️ ${e.doctorName}`} {e.nurseName && `· 👩‍⚕️ ${e.nurseName}`}
+                </div>
+                {e.assessment && <div style={{ fontSize: 13, marginBottom: 4 }}><strong>Assessment:</strong> {e.assessment}</div>}
+                {e.plan && <div style={{ fontSize: 13 }}><strong>Plan:</strong> {e.plan}</div>}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {showNew && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}>
+          <div style={{ background: '#fff', borderRadius: 16, width: 620, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+            <div style={{ padding: '16px 24px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>🏥 New Encounter — {patientName}</h2>
+              <button onClick={() => setShowNew(false)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer' }}>✕</button>
+            </div>
+            <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {[
+                { label: 'Chief Complaint *', key: 'chiefComplaint', required: true },
+                { label: 'Physician', key: 'doctorName' },
+                { label: 'Nurse', key: 'nurseName' },
+              ].map(f => (
+                <div key={f.key}>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>{f.label}</label>
+                  <input className="form-input" value={(form as Record<string,string>)[f.key]} onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))} />
+                </div>
+              ))}
+              {[
+                { label: 'Subjective (Patient reports)', key: 'subjectiveNotes' },
+                { label: 'Objective (Clinical observations)', key: 'objectiveNotes' },
+                { label: 'Assessment / Diagnosis', key: 'assessment' },
+                { label: 'Plan / Treatment', key: 'plan' },
+              ].map(f => (
+                <div key={f.key}>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>{f.label}</label>
+                  <textarea className="form-input" rows={3} value={(form as Record<string,string>)[f.key]} onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))} style={{ resize: 'vertical' }} />
+                </div>
+              ))}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Follow-up (days)</label>
+                  <input className="form-input" type="number" value={form.followUpDays} onChange={e => setForm(p => ({ ...p, followUpDays: e.target.value }))} placeholder="e.g. 30" />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Status</label>
+                  <select className="form-input" value={form.status} onChange={e => setForm(p => ({ ...p, status: e.target.value }))}>
+                    <option value="open">Open</option>
+                    <option value="complete">Complete</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div style={{ padding: '14px 24px', borderTop: '1px solid #e2e8f0', display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button onClick={() => setShowNew(false)} style={{ padding: '8px 18px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
+              <button onClick={saveEncounter} disabled={saving || !form.chiefComplaint.trim()} style={{ padding: '8px 18px', borderRadius: 8, border: 'none', background: '#0d9488', color: '#fff', cursor: 'pointer', fontWeight: 700 }}>
+                {saving ? '⏳ Saving…' : '💾 Save Encounter'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
