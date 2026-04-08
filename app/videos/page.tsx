@@ -11,6 +11,7 @@ interface Video {
   duration?: string;
   active?: boolean;
   createdAt?: string;
+  order?: number;
 }
 
 export default function VideosPage() {
@@ -18,6 +19,7 @@ export default function VideosPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showForm, setShowForm] = useState(false);
+  const [editingVideo, setEditingVideo] = useState<Video | null>(null);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState('');
 
@@ -67,6 +69,39 @@ export default function VideosPage() {
     } finally {
       setSaving(false);
     }
+  }
+
+  async function handleEdit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingVideo) return;
+    setSaving(true);
+    setError('');
+    try {
+      const r = await fetch(`/api/videos/${editingVideo.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: form.title,
+          url: form.url || null,
+          description: form.description || null,
+          category: form.category || null,
+          duration: form.duration || null,
+        }),
+      });
+      if (!r.ok) throw new Error('Failed to update video');
+      setSuccess('Video updated!');
+      setEditingVideo(null);
+      loadVideos();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to update');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function openEdit(v: Video) {
+    setEditingVideo(v);
+    setForm({ title: v.title, url: v.url ?? '', description: v.description ?? '', category: v.category ?? '', duration: v.duration ?? '' });
   }
 
   const categories = [...new Set(videos.map(v => v.category).filter(Boolean))] as string[];
@@ -164,19 +199,20 @@ export default function VideosPage() {
                             {v.category && <span className="badge badge-blue">{v.category}</span>}
                             {v.duration && <span className="badge badge-gray">⏱ {v.duration}</span>}
                           </div>
-                          {v.url && (
-                            <div style={{ marginTop: 12 }}>
-                              <a
-                                href={v.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="btn btn-sm btn-secondary"
-                                style={{ textDecoration: 'none' }}
-                              >
+                          <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
+                            {v.url ? (
+                              <a href={v.url} target="_blank" rel="noopener noreferrer"
+                                style={{ padding: '6px 14px', borderRadius: 8, background: '#0d9488', color: '#fff', fontSize: 13, fontWeight: 700, textDecoration: 'none' }}>
                                 ▶ Watch Video
                               </a>
-                            </div>
-                          )}
+                            ) : (
+                              <span style={{ fontSize: 12, color: '#94a3b8', fontStyle: 'italic' }}>No URL set</span>
+                            )}
+                            <button onClick={() => openEdit(v)}
+                              style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', color: '#374151', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                              ✏️ Edit
+                            </button>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -187,6 +223,51 @@ export default function VideosPage() {
           </>
         )}
       </div>
+
+      {/* Edit Video Modal */}
+      {editingVideo && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ background: '#fff', borderRadius: 16, width: 520, boxShadow: '0 20px 60px rgba(0,0,0,0.2)', overflow: 'hidden' }}>
+            <div style={{ padding: '18px 24px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>✏️ Edit Video</h2>
+              <button onClick={() => setEditingVideo(null)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#64748b' }}>✕</button>
+            </div>
+            <form onSubmit={handleEdit}>
+              <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Title *</label>
+                  <input className="form-input" value={form.title} onChange={e => set('title', e.target.value)} required />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Video URL</label>
+                  <input className="form-input" type="url" placeholder="https://www.youtube.com/watch?v=..." value={form.url} onChange={e => set('url', e.target.value)} />
+                  <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>YouTube, Vimeo, or any direct video URL</div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Category</label>
+                    <input className="form-input" placeholder="what, how, why..." value={form.category} onChange={e => set('category', e.target.value)} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Duration</label>
+                    <input className="form-input" placeholder="e.g. 5:30" value={form.duration} onChange={e => set('duration', e.target.value)} />
+                  </div>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Description</label>
+                  <textarea className="form-input" rows={3} value={form.description} onChange={e => set('description', e.target.value)} style={{ resize: 'vertical' }} />
+                </div>
+              </div>
+              <div style={{ padding: '14px 24px', borderTop: '1px solid #e2e8f0', display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+                <button type="button" onClick={() => setEditingVideo(null)} style={{ padding: '8px 18px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', color: '#374151', cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
+                <button type="submit" disabled={saving} style={{ padding: '8px 18px', borderRadius: 8, border: 'none', background: '#0d9488', color: '#fff', cursor: 'pointer', fontWeight: 700 }}>
+                  {saving ? '⏳ Saving…' : '💾 Save'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </>
   );
 }
