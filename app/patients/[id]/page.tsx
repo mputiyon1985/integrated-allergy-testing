@@ -282,13 +282,7 @@ export default function PatientDetailPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <div style={{ fontSize: 16, fontWeight: 700, color: '#1a2233' }}>Test Results ({tests.length})</div>
               <div style={{ display: 'flex', gap: 8 }}>
-                {tests.length > 0 && (
-                  <button onClick={() => window.print()}
-                    style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', color: '#374151', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
-                    🖨️ Print Results
-                  </button>
-                )}
-                <Link href={`/testing?patientId=${patient.id}`} style={{ padding: '8px 16px', borderRadius: 8, background: '#0d9488', color: '#fff', fontSize: 14, fontWeight: 700, textDecoration: 'none' }}>+ New Test Session</Link>
+                <Link href={`/testing?patientId=${patient.id}`} style={{ padding: '8px 16px', borderRadius: 8, background: '#0d9488', color: '#fff', fontSize: 14, fontWeight: 700, textDecoration: 'none' }}>🧪 Start New Test</Link>
               </div>
             </div>
             {tests.length === 0 ? (
@@ -321,22 +315,31 @@ export default function PatientDetailPage() {
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
                       <thead>
                         <tr style={{ background: '#f8fafc' }}>
-                          {['Allergen', 'Reaction', 'Wheal', 'Notes'].map(h => (
+                          {['Allergen', 'Reaction', 'Wheal', 'Flare', 'Location'].map(h => (
                             <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontSize: 12, fontWeight: 700, color: '#374151', textTransform: 'uppercase', borderBottom: '2px solid #e2e8f0' }}>{h}</th>
                           ))}
                         </tr>
                       </thead>
                       <tbody>
-                        {results.map(r => (
+                        {results.map(r => {
+                          // Parse flare and location out of notes field
+                          const notes = r.notes ?? '';
+                          const flareMatch = notes.match(/Flare:\s*([\d.]+\s*mm?)/i);
+                          const locMatch = notes.match(/Location:\s*([^;]+)/i);
+                          const flare = flareMatch ? flareMatch[1] : '—';
+                          const location = locMatch ? locMatch[1].trim() : 'Back';
+                          return (
                           <tr key={r.id} style={{ borderBottom: '1px solid #f1f5f9', background: (r.reaction ?? 0) >= 2 ? '#fff7ed' : 'transparent' }}>
                             <td style={{ padding: '10px 12px', fontWeight: 600 }}>{r.allergen?.name ?? '—'}</td>
                             <td style={{ padding: '10px 12px' }}>
                               <span style={{ fontWeight: 800, fontSize: 16, color: REACTION_COLOR[r.reaction ?? 0] }}>{r.reaction ?? 0}</span>
                             </td>
                             <td style={{ padding: '10px 12px', color: '#64748b' }}>{r.wheal ?? '—'}</td>
-                            <td style={{ padding: '10px 12px', color: '#64748b', fontSize: 13 }}>{r.notes ?? '—'}</td>
+                            <td style={{ padding: '10px 12px', color: '#64748b' }}>{flare}</td>
+                            <td style={{ padding: '10px 12px', color: '#64748b' }}>{location}</td>
                           </tr>
-                        ))}
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
