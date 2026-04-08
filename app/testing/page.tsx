@@ -67,11 +67,16 @@ function today() {
   return new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
 }
 
-/* ─── PatientSearch ─────────────────────────────────────────────── */
+/* ─── Step 1: Select Patient + Tester ───────────────────────────── */
 
-function PatientSearch({ onSelect }: { onSelect: (p: Patient) => void }) {
+function TestingSetup({ onStart }: {
+  onStart: (patient: Patient, nurse: string) => void;
+}) {
   const [q, setQ] = useState('');
   const [results, setResults] = useState<Patient[]>([]);
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+  const [nurses, setNurses] = useState<{ id: string; name: string; title?: string }[]>([]);
+  const [selectedNurse, setSelectedNurse] = useState('');
 
   const search = useCallback(async (val: string) => {
     if (val.length < 2) { setResults([]); return; }
@@ -84,55 +89,100 @@ function PatientSearch({ onSelect }: { onSelect: (p: Patient) => void }) {
 
   useEffect(() => { search(q); }, [q, search]);
 
+  useEffect(() => {
+    fetch('/api/nurses')
+      .then(r => r.ok ? r.json() : [])
+      .then((d: { id: string; name: string; title?: string }[] | { nurses?: { id: string; name: string; title?: string }[] }) => {
+        const list = Array.isArray(d) ? d : (d.nurses ?? []);
+        setNurses(list);
+      })
+      .catch(() => {});
+  }, []);
+
   return (
-    <div style={{ minHeight: '100vh', background: '#F8FAFC', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, boxShadow: '0 4px 24px rgba(0,0,0,0.08)', width: 480, padding: 32 }}>
-        <div style={{ textAlign: 'center', marginBottom: 24 }}>
-          <div style={{ fontSize: 36, marginBottom: 8 }}>🧪</div>
-          <div style={{ fontSize: 20, fontWeight: 700, color: '#0055A5' }}>Allergy Testing</div>
-          <div style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>Search for a patient to begin</div>
+    <div style={{ minHeight: '100vh', background: '#F8FAFC', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 16, boxShadow: '0 8px 32px rgba(0,0,0,0.10)', width: '100%', maxWidth: 540 }}>
+        {/* Header */}
+        <div style={{ background: 'linear-gradient(135deg, #0055A5, #0d9488)', borderRadius: '16px 16px 0 0', padding: '24px 32px', textAlign: 'center' }}>
+          <div style={{ fontSize: 40, marginBottom: 8 }}>🧪</div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: '#fff' }}>Allergy Testing</div>
+          <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.75)', marginTop: 4 }}>Select patient and tester to begin</div>
         </div>
-        <input
-          autoFocus
-          className="form-input"
-          placeholder="Patient name or ID…"
-          value={q}
-          onChange={e => setQ(e.target.value)}
-          style={{ marginBottom: 8 }}
-        />
-        {results.length > 0 && (
-          <div style={{ border: '1px solid #e2e8f0', borderRadius: 8, overflow: 'hidden', marginBottom: 16 }}>
-            {results.map((p, i) => (
-              <div
-                key={p.id}
-                onClick={() => onSelect(p)}
-                style={{
-                  padding: '11px 16px', cursor: 'pointer', fontSize: 14,
-                  borderBottom: i < results.length - 1 ? '1px solid #f1f5f9' : 'none',
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  transition: 'background 0.1s',
-                }}
-                onMouseEnter={e => (e.currentTarget.style.background = '#f8fafc')}
-                onMouseLeave={e => (e.currentTarget.style.background = '')}
-              >
+
+        <div style={{ padding: '28px 32px' }}>
+          {/* Step 1: Patient */}
+          <div style={{ marginBottom: 24 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
+              Step 1 — Select Patient
+            </div>
+            {selectedPatient ? (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: '#e8f9f7', border: '2px solid #0d9488', borderRadius: 10 }}>
                 <div>
-                  <span style={{ fontWeight: 600 }}>{p.name}</span>
-                  <span style={{ fontSize: 12, color: '#94a3b8', marginLeft: 8 }}>
-                    {p.patientId ?? p.id.slice(0, 8).toUpperCase()}
-                  </span>
+                  <div style={{ fontWeight: 700, fontSize: 15, color: '#0d9488' }}>{selectedPatient.name}</div>
+                  <div style={{ fontSize: 12, color: '#64748b' }}>{selectedPatient.patientId} · {selectedPatient.physician ?? 'No physician'}</div>
                 </div>
-                <span style={{ fontSize: 12, color: '#2EC4B6', fontWeight: 700 }}>SELECT →</span>
+                <button onClick={() => { setSelectedPatient(null); setQ(''); }}
+                  style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 18 }}>✕</button>
               </div>
-            ))}
+            ) : (
+              <>
+                <input autoFocus className="form-input" placeholder="Search by name or patient ID…" value={q}
+                  onChange={e => setQ(e.target.value)} style={{ fontSize: 15, padding: '12px 16px' }} />
+                {results.length > 0 && (
+                  <div style={{ border: '1px solid #e2e8f0', borderRadius: 8, overflow: 'hidden', marginTop: 4 }}>
+                    {results.map((p, i) => (
+                      <div key={p.id} onClick={() => { setSelectedPatient(p); setResults([]); setQ(''); }}
+                        style={{ padding: '11px 16px', cursor: 'pointer', fontSize: 14, borderBottom: i < results.length - 1 ? '1px solid #f1f5f9' : 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                        onMouseEnter={e => (e.currentTarget.style.background = '#f0fffe')}
+                        onMouseLeave={e => (e.currentTarget.style.background = '')}>
+                        <div>
+                          <span style={{ fontWeight: 600 }}>{p.name}</span>
+                          <span style={{ fontSize: 12, color: '#94a3b8', marginLeft: 8 }}>{p.patientId ?? p.id.slice(0,8).toUpperCase()}</span>
+                        </div>
+                        <span style={{ fontSize: 12, color: '#0d9488', fontWeight: 700 }}>SELECT →</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {q.length >= 2 && results.length === 0 && (
+                  <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: 13, padding: '10px 0' }}>No patients found</div>
+                )}
+              </>
+            )}
           </div>
-        )}
-        {q.length >= 2 && results.length === 0 && (
-          <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: 13, padding: '12px 0' }}>
-            No patients found
+
+          {/* Step 2: Nurse */}
+          <div style={{ marginBottom: 28 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
+              Step 2 — Tested By (Nurse / Clinician)
+            </div>
+            <select className="form-input" value={selectedNurse} onChange={e => setSelectedNurse(e.target.value)}
+              style={{ fontSize: 15, padding: '12px 16px' }}>
+              <option value="">— Select Clinician —</option>
+              {nurses.map(n => (
+                <option key={n.id} value={n.name}>{n.title ? `${n.title} ${n.name}` : n.name}</option>
+              ))}
+            </select>
           </div>
-        )}
-        <div style={{ textAlign: 'center', marginTop: 16 }}>
-          <Link href="/patients" style={{ fontSize: 13, color: '#0055A5', fontWeight: 600 }}>Browse all patients →</Link>
+
+          {/* Begin button */}
+          <button
+            onClick={() => { if (selectedPatient && selectedNurse) onStart(selectedPatient, selectedNurse); }}
+            disabled={!selectedPatient || !selectedNurse}
+            style={{
+              width: '100%', padding: '14px', borderRadius: 10, border: 'none',
+              background: selectedPatient && selectedNurse ? '#0d9488' : '#e2e8f0',
+              color: selectedPatient && selectedNurse ? '#fff' : '#94a3b8',
+              fontSize: 16, fontWeight: 800, cursor: selectedPatient && selectedNurse ? 'pointer' : 'not-allowed',
+              transition: 'background 0.2s',
+            }}
+          >
+            {selectedPatient && selectedNurse ? '🧪 Begin Testing →' : 'Select patient and clinician to continue'}
+          </button>
+
+          <div style={{ textAlign: 'center', marginTop: 16 }}>
+            <Link href="/patients/new" style={{ fontSize: 13, color: '#0055A5', fontWeight: 600 }}>+ Register New Patient</Link>
+          </div>
         </div>
       </div>
     </div>
@@ -400,8 +450,9 @@ function TestingPageInner() {
       .finally(() => setLoadingPatient(false));
   }, [urlPatientId]);
 
-  function handleSelectPatient(p: Patient) {
+  function handleStart(p: Patient, nurse: string) {
     setPatient(p);
+    setTestedBy(nurse);
     router.replace(`/testing?patientId=${p.id}`);
   }
 
@@ -590,9 +641,9 @@ ${(prickResults.length + idResults.length) === 0 ? '<p style="color:#94a3b8; tex
     }
   }
 
-  // ── Patient not yet selected
-  if (!patient && !loadingPatient) {
-    return <PatientSearch onSelect={handleSelectPatient} />;
+  // ── Step 1: select patient + nurse (unless coming from URL with patientId)
+  if (!patient && !loadingPatient && !urlPatientId) {
+    return <TestingSetup onStart={handleStart} />;
   }
 
   // ── Loading
