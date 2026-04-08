@@ -68,10 +68,15 @@ export default function KioskVideosPage() {
               const watchData = await watchRes.json();
               const watchedIds: string[] = watchData.watchedIds ?? [];
               if (watchedIds.length > 0) {
-                setWatched(new Set(watchedIds));
+                const watchedSet = new Set(watchedIds);
+                setWatched(watchedSet);
                 sessionStorage.setItem('kiosk_watched_ids', JSON.stringify(watchedIds));
                 sessionStorage.setItem('kiosk_watched_for_patient', dbPatientId);
                 sessionStorage.setItem('kiosk_videos_watched', String(watchedIds.length));
+                // If all videos already watched per DB, skip directly to consent
+                if (activeVideos.every((v: Video) => watchedSet.has(v.id))) {
+                  setTimeout(() => router.push('/kiosk/consent'), 800);
+                }
               }
             }
           } catch { /* non-blocking */ }
