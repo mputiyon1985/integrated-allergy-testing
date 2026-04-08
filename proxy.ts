@@ -5,7 +5,7 @@ const SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET || 'iat-dev-secret-change-in-production-32c'
 )
 const SESSION_COOKIE = 'iat_session'
-const PUBLIC_PATHS = ['/login', '/api/auth', '/consent', '/api/consent', '/api/seed', '/api/allergens/seed', '/api/health', '/kiosk', '/api/kiosk', '/api/waiting-room', '/_next', '/favicon']
+const PUBLIC_PATHS = ['/login', '/api/auth', '/consent', '/api/consent', '/api/seed', '/api/allergens/seed', '/api/health', '/kiosk', '/kiosk/update-info', '/api/kiosk', '/api/waiting-room', '/_next', '/favicon']
 
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl

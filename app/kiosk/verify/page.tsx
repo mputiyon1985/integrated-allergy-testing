@@ -67,15 +67,28 @@ function VerifyContent() {
           const allVideosDone = totalVideos === 0 || watchedCount >= totalVideos;
           const allConsentDone = consentRes.allSigned === true;
 
+          let nextStep: string;
           if (allVideosDone && allConsentDone) {
             // Everything done — go straight to done/waiting room
-            router.push('/kiosk/done');
+            nextStep = 'done';
           } else if (allVideosDone) {
             // Videos done, consent needed
-            router.push('/kiosk/consent');
+            nextStep = 'consent';
           } else {
             // Need to watch videos first
-            router.push('/kiosk/videos');
+            nextStep = 'videos';
+          }
+
+          // Store next step so update-info knows where to continue
+          sessionStorage.setItem('kiosk_next_step', nextStep);
+
+          // Check if patient is missing key info — redirect to update-info first
+          const patient = data.patient;
+          const missingInfo = !patient.phone || !patient.email || !patient.insuranceId;
+          if (missingInfo) {
+            router.push('/kiosk/update-info');
+          } else {
+            router.push(`/kiosk/${nextStep}`);
           }
         } catch {
           router.push('/kiosk/videos');
