@@ -36,28 +36,22 @@ export default function KioskVideosPage() {
       } catch { /* ignore parse error */ }
     }
 
-    // Only restore watched state if it's for the SAME patient session
-    // (prevents stale watched state from previous patient carrying over)
-    const savedPatientId = sessionStorage.getItem('kiosk_watched_for_patient');
+    // Get patient ID
     const currentPatientId = raw.startsWith('{') ? (() => { try { return JSON.parse(raw).id } catch { return '' } })() : raw;
+
+    // Only restore sessionStorage watched state if same patient
+    const savedPatientId = sessionStorage.getItem('kiosk_watched_for_patient');
     if (savedPatientId && savedPatientId === currentPatientId) {
       const savedWatched = sessionStorage.getItem('kiosk_watched_ids');
       if (savedWatched) {
         try { setWatched(new Set(JSON.parse(savedWatched))); } catch {}
       }
     } else {
-      // Different patient — clear stale watched data
       sessionStorage.removeItem('kiosk_watched_ids');
       sessionStorage.removeItem('kiosk_videos_watched');
     }
 
-    // Get patient ID for DB check
-    const currentPatientId = (() => {
-      try {
-        const r = sessionStorage.getItem('kiosk_patient') || ''
-        return r.startsWith('{') ? JSON.parse(r).id : r
-      } catch { return '' }
-    })()
+    const dbPatientId = currentPatientId
 
     fetch('/api/videos?active=true')
       .then(r => r.json())
@@ -67,16 +61,16 @@ export default function KioskVideosPage() {
         setVideos(activeVideos);
 
         // Check DB for already-watched videos this session
-        if (currentPatientId && activeVideos.length > 0) {
+        if (dbPatientId && activeVideos.length > 0) {
           try {
-            const watchRes = await fetch(`/api/kiosk/videos-watched?patientId=${currentPatientId}`);
+            const watchRes = await fetch(`/api/kiosk/videos-watched?patientId=${dbPatientId}`);
             if (watchRes.ok) {
               const watchData = await watchRes.json();
               const watchedIds: string[] = watchData.watchedIds ?? [];
               if (watchedIds.length > 0) {
                 setWatched(new Set(watchedIds));
                 sessionStorage.setItem('kiosk_watched_ids', JSON.stringify(watchedIds));
-                sessionStorage.setItem('kiosk_watched_for_patient', currentPatientId);
+                sessionStorage.setItem('kiosk_watched_for_patient', dbPatientId);
                 sessionStorage.setItem('kiosk_videos_watched', String(watchedIds.length));
               }
             }
