@@ -1,6 +1,15 @@
+/**
+ * @file /api/consent/check — Check consent form signing status for a patient
+ * @description
+ *   GET — Returns the signing status of all required consent forms for a given patientId.
+ *   Returns { allSigned: boolean, forms: ConsentFormStatus[] }.
+ *   Kiosk-facing and staff-facing endpoint.
+ */
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import { HIPAA_HEADERS } from '@/lib/hipaaHeaders'
+
+export const dynamic = 'force-dynamic'
 
 const CONSENT_FORMS = [
   { formId: 'form-consent-001', name: 'Patient Consent for Allergy Testing' },

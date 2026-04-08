@@ -4,6 +4,12 @@
  *   Shown only when the patient record is missing phone, email, address, or insuranceId.
  *   On save, updates the Patient record and routes to /kiosk/videos.
  */
+/**
+ * @file app/kiosk/update-info/page.tsx
+ * @description Kiosk contact-info update page.
+ *   Prompts the patient to fill in any missing fields (phone, email, address, insurance)
+ *   and saves them via PATCH /api/patients/[id]. Skips automatically if all fields present.
+ */
 'use client';
 
 import { useState, useEffect } from 'react';

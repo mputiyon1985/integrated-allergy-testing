@@ -1,3 +1,10 @@
+/**
+ * @file /api/consent/sign — Record a patient's consent form signature
+ * @description
+ *   POST — Creates a ConsentRecord with the patient's signature (base64 PNG).
+ *   Also creates an audit log entry for HIPAA compliance.
+ *   Kiosk-facing endpoint; requires patientId and formId.
+ */
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import { HIPAA_HEADERS } from '@/lib/hipaaHeaders'

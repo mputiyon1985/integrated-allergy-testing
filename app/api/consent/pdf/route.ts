@@ -1,3 +1,10 @@
+/**
+ * @file /api/consent/pdf — Generate a signed consent PDF for a patient
+ * @description
+ *   GET — Generates and returns a PDF for the specified patient + form combination.
+ *   Includes consent text, patient info, and embedded signature image.
+ *   Staff-facing endpoint for downloading signed consent records.
+ */
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import { jsPDF } from 'jspdf'

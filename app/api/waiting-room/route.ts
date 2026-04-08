@@ -1,6 +1,14 @@
+/**
+ * @file /api/waiting-room — Waiting room management
+ * @description
+ *   GET  — Returns all active waiting-room entries (status: waiting | in-service).
+ *   POST — Adds a patient to the waiting room after kiosk check-in completes.
+ *   Staff-facing (GET) and kiosk-facing (POST) endpoint.
+ */
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import { HIPAA_HEADERS } from '@/lib/hipaaHeaders'
+
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
