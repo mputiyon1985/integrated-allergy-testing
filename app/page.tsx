@@ -59,9 +59,17 @@ export default function DashboardPage() {
   const [selectedAppt, setSelectedAppt] = useState<TodayAppointment | null>(null);
   const [editingAppt, setEditingAppt] = useState<TodayAppointment | null>(null);
   const [editApptTitle, setEditApptTitle] = useState('');
-  const [editApptStart, setEditApptStart] = useState('');
-  const [editApptEnd, setEditApptEnd] = useState('');
+  const [editApptDate, setEditApptDate] = useState('');
+  const [editApptStartHour, setEditApptStartHour] = useState('09');
+  const [editApptStartMin, setEditApptStartMin] = useState('00');
+  const [editApptEndHour, setEditApptEndHour] = useState('10');
+  const [editApptEndMin, setEditApptEndMin] = useState('00');
+  const [editApptPatientId, setEditApptPatientId] = useState('');
+  const [editApptPatientName, setEditApptPatientName] = useState('');
+  const [editApptReasonId, setEditApptReasonId] = useState('');
   const [editApptNotes, setEditApptNotes] = useState('');
+  const [editApptPatients, setEditApptPatients] = useState<{id: string; name: string}[]>([]);
+  const [editApptReasons, setEditApptReasons] = useState<{id: string; name: string; color: string}[]>([]);
   const [savingAppt, setSavingAppt] = useState(false);
   const [deletingApptId, setDeletingApptId] = useState<string | null>(null);
   const [showAddApptModal, setShowAddApptModal] = useState(false);
@@ -430,14 +438,29 @@ export default function DashboardPage() {
               {/* Actions */}
               <div style={{ padding: '12px 20px', borderTop: '1px solid #e2e8f0', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     const t = selectedAppt;
+                    const start = t.startTime ? new Date(t.startTime) : new Date();
+                    const end = t.endTime ? new Date(t.endTime) : new Date();
                     setEditApptTitle(t.title);
-                    setEditApptStart(t.startTime ? new Date(t.startTime).toISOString().slice(0,16) : '');
-                    setEditApptEnd(t.endTime ? new Date(t.endTime).toISOString().slice(0,16) : '');
+                    setEditApptDate(start.toISOString().split('T')[0]);
+                    setEditApptStartHour(String(start.getHours()).padStart(2,'0'));
+                    setEditApptStartMin(String(start.getMinutes()).padStart(2,'0'));
+                    setEditApptEndHour(String(end.getHours()).padStart(2,'0'));
+                    setEditApptEndMin(String(end.getMinutes()).padStart(2,'0'));
+                    setEditApptPatientId(t.patientId || '');
+                    setEditApptPatientName(t.patientName || '');
+                    setEditApptReasonId(t.type || '');
                     setEditApptNotes(t.notes || '');
                     setEditingAppt(t);
                     setSelectedAppt(null);
+                    // Load patients and reasons
+                    const [pRes, rRes] = await Promise.allSettled([
+                      fetch('/api/patients').then(r => r.json()),
+                      fetch('/api/appointment-reasons').then(r => r.json()),
+                    ]);
+                    if (pRes.status === 'fulfilled') setEditApptPatients(Array.isArray(pRes.value) ? pRes.value : pRes.value.patients ?? []);
+                    if (rRes.status === 'fulfilled') setEditApptReasons(rRes.value.reasons ?? []);
                   }}
                   style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', color: '#374151', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
                   ✏️ Edit
@@ -469,18 +492,55 @@ export default function DashboardPage() {
                 <button onClick={() => setEditingAppt(null)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#64748b' }}>✕</button>
               </div>
               <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {/* Patient */}
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Patient *</label>
+                  <select className="form-input" value={editApptPatientId}
+                    onChange={e => { const p = editApptPatients.find(x => x.id === e.target.value); setEditApptPatientId(e.target.value); setEditApptPatientName(p?.name ?? ''); }}>
+                    <option value="">— Select Patient —</option>
+                    {editApptPatients.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  </select>
+                </div>
+                {/* Reason */}
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Reason</label>
+                  <select className="form-input" value={editApptReasonId} onChange={e => setEditApptReasonId(e.target.value)}>
+                    <option value="">— Select Reason —</option>
+                    {editApptReasons.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                  </select>
+                </div>
+                {/* Title */}
                 <div>
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Title</label>
                   <input className="form-input" value={editApptTitle} onChange={e => setEditApptTitle(e.target.value)} />
                 </div>
+                {/* Date + Time */}
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Date</label>
+                  <input className="form-input" type="date" value={editApptDate} onChange={e => setEditApptDate(e.target.value)} />
+                </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Start</label>
-                    <input className="form-input" type="datetime-local" value={editApptStart} onChange={e => setEditApptStart(e.target.value)} />
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Start Time</label>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <select className="form-input" value={editApptStartHour} onChange={e => setEditApptStartHour(e.target.value)}>
+                        {Array.from({length: 12}, (_, i) => i + 7).map(h => <option key={h} value={String(h).padStart(2,'0')}>{h > 12 ? `${h-12}PM` : h === 12 ? '12PM' : `${h}AM`}</option>)}
+                      </select>
+                      <select className="form-input" value={editApptStartMin} onChange={e => setEditApptStartMin(e.target.value)}>
+                        {['00','15','30','45'].map(m => <option key={m} value={m}>:{m}</option>)}
+                      </select>
+                    </div>
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>End</label>
-                    <input className="form-input" type="datetime-local" value={editApptEnd} onChange={e => setEditApptEnd(e.target.value)} />
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>End Time</label>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <select className="form-input" value={editApptEndHour} onChange={e => setEditApptEndHour(e.target.value)}>
+                        {Array.from({length: 12}, (_, i) => i + 7).map(h => <option key={h} value={String(h).padStart(2,'0')}>{h > 12 ? `${h-12}PM` : h === 12 ? '12PM' : `${h}AM`}</option>)}
+                      </select>
+                      <select className="form-input" value={editApptEndMin} onChange={e => setEditApptEndMin(e.target.value)}>
+                        {['00','15','30','45'].map(m => <option key={m} value={m}>:{m}</option>)}
+                      </select>
+                    </div>
                   </div>
                 </div>
                 <div>
@@ -492,9 +552,16 @@ export default function DashboardPage() {
                 <button onClick={() => setEditingAppt(null)} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: 13 }}>Cancel</button>
                 <button disabled={savingAppt} onClick={async () => {
                   setSavingAppt(true);
+                  const startIso = `${editApptDate}T${editApptStartHour}:${editApptStartMin}:00`;
+                  const endIso = `${editApptDate}T${editApptEndHour}:${editApptEndMin}:00`;
+                  const reason = editApptReasons.find(r => r.id === editApptReasonId);
                   await fetch(`/api/iat-appointments/${editingAppt.id}`, {
                     method: 'PUT', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ title: editApptTitle, startTime: editApptStart, endTime: editApptEnd, notes: editApptNotes }),
+                    body: JSON.stringify({
+                      title: editApptTitle, startTime: startIso, endTime: endIso,
+                      patientId: editApptPatientId, patientName: editApptPatientName,
+                      type: reason?.name || editApptReasonId, notes: editApptNotes,
+                    }),
                   });
                   setSavingAppt(false); setEditingAppt(null);
                   const today = new Date().toISOString().split('T')[0];
