@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 interface Patient {
   id: string;
@@ -17,7 +17,7 @@ interface LookupResult {
 
 function VerifyContent() {
   const router = useRouter();
-  // dob is in sessionStorage lookup data (passed via URL on the way in)
+  const searchParams = useSearchParams();
 
   const [patients, setPatients] = useState<Patient[]>([]);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
