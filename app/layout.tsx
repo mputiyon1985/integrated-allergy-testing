@@ -14,6 +14,7 @@ const navItems = [
   { href: '/nurses', label: 'Nurses', icon: '👩‍⚕️' },
   { href: '/locations', label: 'Locations', icon: '📍' },
   { href: '/videos', label: 'Videos', icon: '🎬' },
+  { href: '/kiosk', label: 'Kiosk', icon: '📲' },
   { href: '/settings', label: 'Settings', icon: '⚙️' },
 ];
 
