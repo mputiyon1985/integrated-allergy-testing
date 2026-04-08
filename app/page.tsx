@@ -55,6 +55,9 @@ export default function DashboardPage() {
   const [waiting, setWaiting] = useState<WaitingEntry[]>([]);
   const [nurses, setNurses] = useState<Nurse[]>([]);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [quickLogEntry, setQuickLogEntry] = useState<WaitingEntry | null>(null);
+  const [quickLogForm, setQuickLogForm] = useState({ activityType: 'note', notes: '' });
+  const [quickLogSaving, setQuickLogSaving] = useState(false);
   const [todayAppts, setTodayAppts] = useState<TodayAppointment[]>([]);
   const [selectedAppt, setSelectedAppt] = useState<TodayAppointment | null>(null);
   const [editingAppt, setEditingAppt] = useState<TodayAppointment | null>(null);
@@ -155,6 +158,24 @@ export default function DashboardPage() {
       }
     } catch {}
     setAddingAppt(false);
+  }
+
+  async function handleQuickLog() {
+    if (!quickLogEntry) return;
+    setQuickLogSaving(true);
+    await fetch('/api/encounter-activities', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        patientId: quickLogEntry.patientId,
+        activityType: quickLogForm.activityType,
+        notes: quickLogForm.notes,
+        performedBy: quickLogEntry.nurseName ?? '',
+      }),
+    });
+    setQuickLogSaving(false);
+    setQuickLogEntry(null);
+    setQuickLogForm({ activityType: 'note', notes: '' });
   }
 
   async function updateStatus(id: string, status: string, nurseName?: string) {
@@ -306,11 +327,17 @@ export default function DashboardPage() {
                     </td>
                     <td style={{ padding: '12px 14px' }}>
                       {e.status === 'in-service' && (
-                        <button onClick={() => updateStatus(e.id, 'complete')}
-                          disabled={updatingId === e.id}
-                          style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: '#0055A5', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
-                          {updatingId === e.id ? '⏳' : '✅ Complete'}
-                        </button>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <button onClick={() => { setQuickLogEntry(e); setQuickLogForm({ activityType: 'note', notes: '' }); }}
+                            style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid #0d9488', background: '#fff', color: '#0d9488', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                            + Log
+                          </button>
+                          <button onClick={() => updateStatus(e.id, 'complete')}
+                            disabled={updatingId === e.id}
+                            style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: '#0055A5', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                            {updatingId === e.id ? '⏳' : '✅ Complete'}
+                          </button>
+                        </div>
                       )}
                     </td>
                   </tr>
@@ -615,6 +642,64 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Quick Log Activity Modal */}
+      {quickLogEntry && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}>
+          <div style={{ background: '#fff', borderRadius: 16, width: 440, boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+            <div style={{ padding: '16px 24px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>📝 Log Activity — {quickLogEntry.patientName}</h2>
+              <button onClick={() => setQuickLogEntry(null)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#64748b' }}>✕</button>
+            </div>
+            <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Activity Type</label>
+                <select
+                  value={quickLogForm.activityType}
+                  onChange={e => setQuickLogForm(p => ({ ...p, activityType: e.target.value }))}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: 14 }}
+                >
+                  {[
+                    { value: 'shot',                     label: '💊 Shot / Injection' },
+                    { value: 'shot_maintenance',         label: '💉 Maintenance Shot' },
+                    { value: 'allergy_test',             label: '🧪 Allergy Test (Prick)' },
+                    { value: 'allergy_test_intradermal', label: '🔬 Allergy Test (Intradermal)' },
+                    { value: 'consent_signed',           label: '📋 Consent Signed' },
+                    { value: 'video_education',          label: '🎬 Video Watched' },
+                    { value: 'phone_call',               label: '📞 Phone Call' },
+                    { value: 'telehealth',               label: '💻 Telehealth Visit' },
+                    { value: 'email',                    label: '📧 Email' },
+                    { value: 'in_person_visit',          label: '🏥 In-Person Visit' },
+                    { value: 'appointment_scheduled',    label: '📅 Appointment Scheduled' },
+                    { value: 'no_show',                  label: '❌ No Show' },
+                    { value: 'note',                     label: '📝 Note' },
+                    { value: 'lab_order',                label: '🔬 Lab Order' },
+                    { value: 'referral',                 label: '🔗 Referral' },
+                    { value: 'prescription',             label: '📃 Prescription' },
+                  ].map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Brief Notes</label>
+                <textarea
+                  rows={3}
+                  value={quickLogForm.notes}
+                  onChange={e => setQuickLogForm(p => ({ ...p, notes: e.target.value }))}
+                  placeholder="Optional notes…"
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: 14, resize: 'vertical', boxSizing: 'border-box' }}
+                />
+              </div>
+            </div>
+            <div style={{ padding: '14px 24px', borderTop: '1px solid #e2e8f0', display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button onClick={() => setQuickLogEntry(null)} style={{ padding: '8px 18px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
+              <button onClick={handleQuickLog} disabled={quickLogSaving}
+                style={{ padding: '8px 18px', borderRadius: 8, border: 'none', background: '#0d9488', color: '#fff', cursor: 'pointer', fontWeight: 700 }}>
+                {quickLogSaving ? '⏳ Saving…' : '💾 Log Activity'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
