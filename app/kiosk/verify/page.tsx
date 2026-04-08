@@ -53,7 +53,25 @@ function VerifyContent() {
         // Use full patient data from API response (has full name, not just firstName)
         const patientData = data.patient || { ...selectedPatient, name: `${firstName.trim()} ${selectedPatient.id}` };
         sessionStorage.setItem('kiosk_patient', JSON.stringify(patientData));
-        router.push('/kiosk/videos');
+
+        // Check if patient already watched all videos — skip video page if so
+        const patId = patientData.id || selectedPatient.id;
+        try {
+          const [videosRes, watchedRes] = await Promise.all([
+            fetch('/api/videos').then(r => r.json()),
+            fetch(`/api/kiosk/videos-watched?patientId=${patId}`).then(r => r.json()),
+          ]);
+          const totalVideos = (Array.isArray(videosRes) ? videosRes : videosRes.videos ?? []).filter((v: { active?: boolean }) => v.active !== false).length;
+          const watchedCount = (watchedRes.watchedIds ?? []).length;
+          if (totalVideos > 0 && watchedCount >= totalVideos) {
+            // All videos watched — go straight to consent
+            router.push('/kiosk/consent');
+          } else {
+            router.push('/kiosk/videos');
+          }
+        } catch {
+          router.push('/kiosk/videos');
+        }
       } else {
         // Name doesn't match — automatically take them to new patient registration
         const dob = sessionStorage.getItem('kiosk_dob') || searchParams?.get('dob') || '';

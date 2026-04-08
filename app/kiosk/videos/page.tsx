@@ -73,10 +73,7 @@ export default function KioskVideosPage() {
                 sessionStorage.setItem('kiosk_watched_ids', JSON.stringify(watchedIds));
                 sessionStorage.setItem('kiosk_watched_for_patient', dbPatientId);
                 sessionStorage.setItem('kiosk_videos_watched', String(watchedIds.length));
-                // If all videos already watched per DB, skip directly to consent
-                if (activeVideos.every((v: Video) => watchedSet.has(v.id))) {
-                  setTimeout(() => router.push('/kiosk/consent'), 800);
-                }
+                // (routing handled at verify step — no redirect needed here)
               }
             }
           } catch { /* non-blocking */ }
