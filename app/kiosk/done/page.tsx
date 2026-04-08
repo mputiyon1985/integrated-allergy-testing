@@ -8,7 +8,7 @@ export default function DonePage() {
   const router = useRouter()
   const [patientName, setPatientName] = useState<string>('')
   const [currentTime, setCurrentTime] = useState<string>('')
-  const [countdown, setCountdown] = useState(30)
+  const [countdown, setCountdown] = useState(10)
 
   useEffect(() => {
     const raw = sessionStorage.getItem('kiosk_patient') || ''
@@ -97,11 +97,11 @@ export default function DonePage() {
         {/* Countdown */}
         <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
           <div style={{ fontSize: 14, color: '#64748b' }}>
-            Returning to start in <strong style={{ color: countdown <= 10 ? '#dc2626' : '#0d9488', fontSize: 18 }}>{countdown}</strong> seconds…
+            Returning to start in <strong style={{ color: countdown <= 5 ? '#dc2626' : '#0d9488', fontSize: 18 }}>{countdown}</strong> seconds…
           </div>
           {/* Progress bar */}
           <div style={{ width: 200, height: 6, background: '#e2e8f0', borderRadius: 999, overflow: 'hidden' }}>
-            <div style={{ height: '100%', background: countdown <= 10 ? '#dc2626' : '#0d9488', width: `${(countdown / 30) * 100}%`, transition: 'width 1s linear, background 0.3s' }} />
+            <div style={{ height: '100%', background: countdown <= 5 ? '#dc2626' : '#0d9488', width: `${(countdown / 10) * 100}%`, transition: 'width 1s linear, background 0.3s' }} />
           </div>
           <button onClick={() => { sessionStorage.removeItem('kiosk_patient'); sessionStorage.removeItem('kiosk_dob'); sessionStorage.removeItem('kiosk_lookup'); router.push('/kiosk'); }}
             style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontSize: 14, cursor: 'pointer', textDecoration: 'underline', padding: '4px 0' }}>
