@@ -85,8 +85,15 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
                   style={{ width: '100%', background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer', padding: 0 }}
                   onClick={() => {
                     onClose();
-                    const w = window.open('/kiosk', '_blank', 'width=' + screen.width + ',height=' + screen.height);
+                    // Open kiosk as a popup with no toolbar/controls
+                    const w = window.open(
+                      '/kiosk',
+                      'kiosk',
+                      `width=${screen.width},height=${screen.height},left=0,top=0,toolbar=no,menubar=no,scrollbars=no,status=no,location=no`
+                    );
                     if (w) {
+                      w.moveTo(0, 0);
+                      w.resizeTo(screen.width, screen.height);
                       w.addEventListener('load', () => {
                         w.document.documentElement.requestFullscreen?.().catch(() => {});
                       });
