@@ -97,7 +97,7 @@ export default function KioskVideosPage() {
         <h1 style={{ fontSize: 30, fontWeight: 800, color: '#0d9488', marginBottom: 16 }}>No Videos Required</h1>
         <p style={{ fontSize: 18, color: '#475569', marginBottom: 32 }}>You&apos;re all set! Proceed to check-in.</p>
         <button
-          onClick={() => router.push('/kiosk/done')}
+          onClick={() => router.push('/kiosk/consent')}
           style={{ padding: '22px 48px', fontSize: 22, fontWeight: 700, background: '#0d9488', color: '#fff', border: 'none', borderRadius: 14, cursor: 'pointer', minHeight: 70 }}
         >
           Continue to Check-In →
@@ -253,7 +253,7 @@ export default function KioskVideosPage() {
       {allWatched && (
         <div style={{ textAlign: 'center' }}>
           <button
-            onClick={() => router.push('/kiosk/done')}
+            onClick={() => router.push('/kiosk/consent')}
             style={{
               padding: '22px 56px',
               fontSize: 24,
