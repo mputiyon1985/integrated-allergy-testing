@@ -135,7 +135,21 @@ function LoginPageInner() {
           src="/integrated-allergy-logo.jpg"
           alt="Integrated Allergy"
           style={{ height: 56, width: 'auto', borderRadius: 8, background: '#fff', padding: '4px 8px' }}
+          onError={e => {
+            // Fallback if image fails to load
+            const el = e.currentTarget as HTMLImageElement;
+            el.style.display = 'none';
+            const fallback = el.nextElementSibling as HTMLElement;
+            if (fallback) fallback.style.display = 'flex';
+          }}
         />
+        <div style={{
+          display: 'none', alignItems: 'center', justifyContent: 'center',
+          height: 56, padding: '0 16px', background: '#fff', borderRadius: 8,
+          fontSize: 18, fontWeight: 800, color: '#0d9488', letterSpacing: '-0.5px',
+        }}>
+          🏥 Integrated Allergy
+        </div>
       </div>
       <h1 style={{ color: '#fff', fontSize: 20, fontWeight: 700, margin: 0, letterSpacing: '0.01em' }}>
         Integrated Allergy Testing
