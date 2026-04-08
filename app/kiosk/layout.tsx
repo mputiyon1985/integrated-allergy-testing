@@ -28,6 +28,38 @@ export default function KioskLayout({ children }: { children: React.ReactNode })
     return () => document.removeEventListener('fullscreenchange', onFsChange);
   }, []);
 
+  // Block keyboard shortcuts that could let patients escape kiosk
+  useEffect(() => {
+    function blockKeys(e: KeyboardEvent) {
+      // Block F11 (fullscreen toggle), F12 (DevTools), F5 (refresh)
+      if (e.key === 'F11' || e.key === 'F12' || e.key === 'F5') {
+        e.preventDefault(); e.stopPropagation(); return false;
+      }
+      // Block Ctrl+W (close tab), Ctrl+T (new tab), Ctrl+N (new window)
+      // Block Ctrl+R (refresh), Ctrl+L (address bar), Ctrl+U (view source)
+      if (e.ctrlKey && ['w','t','n','r','l','u','j'].includes(e.key.toLowerCase())) {
+        e.preventDefault(); e.stopPropagation(); return false;
+      }
+      // Block Alt+F4 (close window), Alt+Tab (switch app)
+      if (e.altKey && (e.key === 'F4' || e.key === 'Tab')) {
+        e.preventDefault(); e.stopPropagation(); return false;
+      }
+    }
+
+    // Block right-click context menu
+    function blockContext(e: MouseEvent) {
+      e.preventDefault(); return false;
+    }
+
+    document.addEventListener('keydown', blockKeys, true);
+    document.addEventListener('contextmenu', blockContext, true);
+
+    return () => {
+      document.removeEventListener('keydown', blockKeys, true);
+      document.removeEventListener('contextmenu', blockContext, true);
+    };
+  }, []);
+
   // Enter fullscreen on first interaction
   const enterFullscreen = useCallback(async () => {
     try {
