@@ -84,6 +84,7 @@ export default function PatientDetailPage() {
   const [saving, setSaving] = useState(false);
   const [editForm, setEditForm] = useState<Partial<Patient>>({});
   const [locationOptions, setLocationOptions] = useState<LocationOption[]>([]);
+  const [doctorOptions, setDoctorOptions] = useState<{ id: string; name: string; title?: string }[]>([]);
   const [nurses, setNurses] = useState<{ id: string; name: string; title?: string }[]>([]);
   const [sessionNurses, setSessionNurses] = useState<Record<string, string>>({});
   const [sessionNurseSaving, setSessionNurseSaving] = useState<Record<string, boolean>>({});
@@ -106,10 +107,19 @@ export default function PatientDetailPage() {
   useEffect(() => {
     if (editing && !locationsFetchedRef.current) {
       locationsFetchedRef.current = true;
-      fetch('/api/locations')
-        .then(r => r.ok ? r.json() : [])
-        .then((d: LocationOption[]) => setLocationOptions(Array.isArray(d) ? d : []))
-        .catch(() => {});
+      Promise.allSettled([
+        fetch('/api/locations').then(r => r.ok ? r.json() : []),
+        fetch('/api/doctors').then(r => r.ok ? r.json() : []),
+      ]).then(([locRes, docRes]) => {
+        if (locRes.status === 'fulfilled') {
+          const d = locRes.value as LocationOption[] | { locations?: LocationOption[] };
+          setLocationOptions(Array.isArray(d) ? d : (d.locations ?? []));
+        }
+        if (docRes.status === 'fulfilled') {
+          const d = docRes.value as { id: string; name: string; title?: string }[] | { doctors?: { id: string; name: string; title?: string }[] };
+          setDoctorOptions(Array.isArray(d) ? d : (d.doctors ?? []));
+        }
+      });
     }
   }, [editing]);
 
@@ -635,7 +645,17 @@ ${sectionsHtml}
                     ))}
                   </select>
                 </div>
-                <Field label="Physician" field="physician" />
+                <div style={{ marginBottom: 14 }}>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Physician</label>
+                  <select className="form-input" value={editForm.physician ?? ''} onChange={e => setEditForm(f => ({ ...f, physician: e.target.value }))}>
+                    <option value="">— Select Physician —</option>
+                    {doctorOptions.map(d => (
+                      <option key={d.id} value={`${d.title ? d.title + ' ' : ''}${d.name}`}>
+                        {d.title ? `${d.title} ${d.name}` : d.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <div>
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Clinic Location</label>
                   <select className="form-input" value={editForm.clinicLocation ?? ''} onChange={e => setEditForm(f => ({ ...f, clinicLocation: e.target.value }))}>
