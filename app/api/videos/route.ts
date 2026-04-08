@@ -55,6 +55,16 @@ export async function POST(request: NextRequest) {
       },
     })
 
+    prisma.auditLog.create({
+      data: {
+        action: 'VIDEO_CREATED',
+        entity: 'Video',
+        entityId: video.id,
+        patientId: null,
+        details: `Video created: ${video.title}`,
+      },
+    }).catch(() => {})
+
     return NextResponse.json(video, { status: 201 })
   } catch (error) {
     console.error('POST /api/videos error:', error)
