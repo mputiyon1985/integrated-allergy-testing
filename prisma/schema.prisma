@@ -111,6 +111,10 @@ model Patient {
   formActivity    FormActivity[]
   auditLogs       AuditLog[]
   consentRecords  ConsentRecord[]
+
+  @@index([dob])
+  @@index([deletedAt])
+  @@index([status])
 }
 
 model PatientDate {
@@ -157,6 +161,10 @@ model AllergyTestResult {
   patient    Patient   @relation(fields: [patientId], references: [id])
   allergen   Allergen  @relation(fields: [allergenId], references: [id])
   dates      TestDate[]
+
+  @@index([patientId])
+  @@index([deletedAt])
+  @@index([testedAt])
 }
 
 model TestDate {
