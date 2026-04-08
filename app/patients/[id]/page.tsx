@@ -178,7 +178,12 @@ export default function PatientDetailPage() {
 
   function fmt(val?: string) {
     if (!val) return '—';
-    try { return new Date(val).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }); }
+    try {
+      // Parse date and format in UTC to avoid timezone day-shift
+      const d = new Date(val);
+      return new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
+        .toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    }
     catch { return val; }
   }
 

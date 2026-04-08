@@ -51,7 +51,9 @@ export default function PatientsPage() {
   function formatDOB(val?: string) {
     if (!val) return '—';
     try {
-      return new Date(val).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      const d = new Date(val);
+      return new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
+        .toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     } catch {
       return val;
     }
