@@ -31,7 +31,12 @@ export default function ConsentPage() {
   const [justSigned, setJustSigned] = useState(false)
 
   useEffect(() => {
-    const id = sessionStorage.getItem('kiosk_patient_id') || sessionStorage.getItem('kiosk_patient')
+    // Patient may be stored as JSON object or plain ID string
+    const raw = sessionStorage.getItem('kiosk_patient') || sessionStorage.getItem('kiosk_patient_id') || ''
+    let id = raw
+    if (raw.startsWith('{')) {
+      try { id = JSON.parse(raw).id || '' } catch { id = '' }
+    }
     if (!id) {
       router.replace('/kiosk')
       return
@@ -45,7 +50,8 @@ export default function ConsentPage() {
           router.replace('/kiosk/done')
           return
         }
-        const unsigned = data.forms.filter(f => !data.signedIds.includes(f.id))
+        // Filter to unsigned forms only (API returns signed: boolean per form)
+        const unsigned = data.forms.filter((f: { signed: boolean }) => !f.signed)
         setForms(unsigned)
         setLoading(false)
       })
