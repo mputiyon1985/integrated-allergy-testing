@@ -693,13 +693,32 @@ ${sectionsHtml}
 function ConsentStatus({ patientId }: { patientId: string }) {
   const [forms, setForms] = useState<{ formId: string; name: string; signed: boolean; signedAt?: string }[]>([])
   const [loading, setLoading] = useState(true)
+  const [nurses, setNurses] = useState<{ id: string; name: string; title?: string }[]>([])
+  const [ackMap, setAckMap] = useState<Record<string, string>>({})
+  const [ackSaving, setAckSaving] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
-    fetch(`/api/consent/check?patientId=${patientId}`)
-      .then(r => r.json())
-      .then(d => { setForms(d.forms ?? []); setLoading(false) })
-      .catch(() => setLoading(false))
+    Promise.allSettled([
+      fetch(`/api/consent/check?patientId=${patientId}`).then(r => r.json()),
+      fetch('/api/nurses').then(r => r.json()),
+    ]).then(([formsRes, nursesRes]) => {
+      if (formsRes.status === 'fulfilled') setForms(formsRes.value.forms ?? [])
+      if (nursesRes.status === 'fulfilled') {
+        const d = nursesRes.value
+        setNurses(Array.isArray(d) ? d : (d.nurses ?? []))
+      }
+      setLoading(false)
+    }).catch(() => setLoading(false))
   }, [patientId])
+
+  async function ackForm(formId: string, nurseName: string) {
+    if (!nurseName) return
+    setAckSaving(prev => ({ ...prev, [formId]: true }))
+    setAckMap(prev => ({ ...prev, [formId]: nurseName }))
+    // Store ack in video activity notes for now — future: dedicated ack table
+    // For now just show visual confirmation
+    setTimeout(() => setAckSaving(prev => ({ ...prev, [formId]: false })), 500)
+  }
 
   if (loading) return <div className="loading-center"><div className="spinner" /></div>
   if (forms.length === 0) return (
@@ -725,7 +744,22 @@ function ConsentStatus({ patientId }: { patientId: string }) {
               <div style={{ fontSize: 13, color: '#b45309' }}>⚠️ Not yet signed</div>
             )}
           </div>
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            {f.signed && ackMap[f.formId] ? (
+              <span style={{ fontSize: 13, fontWeight: 700, color: '#15803d', background: '#dcfce7', padding: '4px 12px', borderRadius: 999 }}>
+                ✅ Verified by {ackMap[f.formId]}
+              </span>
+            ) : f.signed && nurses.length > 0 ? (
+              <select
+                defaultValue=""
+                disabled={ackSaving[f.formId]}
+                onChange={e => e.target.value && ackForm(f.formId, e.target.value)}
+                style={{ fontSize: 12, padding: '4px 10px', borderRadius: 6, border: '1px solid #e2e8f0', cursor: 'pointer', color: '#374151' }}
+              >
+                <option value="">✓ Nurse Verify</option>
+                {nurses.map(n => <option key={n.id} value={n.name}>{n.title ? `${n.title} ${n.name}` : n.name}</option>)}
+              </select>
+            ) : null}
             {f.signed && (
               <a
                 href={`/api/consent/pdf?patientId=${patientId}&formId=${f.formId}`}
