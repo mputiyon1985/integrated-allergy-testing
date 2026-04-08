@@ -79,18 +79,24 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
             // Kiosk opens in a new tab
             if (item.href === '/kiosk') {
               return (
-                <a
+                <button
                   key={item.href}
-                  href={item.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
                   className="nav-link"
-                  onClick={onClose}
+                  style={{ width: '100%', background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer', padding: 0 }}
+                  onClick={() => {
+                    onClose();
+                    const w = window.open('/kiosk', '_blank', 'width=' + screen.width + ',height=' + screen.height);
+                    if (w) {
+                      w.addEventListener('load', () => {
+                        w.document.documentElement.requestFullscreen?.().catch(() => {});
+                      });
+                    }
+                  }}
                 >
                   <span className="nav-icon">{item.icon}</span>
                   {item.label}
-                  <span style={{ fontSize: 10, opacity: 0.6, marginLeft: 4 }}>↗</span>
-                </a>
+                  <span style={{ fontSize: 10, opacity: 0.6, marginLeft: 4, background: '#0d9488', color: '#fff', padding: '1px 5px', borderRadius: 4 }}>LAUNCH</span>
+                </button>
               );
             }
             return (
