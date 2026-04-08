@@ -188,6 +188,37 @@ function VerifyContent() {
         </button>
       )}
 
+      {/* If name doesn't match, offer new patient registration */}
+      {error && (
+        <div style={{ marginBottom: 16, textAlign: 'center' }}>
+          <p style={{ fontSize: 15, color: '#64748b', marginBottom: 12 }}>
+            Not in our system yet?
+          </p>
+          <button
+            onClick={() => {
+              // Keep dob, pass to register
+              const dob = sessionStorage.getItem('kiosk_dob') || searchParams?.get('dob') || '';
+              router.push(`/kiosk/register?dob=${encodeURIComponent(dob)}&firstName=${encodeURIComponent(firstName.trim())}`);
+            }}
+            style={{
+              width: '100%',
+              padding: '18px 0',
+              fontSize: 18,
+              fontWeight: 700,
+              background: '#0055A5',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 14,
+              cursor: 'pointer',
+              minHeight: 60,
+              marginBottom: 12,
+            }}
+          >
+            📝 Register as New Patient →
+          </button>
+        </div>
+      )}
+
       <button
         onClick={() => router.push('/kiosk')}
         style={{
@@ -201,7 +232,7 @@ function VerifyContent() {
           minHeight: 44,
         }}
       >
-        ← Not me — go back
+        ← Start over
       </button>
     </div>
   );

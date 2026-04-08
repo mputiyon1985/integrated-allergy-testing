@@ -16,7 +16,7 @@ function RegisterContent() {
   const dob = searchParams.get('dob') || '';
 
   const [step, setStep] = useState(1);
-  const [firstName, setFirstName] = useState('');
+  const [firstName, setFirstName] = useState(searchParams?.get('firstName') || '');
   const [lastName, setLastName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
