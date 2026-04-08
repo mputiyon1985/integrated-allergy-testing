@@ -66,8 +66,8 @@ export default function DashboardPage() {
     }
     loadData();
     loadWaiting();
-    // Auto-refresh waiting room every 30s
-    const interval = setInterval(loadWaiting, 30000);
+    // Auto-refresh waiting room every 10s
+    const interval = setInterval(loadWaiting, 10000);
     return () => clearInterval(interval);
   }, [loadWaiting]);
 
@@ -134,9 +134,15 @@ export default function DashboardPage() {
         {/* Waiting Room Board */}
         <div className="card" style={{ marginBottom: 24 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <div className="card-title" style={{ margin: 0 }}>🏥 Waiting Room</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div className="card-title" style={{ margin: 0 }}>🏥 Waiting Room</div>
+              <span style={{ fontSize: 11, color: '#0d9488', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#0d9488', display: 'inline-block', animation: 'pulse 2s infinite' }} />
+                Live · refreshes every 10s
+              </span>
+            </div>
             <button onClick={loadWaiting} style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', color: '#374151', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-              ↻ Refresh
+              ↻ Now
             </button>
           </div>
 
