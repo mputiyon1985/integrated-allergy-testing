@@ -1,11 +1,5 @@
 /**
  * @file app/kiosk/verify/page.tsx
- * @description Kiosk step: identity verification. Patient enters their first name to confirm
- *   the match against the DOB lookup result. On success, routes to update-info or videos
- *   depending on whether patient info is complete.
- */
-/**
- * @file app/kiosk/verify/page.tsx
  * @description Kiosk patient identity verification page.
  *   Prompts the patient to confirm their first name, then calls /api/kiosk/verify.
  *   On success, checks videos/consent completion and routes to the appropriate next step.
@@ -18,8 +12,6 @@ import { useRouter, useSearchParams } from 'next/navigation';
 interface Patient {
   id: string;
   firstName: string;
-  lastName: string;
-  dateOfBirth: string;
 }
 
 interface LookupResult {
@@ -94,12 +86,17 @@ function VerifyContent() {
           // Store next step so update-info knows where to continue
           sessionStorage.setItem('kiosk_next_step', nextStep);
 
-          // Check if patient is missing key info — redirect to update-info first
-          const patient = data.patient;
-          const missingInfo = !patient.phone || !patient.email || !patient.insuranceId;
-          if (missingInfo) {
-            router.push('/kiosk/update-info');
-          } else {
+          // Fetch full patient record to check for missing info
+          // (verify API only returns id/firstName for privacy — need separate fetch)
+          try {
+            const fullPatient = await fetch(`/api/patients/${patientData.id}`).then(r => r.ok ? r.json() : null);
+            const missingInfo = fullPatient && (!fullPatient.phone || !fullPatient.email || !fullPatient.insuranceId);
+            if (missingInfo) {
+              router.push('/kiosk/update-info');
+            } else {
+              router.push(`/kiosk/${nextStep}`);
+            }
+          } catch {
             router.push(`/kiosk/${nextStep}`);
           }
         } catch {

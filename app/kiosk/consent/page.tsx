@@ -6,7 +6,7 @@
  */
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 
 interface ConsentForm {
@@ -27,6 +27,8 @@ interface CheckResponse {
 export default function ConsentPage() {
   const router = useRouter()
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  // Track pending timeouts for cleanup on unmount
+  const timeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([])
 
   const [patientId, setPatientId] = useState<string | null>(null)
   const [patientName, setPatientName] = useState<string>('')
@@ -39,6 +41,25 @@ export default function ConsentPage() {
   const [agreed, setAgreed] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [justSigned, setJustSigned] = useState(false)
+
+  // Clear all pending timeouts on unmount to prevent memory leaks / state-after-unmount
+  useEffect(() => {
+    return () => {
+      timeoutsRef.current.forEach(t => clearTimeout(t))
+    }
+  }, [])
+
+  const drawWatermark = useCallback(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')!
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    ctx.font = '18px sans-serif'
+    ctx.fillStyle = 'rgba(0,0,0,0.15)'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText('Sign here', canvas.width / 2, canvas.height / 2)
+  }, [])
 
   useEffect(() => {
     // Patient may be stored as JSON object or plain ID string
@@ -95,19 +116,7 @@ export default function ConsentPage() {
     if (!loading && forms.length > 0) {
       drawWatermark()
     }
-  }, [loading, currentIndex, forms.length])
-
-  function drawWatermark() {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext('2d')!
-    ctx.clearRect(0, 0, canvas.width, canvas.height)
-    ctx.font = '18px sans-serif'
-    ctx.fillStyle = 'rgba(0,0,0,0.15)'
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-    ctx.fillText('Sign here', canvas.width / 2, canvas.height / 2)
-  }
+  }, [loading, currentIndex, forms.length, drawWatermark])
 
   function startSign(e: React.MouseEvent | React.TouchEvent) {
     e.preventDefault()
@@ -176,7 +185,9 @@ export default function ConsentPage() {
       if (!res.ok) throw new Error('Sign failed')
 
       setJustSigned(true)
-      setTimeout(() => {
+
+      // Use tracked timeouts so they can be cleaned up on unmount
+      const t1 = setTimeout(() => {
         setJustSigned(false)
         setAgreed(false)
         setHasSig(false)
@@ -186,9 +197,11 @@ export default function ConsentPage() {
           router.replace('/kiosk/done')
         } else {
           setCurrentIndex(i => i + 1)
-          setTimeout(drawWatermark, 50)
+          const t2 = setTimeout(drawWatermark, 50)
+          timeoutsRef.current.push(t2)
         }
       }, 1200)
+      timeoutsRef.current.push(t1)
     } catch {
       setError('Failed to save signature. Please try again.')
     } finally {

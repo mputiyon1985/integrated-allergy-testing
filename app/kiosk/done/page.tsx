@@ -3,11 +3,24 @@
  * @description Kiosk check-in completion page. Adds patient to waiting room,
  *   displays a thank-you message with a live clock, then auto-resets
  *   to /kiosk after 10 seconds so the kiosk is ready for the next patient.
+ *   Session keys cleared on reset: kiosk_patient, kiosk_dob, kiosk_lookup,
+ *   kiosk_watched_ids, kiosk_videos_watched, kiosk_watched_for_patient, kiosk_next_step.
  */
 'use client'
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+
+/** All sessionStorage keys used by the kiosk flow. */
+const KIOSK_KEYS = [
+  'kiosk_patient',
+  'kiosk_dob',
+  'kiosk_lookup',
+  'kiosk_watched_ids',
+  'kiosk_videos_watched',
+  'kiosk_watched_for_patient',
+  'kiosk_next_step',
+] as const
 
 /** Parse patient name and ID from sessionStorage. */
 function getPatientFromStorage(): { name: string; id: string } {
@@ -64,26 +77,21 @@ export default function DonePage() {
     return () => clearInterval(timer)
   }, [])
 
-  // 30-second countdown then reset for next patient
+  // 10-second countdown interval — pure tick, no side-effects in state updater.
   useEffect(() => {
     const timer = setInterval(() => {
-      setCountdown(prev => {
-        if (prev <= 1) {
-          clearInterval(timer)
-          sessionStorage.removeItem('kiosk_patient')
-          sessionStorage.removeItem('kiosk_dob')
-          sessionStorage.removeItem('kiosk_lookup')
-          sessionStorage.removeItem('kiosk_watched_ids')
-          sessionStorage.removeItem('kiosk_videos_watched')
-          sessionStorage.removeItem('kiosk_watched_for_patient')
-          router.push('/kiosk')
-          return 0
-        }
-        return prev - 1
-      })
+      setCountdown(prev => (prev > 1 ? prev - 1 : 0))
     }, 1000)
     return () => clearInterval(timer)
-  }, [router])
+  }, []) // intentionally empty — runs once for the lifetime of this page
+
+  // Navigate when countdown hits 0 (separated from the interval so the state
+  // updater stays pure — no side-effects like clearInterval inside setState).
+  useEffect(() => {
+    if (countdown !== 0) return
+    KIOSK_KEYS.forEach(k => sessionStorage.removeItem(k))
+    router.push('/kiosk')
+  }, [countdown, router])
 
   return (
     <div style={styles.page}>
@@ -118,8 +126,13 @@ export default function DonePage() {
           <div style={{ width: 200, height: 6, background: '#e2e8f0', borderRadius: 999, overflow: 'hidden' }}>
             <div style={{ height: '100%', background: countdown <= 5 ? '#dc2626' : '#0d9488', width: `${(countdown / 10) * 100}%`, transition: 'width 1s linear, background 0.3s' }} />
           </div>
-          <button onClick={() => { ['kiosk_patient','kiosk_dob','kiosk_lookup','kiosk_watched_ids','kiosk_videos_watched','kiosk_watched_for_patient'].forEach(k => sessionStorage.removeItem(k)); router.push('/kiosk'); }}
-            style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontSize: 14, cursor: 'pointer', textDecoration: 'underline', padding: '4px 0' }}>
+          <button
+            onClick={() => {
+              KIOSK_KEYS.forEach(k => sessionStorage.removeItem(k))
+              router.push('/kiosk')
+            }}
+            style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontSize: 14, cursor: 'pointer', textDecoration: 'underline', padding: '4px 0' }}
+          >
             Start Over Now
           </button>
         </div>
@@ -168,7 +181,6 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 100,
     lineHeight: 1,
     display: 'inline-block',
-    // Pulse applied via className below via a wrapper trick
     animation: 'pulse 2.2s ease-in-out infinite',
   },
   thankYou: {

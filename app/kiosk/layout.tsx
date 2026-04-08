@@ -12,6 +12,13 @@ export default function KioskLayout({ children }: { children: React.ReactNode })
   const [logoTaps, setLogoTaps] = useState(0);
   const tapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Clear tap reset timer on unmount to prevent state-after-unmount
+  useEffect(() => {
+    return () => {
+      if (tapTimer.current) clearTimeout(tapTimer.current);
+    };
+  }, []);
+
   // Track fullscreen state changes
   useEffect(() => {
     function onFsChange() {
