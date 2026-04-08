@@ -53,6 +53,8 @@ export default function DashboardPage() {
   const [nurses, setNurses] = useState<Nurse[]>([]);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [todayAppts, setTodayAppts] = useState<TodayAppointment[]>([]);
+  const [selectedAppt, setSelectedAppt] = useState<TodayAppointment | null>(null);
+  const [deletingApptId, setDeletingApptId] = useState<string | null>(null);
   const [showAddApptModal, setShowAddApptModal] = useState(false);
   const [newApptTitle, setNewApptTitle] = useState('');
   const [newApptTime, setNewApptTime] = useState('09:00');
@@ -332,7 +334,12 @@ export default function DashboardPage() {
               {todayAppts.map(appt => {
                 const c = APPT_TYPE_COLORS[appt.type] ?? APPT_TYPE_COLORS['allergy-test'];
                 return (
-                  <div key={appt.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', background: c.bg, borderRadius: 10, border: `1.5px solid ${c.text}20` }}>
+                  <div key={appt.id}
+                    onClick={() => setSelectedAppt(appt)}
+                    style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', background: c.bg, borderRadius: 10, border: `1.5px solid ${c.text}20`, cursor: 'pointer', transition: 'box-shadow 0.15s' }}
+                    onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.12)')}
+                    onMouseLeave={e => (e.currentTarget.style.boxShadow = 'none')}
+                  >
                     <div style={{ fontWeight: 700, fontSize: 13, color: c.text, minWidth: 56 }}>
                       {formatApptTime(appt.startTime)}
                     </div>
@@ -386,6 +393,55 @@ export default function DashboardPage() {
             </div>
           )}
         </div>
+
+        {/* Appointment Detail/Edit/Delete Modal */}
+        {selectedAppt && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+            <div style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 420, boxShadow: '0 20px 60px rgba(0,0,0,0.2)', overflow: 'hidden' }}>
+              {/* Header */}
+              <div style={{ background: APPT_TYPE_COLORS[selectedAppt.type]?.bg ?? '#e8f9f7', padding: '16px 20px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ fontWeight: 800, fontSize: 16, color: APPT_TYPE_COLORS[selectedAppt.type]?.text ?? '#0d9488' }}>{selectedAppt.title}</div>
+                <button onClick={() => setSelectedAppt(null)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#64748b' }}>✕</button>
+              </div>
+              {/* Details */}
+              <div style={{ padding: '16px 20px' }}>
+                {[
+                  { label: 'Patient', value: selectedAppt.patientName || '—' },
+                  { label: 'Time', value: `${formatApptTime(selectedAppt.startTime)} – ${formatApptTime(selectedAppt.endTime)}` },
+                  { label: 'Type', value: selectedAppt.type },
+                  { label: 'Status', value: selectedAppt.status },
+                  { label: 'Notes', value: selectedAppt.notes || '—' },
+                ].map(r => (
+                  <div key={r.label} style={{ display: 'flex', gap: 12, padding: '8px 0', borderBottom: '1px solid #f1f5f9' }}>
+                    <div style={{ width: 70, fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>{r.label}</div>
+                    <div style={{ fontSize: 14, color: '#111827' }}>{r.value}</div>
+                  </div>
+                ))}
+              </div>
+              {/* Actions */}
+              <div style={{ padding: '12px 20px', borderTop: '1px solid #e2e8f0', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                <a href={`/calendar?action=edit&id=${selectedAppt.id}`}
+                  style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', color: '#374151', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}
+                  onClick={() => setSelectedAppt(null)}>
+                  ✏️ Edit
+                </a>
+                <button
+                  disabled={deletingApptId === selectedAppt.id}
+                  onClick={async () => {
+                    if (!confirm('Delete this appointment?')) return;
+                    setDeletingApptId(selectedAppt.id);
+                    await fetch(`/api/iat-appointments/${selectedAppt.id}`, { method: 'DELETE' });
+                    setTodayAppts(prev => prev.filter(a => a.id !== selectedAppt.id));
+                    setSelectedAppt(null);
+                    setDeletingApptId(null);
+                  }}
+                  style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: '#fef2f2', color: '#b91c1c', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                  {deletingApptId === selectedAppt.id ? '⏳' : '🗑️ Delete'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Quick Actions */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
