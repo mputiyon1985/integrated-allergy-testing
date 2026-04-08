@@ -361,7 +361,19 @@ function TestingPageInner() {
   const [applyWheal, setApplyWheal] = useState('');
   const [applyFlare, setApplyFlare] = useState('');
   const [testedBy, setTestedBy] = useState('');
+  const [nurses, setNurses] = useState<{ id: string; name: string; title?: string }[]>([]);
   const printRef = useRef<HTMLDivElement>(null);
+
+  // Load nurses for "Tested By" dropdown
+  useEffect(() => {
+    fetch('/api/nurses')
+      .then(r => r.ok ? r.json() : [])
+      .then((data: { id: string; name: string; title?: string }[] | { nurses?: { id: string; name: string; title?: string }[] }) => {
+        const list = Array.isArray(data) ? data : (data.nurses ?? []);
+        setNurses(list.filter((n: { active?: boolean }) => n.active !== false));
+      })
+      .catch(() => {});
+  }, []);
 
   // Load allergens
   useEffect(() => {
@@ -570,17 +582,22 @@ function TestingPageInner() {
           </div>
           <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
             <span style={{ opacity: 0.7 }}>Tested By:</span>
-            <input
-              type="text"
-              placeholder="Clinician name"
+            <select
               value={testedBy}
               onChange={e => setTestedBy(e.target.value)}
               style={{
                 background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)',
                 borderRadius: 4, padding: '3px 8px', color: '#fff', fontSize: 13,
-                width: 140,
+                width: 160, cursor: 'pointer',
               }}
-            />
+            >
+              <option value="" style={{ color: '#374151', background: '#fff' }}>— Select Nurse —</option>
+              {nurses.map(n => (
+                <option key={n.id} value={n.name} style={{ color: '#374151', background: '#fff' }}>
+                  {n.title ? `${n.title} ${n.name}` : n.name}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 
