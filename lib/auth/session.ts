@@ -10,18 +10,28 @@
  */
 import { SignJWT, jwtVerify } from 'jose'
 import { cookies } from 'next/headers'
+import { getSecret } from '@/lib/keyVault'
 
-const SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'iat-dev-secret-change-in-production-32c'
-)
 const COOKIE_NAME = 'iat_session'
 
+// Lazy-loaded secret — fetched from Key Vault on first use, cached in memory
+let _secretBytes: Uint8Array | null = null;
+
+async function getSecretBytes(): Promise<Uint8Array> {
+  if (_secretBytes) return _secretBytes;
+  const secret = await getSecret('iat-jwt-secret', 'JWT_SECRET')
+    ?? 'iat-dev-secret-change-in-production-32c';
+  _secretBytes = new TextEncoder().encode(secret);
+  return _secretBytes;
+}
+
 export async function signSession(payload: Record<string, unknown>) {
+  const secret = await getSecretBytes();
   return new SignJWT(payload)
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime('8h')
-    .sign(SECRET)
+    .sign(secret)
 }
 
 export async function verifySession(req: Request): Promise<Record<string, unknown> | null> {
@@ -29,7 +39,8 @@ export async function verifySession(req: Request): Promise<Record<string, unknow
     const cookieHeader = req.headers.get('cookie') || ''
     const match = cookieHeader.match(new RegExp(`${COOKIE_NAME}=([^;]+)`))
     if (!match) return null
-    const { payload } = await jwtVerify(match[1], SECRET)
+    const secret = await getSecretBytes();
+    const { payload } = await jwtVerify(match[1], secret)
     return payload as Record<string, unknown>
   } catch { return null }
 }
