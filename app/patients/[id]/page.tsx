@@ -245,6 +245,7 @@ export default function PatientDetailPage() {
     <span><strong>Physician:</strong> ${patient.physician ?? '—'}</span>
     <span><strong>Tested By:</strong> ${nurseName}</span>
     <span><strong>Clinic Location:</strong> ${patient.clinicLocation ?? '—'}</span>
+    <span><strong>Insurance ID:</strong> ${patient.insuranceId ?? '—'}</span>
     <span><strong>Print Date:</strong> ${new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}</span>
   </div>
 </div>
