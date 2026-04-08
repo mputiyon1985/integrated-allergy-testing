@@ -190,7 +190,7 @@ export default function PatientDetailPage() {
         const flareMatch = notes.match(/Flare:\s*([\d.]+\s*mm?)/i);
         const locMatch = notes.match(/Location:\s*([^;]+)/i);
         const flare = flareMatch ? flareMatch[1] : '—';
-        const location = locMatch ? locMatch[1].trim() : 'Back';
+        const injectionSite = locMatch ? locMatch[1].trim() : 'Back';
         const grade = r.reaction ?? 0;
         return `<tr style="border-bottom:1px solid #e2e8f0; background:${grade >= 2 ? '#fff7ed' : i % 2 === 0 ? '#fff' : '#f8fafc'}">
           <td style="padding:6px 10px;">${i+1}</td>
@@ -199,7 +199,7 @@ export default function PatientDetailPage() {
           <td style="padding:6px 10px; color:#64748b; font-size:12px;">${gradeLabel[grade]}</td>
           <td style="padding:6px 10px; color:#374151;">${r.wheal ?? '—'}</td>
           <td style="padding:6px 10px; color:#374151;">${flare}</td>
-          <td style="padding:6px 10px; color:#64748b;">${location}</td>
+          <td style="padding:6px 10px; color:#64748b;">${injectionSite}</td>
           <td style="padding:6px 10px; color:#64748b; font-size:11px;">${dateLabel}</td>
         </tr>`;
       }).join('');
@@ -239,7 +239,7 @@ export default function PatientDetailPage() {
     <span><strong>DOB:</strong> ${fmt(patient.dob)}</span>
     <span><strong>Physician:</strong> ${patient.physician ?? '—'}</span>
     <span><strong>Tested By:</strong> ${nurseName}</span>
-    <span><strong>Location:</strong> ${patient.clinicLocation ?? '—'}</span>
+    <span><strong>Clinic Location:</strong> ${patient.clinicLocation ?? '—'}</span>
     <span><strong>Print Date:</strong> ${new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}</span>
   </div>
 </div>

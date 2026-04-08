@@ -620,6 +620,7 @@ function TestingPageInner() {
     <span><strong>ID:</strong> ${patient?.patientId ?? patient?.id?.slice(0,8).toUpperCase()}</span>
     <span><strong>DOB:</strong> ${patient?.dob ? new Date(patient.dob).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}) : '—'}</span>
     <span><strong>Physician:</strong> ${patient?.physician ?? '—'}</span>
+    <span><strong>Clinic Location:</strong> ${patient?.clinicLocation ?? '—'}</span>
     <span><strong>Tested By:</strong> ${testedBy || '—'}</span>
     <span><strong>Date:</strong> ${new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}</span>
   </div>
