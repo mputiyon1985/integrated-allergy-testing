@@ -9,6 +9,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 
 export default function KioskLayout({ children }: { children: React.ReactNode }) {
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [hasBeenFullscreen, setHasBeenFullscreen] = useState(false);
   const [logoTaps, setLogoTaps] = useState(0);
   const tapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -22,7 +23,9 @@ export default function KioskLayout({ children }: { children: React.ReactNode })
   // Track fullscreen state changes
   useEffect(() => {
     function onFsChange() {
-      setIsFullscreen(!!document.fullscreenElement);
+      const fs = !!document.fullscreenElement;
+      setIsFullscreen(fs);
+      if (fs) setHasBeenFullscreen(true); // track that we entered fullscreen at least once
     }
     document.addEventListener('fullscreenchange', onFsChange);
     return () => document.removeEventListener('fullscreenchange', onFsChange);
@@ -83,8 +86,8 @@ export default function KioskLayout({ children }: { children: React.ReactNode })
 
   return (
     <div style={{ minHeight: '100vh', background: '#F8FAFC', display: 'flex', flexDirection: 'column' }}>
-      {/* Fullscreen guard overlay — shown when patient exits fullscreen */}
-      {!isFullscreen && (
+      {/* Fullscreen guard overlay — only shown AFTER patient was already fullscreen */}
+      {!isFullscreen && hasBeenFullscreen && (
         <div style={{
           position: 'fixed', inset: 0, zIndex: 9999,
           background: 'rgba(0,0,0,0.92)',
