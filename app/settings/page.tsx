@@ -196,8 +196,8 @@ function Icd10CodesSection() {
 
   function load() {
     fetch('/api/icd10-codes?all=true')
-      .then(r => r.ok ? r.json() : { codes: [] })
-      .then(d => { setCodes(d.codes ?? []); setLoading(false); })
+      .then(r => r.json())
+      .then(d => { setCodes(d.codes ?? (Array.isArray(d) ? d : [])); setLoading(false); })
       .catch(() => setLoading(false));
   }
 
@@ -308,8 +308,8 @@ function CptCodesSection() {
 
   function load() {
     fetch('/api/cpt-codes?all=true')
-      .then(r => r.ok ? r.json() : { codes: [] })
-      .then(d => { setCodes(d.codes ?? []); setLoading(false); })
+      .then(r => r.json())
+      .then(d => { setCodes(d.codes ?? (Array.isArray(d) ? d : [])); setLoading(false); })
       .catch(() => setLoading(false));
   }
 
