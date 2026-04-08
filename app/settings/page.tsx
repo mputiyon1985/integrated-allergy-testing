@@ -184,6 +184,237 @@ function AuditLogSection() {
   );
 }
 
+// ────────────────────────────────────────────────────────────
+//  ICD-10 Codes Management
+// ────────────────────────────────────────────────────────────
+function Icd10CodesSection() {
+  const [codes, setCodes] = useState<{ id: string; code: string; description: string; category?: string; active: boolean }[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showAdd, setShowAdd] = useState(false);
+  const [addForm, setAddForm] = useState({ code: '', description: '', category: '' });
+  const [saving, setSaving] = useState(false);
+
+  function load() {
+    fetch('/api/icd10-codes?all=true')
+      .then(r => r.ok ? r.json() : { codes: [] })
+      .then(d => { setCodes(d.codes ?? []); setLoading(false); })
+      .catch(() => setLoading(false));
+  }
+
+  useEffect(() => { load(); }, []);
+
+  async function toggleActive(id: string, active: boolean) {
+    await fetch(`/api/icd10-codes/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ active: !active }),
+    }).catch(() => {});
+    load();
+  }
+
+  async function addCode() {
+    if (!addForm.code.trim() || !addForm.description.trim()) return;
+    setSaving(true);
+    await fetch('/api/icd10-codes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(addForm),
+    }).catch(() => {});
+    setSaving(false);
+    setAddForm({ code: '', description: '', category: '' });
+    setShowAdd(false);
+    load();
+  }
+
+  return (
+    <div className="card" style={{ gridColumn: '1 / -1' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <div className="card-title" style={{ marginBottom: 0 }}>🏷️ ICD-10 Diagnosis Codes</div>
+        <button onClick={() => setShowAdd(v => !v)}
+          style={{ padding: '7px 16px', borderRadius: 8, border: 'none', background: '#0d9488', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+          + Add Code
+        </button>
+      </div>
+      {showAdd && (
+        <div style={{ background: '#f0fdf4', borderRadius: 10, padding: 16, marginBottom: 16, display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Code *</label>
+            <input className="form-input" value={addForm.code} onChange={e => setAddForm(f => ({ ...f, code: e.target.value }))} placeholder="e.g. J30.1" style={{ width: 120 }} />
+          </div>
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Description *</label>
+            <input className="form-input" value={addForm.description} onChange={e => setAddForm(f => ({ ...f, description: e.target.value }))} placeholder="e.g. Allergic rhinitis due to pollen" />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Category</label>
+            <input className="form-input" value={addForm.category} onChange={e => setAddForm(f => ({ ...f, category: e.target.value }))} placeholder="e.g. Allergic Rhinitis" style={{ width: 160 }} />
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={addCode} disabled={saving || !addForm.code.trim() || !addForm.description.trim()}
+              style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: '#0d9488', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+              {saving ? '⏳' : '💾 Save'}
+            </button>
+            <button onClick={() => setShowAdd(false)}
+              style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', cursor: 'pointer', fontSize: 13 }}>Cancel</button>
+          </div>
+        </div>
+      )}
+      {loading ? (
+        <div style={{ padding: '16px 0', textAlign: 'center', color: '#94a3b8' }}>Loading…</div>
+      ) : codes.length === 0 ? (
+        <div style={{ padding: '24px 0', textAlign: 'center', color: '#94a3b8', fontSize: 14 }}>No ICD-10 codes configured yet. Click &quot;+ Add Code&quot; to add one.</div>
+      ) : (
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <thead>
+              <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+                {['Code', 'Description', 'Category', 'Active'].map(h => (
+                  <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: '#475569' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {codes.map((c, i) => (
+                <tr key={c.id} style={{ borderBottom: '1px solid #f1f5f9', background: i % 2 === 0 ? '#fff' : '#f8fafc' }}>
+                  <td style={{ padding: '8px 12px', fontWeight: 700, color: '#0d9488', fontFamily: 'monospace' }}>{c.code}</td>
+                  <td style={{ padding: '8px 12px', color: '#374151' }}>{c.description}</td>
+                  <td style={{ padding: '8px 12px', color: '#64748b', fontSize: 12 }}>{c.category ?? '—'}</td>
+                  <td style={{ padding: '8px 12px' }}>
+                    <button onClick={() => toggleActive(c.id, c.active)}
+                      style={{ padding: '3px 12px', borderRadius: 999, border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                        background: c.active ? '#dcfce7' : '#f3f4f6', color: c.active ? '#15803d' : '#64748b' }}>
+                      {c.active ? '✅ Active' : '⬜ Inactive'}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────
+//  CPT Codes Management
+// ────────────────────────────────────────────────────────────
+function CptCodesSection() {
+  const [codes, setCodes] = useState<{ id: string; code: string; description: string; category?: string; defaultFee?: number; active: boolean }[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showAdd, setShowAdd] = useState(false);
+  const [addForm, setAddForm] = useState({ code: '', description: '', category: '', defaultFee: '' });
+  const [saving, setSaving] = useState(false);
+
+  function load() {
+    fetch('/api/cpt-codes?all=true')
+      .then(r => r.ok ? r.json() : { codes: [] })
+      .then(d => { setCodes(d.codes ?? []); setLoading(false); })
+      .catch(() => setLoading(false));
+  }
+
+  useEffect(() => { load(); }, []);
+
+  async function toggleActive(id: string, active: boolean) {
+    await fetch(`/api/cpt-codes/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ active: !active }),
+    }).catch(() => {});
+    load();
+  }
+
+  async function addCode() {
+    if (!addForm.code.trim() || !addForm.description.trim()) return;
+    setSaving(true);
+    await fetch('/api/cpt-codes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...addForm, defaultFee: addForm.defaultFee ? parseFloat(addForm.defaultFee) : undefined }),
+    }).catch(() => {});
+    setSaving(false);
+    setAddForm({ code: '', description: '', category: '', defaultFee: '' });
+    setShowAdd(false);
+    load();
+  }
+
+  return (
+    <div className="card" style={{ gridColumn: '1 / -1' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <div className="card-title" style={{ marginBottom: 0 }}>💊 CPT Procedure Codes</div>
+        <button onClick={() => setShowAdd(v => !v)}
+          style={{ padding: '7px 16px', borderRadius: 8, border: 'none', background: '#7c3aed', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+          + Add Code
+        </button>
+      </div>
+      {showAdd && (
+        <div style={{ background: '#f5f3ff', borderRadius: 10, padding: 16, marginBottom: 16, display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Code *</label>
+            <input className="form-input" value={addForm.code} onChange={e => setAddForm(f => ({ ...f, code: e.target.value }))} placeholder="e.g. 95004" style={{ width: 110 }} />
+          </div>
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Description *</label>
+            <input className="form-input" value={addForm.description} onChange={e => setAddForm(f => ({ ...f, description: e.target.value }))} placeholder="e.g. Allergy skin tests, percutaneous" />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Category</label>
+            <input className="form-input" value={addForm.category} onChange={e => setAddForm(f => ({ ...f, category: e.target.value }))} placeholder="e.g. Allergy Testing" style={{ width: 150 }} />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Default Fee ($)</label>
+            <input className="form-input" type="number" step="0.01" value={addForm.defaultFee} onChange={e => setAddForm(f => ({ ...f, defaultFee: e.target.value }))} placeholder="0.00" style={{ width: 100 }} />
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={addCode} disabled={saving || !addForm.code.trim() || !addForm.description.trim()}
+              style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: '#7c3aed', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+              {saving ? '⏳' : '💾 Save'}
+            </button>
+            <button onClick={() => setShowAdd(false)}
+              style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', cursor: 'pointer', fontSize: 13 }}>Cancel</button>
+          </div>
+        </div>
+      )}
+      {loading ? (
+        <div style={{ padding: '16px 0', textAlign: 'center', color: '#94a3b8' }}>Loading…</div>
+      ) : codes.length === 0 ? (
+        <div style={{ padding: '24px 0', textAlign: 'center', color: '#94a3b8', fontSize: 14 }}>No CPT codes configured yet. Click &quot;+ Add Code&quot; to add one.</div>
+      ) : (
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <thead>
+              <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+                {['Code', 'Description', 'Category', 'Default Fee', 'Active'].map(h => (
+                  <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: '#475569' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {codes.map((c, i) => (
+                <tr key={c.id} style={{ borderBottom: '1px solid #f1f5f9', background: i % 2 === 0 ? '#fff' : '#f8fafc' }}>
+                  <td style={{ padding: '8px 12px', fontWeight: 700, color: '#7c3aed', fontFamily: 'monospace' }}>{c.code}</td>
+                  <td style={{ padding: '8px 12px', color: '#374151' }}>{c.description}</td>
+                  <td style={{ padding: '8px 12px', color: '#64748b', fontSize: 12 }}>{c.category ?? '—'}</td>
+                  <td style={{ padding: '8px 12px', color: '#374151', fontFamily: 'monospace' }}>
+                    {c.defaultFee != null ? `$${Number(c.defaultFee).toFixed(2)}` : '—'}
+                  </td>
+                  <td style={{ padding: '8px 12px' }}>
+                    <button onClick={() => toggleActive(c.id, c.active)}
+                      style={{ padding: '3px 12px', borderRadius: 999, border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                        background: c.active ? '#dcfce7' : '#f3f4f6', color: c.active ? '#15803d' : '#64748b' }}>
+                      {c.active ? '✅ Active' : '⬜ Inactive'}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function SettingsPage() {
   return (
     <>
@@ -257,6 +488,8 @@ export default function SettingsPage() {
             </div>
           </div>
 
+          <Icd10CodesSection />
+          <CptCodesSection />
           <AuditLogSection />
         </div>
       </div>
