@@ -237,43 +237,63 @@ export default function PatientDetailPage() {
 
         {/* Test Results */}
         {tab === 'tests' && (
-          <div className="card">
+          <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <div className="card-title" style={{ margin: 0 }}>Test Results</div>
-              <Link href={`/testing?patientId=${patient.id}`} className="btn btn-sm">+ Add Test</Link>
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#1a2233' }}>Test Results ({tests.length})</div>
+              <Link href={`/testing?patientId=${patient.id}`} style={{ padding: '8px 16px', borderRadius: 8, background: '#0d9488', color: '#fff', fontSize: 14, fontWeight: 700, textDecoration: 'none' }}>+ New Test Session</Link>
             </div>
             {tests.length === 0 ? (
-              <div className="empty-state">
-                <div className="empty-state-icon">🧪</div>
-                <div className="empty-state-title">No test results yet</div>
-                <Link href={`/testing?patientId=${patient.id}`} className="btn" style={{ marginTop: 12 }}>Start Testing</Link>
+              <div className="card">
+                <div className="empty-state">
+                  <div className="empty-state-icon">🧪</div>
+                  <div className="empty-state-title">No test results yet</div>
+                  <Link href={`/testing?patientId=${patient.id}`} className="btn" style={{ marginTop: 12 }}>Start Testing</Link>
+                </div>
               </div>
-            ) : (
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
-                <thead>
-                  <tr style={{ background: '#f8fafc' }}>
-                    {['Allergen', 'Type', 'Reaction', 'Wheal', 'Date'].map(h => (
-                      <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontSize: 12, fontWeight: 700, color: '#374151', textTransform: 'uppercase', borderBottom: '2px solid #e2e8f0' }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {tests.map(r => (
-                    <tr key={r.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                      <td style={{ padding: '10px 12px', fontWeight: 600 }}>{r.allergen?.name ?? '—'}</td>
-                      <td style={{ padding: '10px 12px' }}>
-                        <span style={{ fontSize: 12, fontWeight: 600, padding: '2px 8px', borderRadius: 999, background: '#dbeafe', color: '#1d4ed8' }}>{r.testType ?? 'scratch'}</span>
-                      </td>
-                      <td style={{ padding: '10px 12px' }}>
-                        <span style={{ fontWeight: 700, color: REACTION_COLOR[r.reaction ?? 0] }}>{r.reaction ?? 0}</span>
-                      </td>
-                      <td style={{ padding: '10px 12px' }}>{r.wheal ?? '—'}</td>
-                      <td style={{ padding: '10px 12px', color: '#64748b' }}>{fmt(r.testedAt)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
+            ) : (() => {
+              // Group by test date (YYYY-MM-DD) and testType
+              const groups = new Map<string, TestResult[]>();
+              tests.forEach(r => {
+                const dateKey = r.testedAt ? new Date(r.testedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'Unknown Date';
+                const key = `${dateKey}||${r.testType ?? 'scratch'}`;
+                if (!groups.has(key)) groups.set(key, []);
+                groups.get(key)!.push(r);
+              });
+              return Array.from(groups.entries()).map(([key, results]) => {
+                const [dateLabel, testType] = key.split('||');
+                return (
+                  <div key={key} className="card" style={{ marginBottom: 16 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                      <div style={{ fontWeight: 700, fontSize: 15, color: '#0d9488' }}>{dateLabel}</div>
+                      <span style={{ fontSize: 12, fontWeight: 600, padding: '2px 10px', borderRadius: 999, background: '#dbeafe', color: '#1d4ed8', textTransform: 'capitalize' }}>
+                        {testType === 'scratch' ? '🩹 Prick Test' : '💉 Intradermal'}
+                      </span>
+                    </div>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+                      <thead>
+                        <tr style={{ background: '#f8fafc' }}>
+                          {['Allergen', 'Reaction', 'Wheal', 'Notes'].map(h => (
+                            <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontSize: 12, fontWeight: 700, color: '#374151', textTransform: 'uppercase', borderBottom: '2px solid #e2e8f0' }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {results.map(r => (
+                          <tr key={r.id} style={{ borderBottom: '1px solid #f1f5f9', background: (r.reaction ?? 0) >= 2 ? '#fff7ed' : 'transparent' }}>
+                            <td style={{ padding: '10px 12px', fontWeight: 600 }}>{r.allergen?.name ?? '—'}</td>
+                            <td style={{ padding: '10px 12px' }}>
+                              <span style={{ fontWeight: 800, fontSize: 16, color: REACTION_COLOR[r.reaction ?? 0] }}>{r.reaction ?? 0}</span>
+                            </td>
+                            <td style={{ padding: '10px 12px', color: '#64748b' }}>{r.wheal ?? '—'}</td>
+                            <td style={{ padding: '10px 12px', color: '#64748b', fontSize: 13 }}>{r.notes ?? '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              });
+            })()}
           </div>
         )}
 

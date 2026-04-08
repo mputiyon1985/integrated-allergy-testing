@@ -591,6 +591,11 @@ function TestingPageInner() {
               ✓ Saved
             </span>
           )}
+          {saved && (
+            <button onClick={() => { clearAll(); setSaved(false); }} style={topBtn('#6366f1')}>
+              + New Test Session
+            </button>
+          )}
           <button onClick={clearAll} style={topBtn('#475569')}>Clear All</button>
           <button
             onClick={handleSave}
