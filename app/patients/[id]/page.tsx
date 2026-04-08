@@ -13,6 +13,7 @@ interface Patient {
   phone?: string;
   homePhone?: string;
   street?: string;
+  apt?: string;
   city?: string;
   state?: string;
   zip?: string;
@@ -440,7 +441,7 @@ ${sectionsHtml}
               <InfoRow label="Home Phone" value={patient.homePhone} />
               <InfoRow label="Email" value={patient.email} />
               {(patient.street || patient.city) && (
-                <InfoRow label="Address" value={[patient.street, patient.city, patient.state, patient.zip].filter(Boolean).join(', ')} />
+                <InfoRow label="Address" value={[patient.street, patient.apt, patient.city, patient.state, patient.zip].filter(Boolean).join(', ')} />
               )}
               {(patient.emergencyName) && (
                 <>
@@ -682,7 +683,8 @@ ${sectionsHtml}
                 <Field label="Home Phone" field="homePhone" />
                 <Field label="Email" field="email" type="email" />
                 <div style={{ gridColumn: '1/-1', fontWeight: 700, fontSize: 12, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em', paddingTop: 8, borderTop: '1px solid #e2e8f0' }}>Address</div>
-                <div style={{ gridColumn: '1/-1' }}><Field label="Street" field="street" /></div>
+                <Field label="Street" field="street" />
+                <Field label="Apt / Suite" field="apt" />
                 <Field label="City" field="city" />
                 <Field label="State" field="state" />
                 <Field label="ZIP" field="zip" />

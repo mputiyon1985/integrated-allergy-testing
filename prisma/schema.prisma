@@ -96,6 +96,7 @@ model Patient {
   homePhone        String?
   email            String?
   street           String?
+  apt              String?
   city             String?
   state            String?
   zip              String?

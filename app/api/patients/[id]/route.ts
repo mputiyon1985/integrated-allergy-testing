@@ -89,6 +89,7 @@ export async function PUT(
         ...(insuranceId !== undefined ? { insuranceId: insuranceId as string } : {}),
         ...(body.homePhone !== undefined ? { homePhone: body.homePhone as string } : {}),
         ...(body.street !== undefined ? { street: body.street as string } : {}),
+        ...(body.apt !== undefined ? { apt: body.apt as string } : {}),
         ...(body.city !== undefined ? { city: body.city as string } : {}),
         ...(body.state !== undefined ? { state: body.state as string } : {}),
         ...(body.zip !== undefined ? { zip: body.zip as string } : {}),
