@@ -63,6 +63,8 @@ export default function DonePage() {
           sessionStorage.removeItem('kiosk_patient')
           sessionStorage.removeItem('kiosk_dob')
           sessionStorage.removeItem('kiosk_lookup')
+          sessionStorage.removeItem('kiosk_watched_ids')
+          sessionStorage.removeItem('kiosk_videos_watched')
           router.push('/kiosk')
           return 0
         }
@@ -105,7 +107,7 @@ export default function DonePage() {
           <div style={{ width: 200, height: 6, background: '#e2e8f0', borderRadius: 999, overflow: 'hidden' }}>
             <div style={{ height: '100%', background: countdown <= 5 ? '#dc2626' : '#0d9488', width: `${(countdown / 10) * 100}%`, transition: 'width 1s linear, background 0.3s' }} />
           </div>
-          <button onClick={() => { sessionStorage.removeItem('kiosk_patient'); sessionStorage.removeItem('kiosk_dob'); sessionStorage.removeItem('kiosk_lookup'); router.push('/kiosk'); }}
+          <button onClick={() => { ['kiosk_patient','kiosk_dob','kiosk_lookup','kiosk_watched_ids','kiosk_videos_watched'].forEach(k => sessionStorage.removeItem(k)); router.push('/kiosk'); }}
             style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontSize: 14, cursor: 'pointer', textDecoration: 'underline', padding: '4px 0' }}>
             Start Over Now
           </button>

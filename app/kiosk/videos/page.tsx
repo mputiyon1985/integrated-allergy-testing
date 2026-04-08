@@ -78,13 +78,13 @@ export default function KioskVideosPage() {
 
   const allWatched = videos.length > 0 && videos.every(v => watched.has(v.id));
 
-  // Auto-proceed if all videos already watched
+  // Auto-proceed only if videos were watched in this session (patient is set)
   useEffect(() => {
-    if (allWatched && !loading) {
+    if (allWatched && !loading && patient?.id) {
       const timer = setTimeout(() => router.push('/kiosk/consent'), 1500);
       return () => clearTimeout(timer);
     }
-  }, [allWatched, loading, router]);
+  }, [allWatched, loading, patient, router]);
   const watchedCount = watched.size;
 
   function getEmbedUrl(url: string): string | null {
