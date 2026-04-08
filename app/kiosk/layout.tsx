@@ -54,12 +54,21 @@ export default function KioskLayout({ children }: { children: React.ReactNode })
       e.preventDefault(); return false;
     }
 
+    // Warn before closing window
+    function blockClose(e: BeforeUnloadEvent) {
+      e.preventDefault();
+      e.returnValue = '';
+      return '';
+    }
+
     document.addEventListener('keydown', blockKeys, true);
     document.addEventListener('contextmenu', blockContext, true);
+    window.addEventListener('beforeunload', blockClose);
 
     return () => {
       document.removeEventListener('keydown', blockKeys, true);
       document.removeEventListener('contextmenu', blockContext, true);
+      window.removeEventListener('beforeunload', blockClose);
     };
   }, []);
 

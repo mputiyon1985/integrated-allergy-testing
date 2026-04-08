@@ -290,3 +290,22 @@ model StaffUser {
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 }
+
+model IATAppointment {
+  id          String    @id @default(cuid())
+  title       String
+  patientId   String?
+  patientName String?
+  startTime   DateTime
+  endTime     DateTime
+  type        String    @default("allergy-test")
+  notes       String?
+  status      String    @default("scheduled") // scheduled | in-progress | complete | cancelled
+  createdBy   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  @@index([startTime])
+  @@index([deletedAt])
+}

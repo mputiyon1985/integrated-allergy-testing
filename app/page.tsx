@@ -3,6 +3,30 @@
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 
+interface TodayAppointment {
+  id: string;
+  title: string;
+  patientName?: string | null;
+  startTime: string;
+  endTime: string;
+  type: string;
+  status: string;
+}
+
+const APPT_TYPE_COLORS: Record<string, { bg: string; text: string }> = {
+  'allergy-test': { bg: '#e8f9f7', text: '#0d9488' },
+  'consultation': { bg: '#eff6ff', text: '#1d4ed8' },
+  'follow-up':   { bg: '#f5f3ff', text: '#7c3aed' },
+};
+
+function formatApptTime(iso: string) {
+  const d = new Date(iso);
+  const h = d.getHours() % 12 || 12;
+  const m = d.getMinutes();
+  const ampm = d.getHours() >= 12 ? 'pm' : 'am';
+  return m > 0 ? `${h}:${String(m).padStart(2,'0')}${ampm}` : `${h}${ampm}`;
+}
+
 interface WaitingEntry {
   id: string;
   patientId: string;
@@ -28,6 +52,12 @@ export default function DashboardPage() {
   const [waiting, setWaiting] = useState<WaitingEntry[]>([]);
   const [nurses, setNurses] = useState<Nurse[]>([]);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [todayAppts, setTodayAppts] = useState<TodayAppointment[]>([]);
+  const [showAddApptModal, setShowAddApptModal] = useState(false);
+  const [newApptTitle, setNewApptTitle] = useState('');
+  const [newApptTime, setNewApptTime] = useState('09:00');
+  const [newApptEndTime, setNewApptEndTime] = useState('10:00');
+  const [addingAppt, setAddingAppt] = useState(false);
 
   const loadWaiting = useCallback(async () => {
     try {
