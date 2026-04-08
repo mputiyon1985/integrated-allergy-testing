@@ -1,7 +1,22 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
+
+const LAYOUT_KEY = 'iat-dashboard-layout-v1';
+const DEFAULT_ORDER = ['kpi', 'waiting', 'appointments', 'actions'];
+
+function loadOrder(): string[] {
+  try {
+    const saved = localStorage.getItem(LAYOUT_KEY);
+    if (saved) return JSON.parse(saved);
+  } catch {}
+  return DEFAULT_ORDER;
+}
+
+function saveOrder(order: string[]) {
+  try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(order)); } catch {}
+}
 
 interface TodayAppointment {
   id: string;
@@ -53,6 +68,10 @@ export default function DashboardPage() {
   const [userName, setUserName] = useState('');
   const [loading, setLoading] = useState(true);
   const [waiting, setWaiting] = useState<WaitingEntry[]>([]);
+  const [editMode, setEditMode] = useState(false);
+  const [sectionOrder, setSectionOrder] = useState<string[]>(DEFAULT_ORDER);
+  const dragItem = useRef<string | null>(null);
+  const dragOver = useRef<string | null>(null);
   const [nurses, setNurses] = useState<Nurse[]>([]);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [quickLogEntry, setQuickLogEntry] = useState<WaitingEntry | null>(null);
@@ -116,6 +135,7 @@ export default function DashboardPage() {
     }
     loadData();
     loadWaiting();
+    setSectionOrder(loadOrder());
     // Auto-refresh waiting room every 10s
     const interval = setInterval(loadWaiting, 10000);
     return () => clearInterval(interval);
@@ -211,11 +231,20 @@ export default function DashboardPage() {
         <div style={{ display: 'flex', gap: 8 }}>
           <Link href="/patients/new" className="btn-secondary btn-sm btn">+ Register Patient</Link>
           <Link href="/testing" className="btn btn-sm">🧪 Start Testing</Link>
+          <button onClick={() => setEditMode(v => !v)}
+            style={{ padding: '6px 14px', borderRadius: 8, border: `1px solid ${editMode ? '#f59e0b' : '#e2e8f0'}`, background: editMode ? '#fefce8' : '#fff', color: editMode ? '#b45309' : '#374151', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+            {editMode ? '✅ Done' : '⊞ Edit Layout'}
+          </button>
           <Link href="/calendar?action=new" className="btn btn-sm" style={{ background: '#7c3aed', color: '#fff' }}>📅 Book Appointment</Link>
         </div>
       </div>
 
       <div className="page-body">
+        {editMode && (
+          <div style={{ background: '#fefce8', border: '1px solid #fde68a', borderRadius: 8, padding: '10px 16px', marginBottom: 16, fontSize: 13, color: '#92400e', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
+            ⊞ Drag sections to reorder. Click <strong>"✅ Done"</strong> when finished.
+          </div>
+        )}
         {/* KPI Cards */}
         <div className="kpi-grid">
           <div className="kpi-card">
@@ -249,6 +278,7 @@ export default function DashboardPage() {
         <div className="card" style={{ marginBottom: 24 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              {editMode && <span style={{ cursor: 'grab', fontSize: 18, color: '#94a3b8', userSelect: 'none' }} draggable onDragStart={() => { dragItem.current = 'waiting'; }} onDragEnd={() => { if (dragOver.current && dragItem.current) { const newOrder = [...sectionOrder]; const from = newOrder.indexOf(dragItem.current); const to = newOrder.indexOf(dragOver.current); if (from > -1 && to > -1) { newOrder.splice(from, 1); newOrder.splice(to, 0, dragItem.current); setSectionOrder(newOrder); saveOrder(newOrder); } dragItem.current = null; dragOver.current = null; } }}>⠿</span>}
               <div className="card-title" style={{ margin: 0 }}>🏥 Waiting Room</div>
               <span style={{ fontSize: 11, color: '#0d9488', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
                 <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#0d9488', display: 'inline-block', animation: 'pulse 2s infinite' }} />
