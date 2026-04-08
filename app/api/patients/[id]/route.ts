@@ -87,6 +87,16 @@ export async function PUT(
         ...(doctorId !== undefined ? { doctorId: doctorId as string } : {}),
         ...(status !== undefined ? { status: status as string } : {}),
         ...(insuranceId !== undefined ? { insuranceId: insuranceId as string } : {}),
+        ...(body.homePhone !== undefined ? { homePhone: body.homePhone as string } : {}),
+        ...(body.street !== undefined ? { street: body.street as string } : {}),
+        ...(body.city !== undefined ? { city: body.city as string } : {}),
+        ...(body.state !== undefined ? { state: body.state as string } : {}),
+        ...(body.zip !== undefined ? { zip: body.zip as string } : {}),
+        ...(body.insuranceProvider !== undefined ? { insuranceProvider: body.insuranceProvider as string } : {}),
+        ...(body.insuranceGroup !== undefined ? { insuranceGroup: body.insuranceGroup as string } : {}),
+        ...(body.emergencyName !== undefined ? { emergencyName: body.emergencyName as string } : {}),
+        ...(body.emergencyPhone !== undefined ? { emergencyPhone: body.emergencyPhone as string } : {}),
+        ...(body.emergencyRelation !== undefined ? { emergencyRelation: body.emergencyRelation as string } : {}),
       },
     })
 

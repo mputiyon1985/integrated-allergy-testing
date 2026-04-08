@@ -11,15 +11,25 @@ interface Patient {
   dob?: string;
   email?: string;
   phone?: string;
+  homePhone?: string;
+  street?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
   clinicLocation?: string;
   physician?: string;
   diagnosis?: string;
   status: string;
   doctorId?: string;
   notes?: string;
+  insuranceId?: string;
+  insuranceProvider?: string;
+  insuranceGroup?: string;
+  emergencyName?: string;
+  emergencyPhone?: string;
+  emergencyRelation?: string;
   createdAt?: string;
   updatedAt?: string;
-  insuranceId?: string;
   doctor?: { id: string; name: string; title?: string } | null;
   testResults?: TestResult[];
   videoActivity?: VideoWatch[];
@@ -157,13 +167,23 @@ export default function PatientDetailPage() {
         body: JSON.stringify({
           name: editForm.name,
           phone: editForm.phone,
+          homePhone: editForm.homePhone,
           email: editForm.email,
+          street: editForm.street,
+          city: editForm.city,
+          state: editForm.state,
+          zip: editForm.zip,
           status: editForm.status,
           physician: editForm.physician,
           clinicLocation: editForm.clinicLocation,
           diagnosis: editForm.diagnosis,
           notes: editForm.notes,
           insuranceId: editForm.insuranceId,
+          insuranceProvider: editForm.insuranceProvider,
+          insuranceGroup: editForm.insuranceGroup,
+          emergencyName: editForm.emergencyName,
+          emergencyPhone: editForm.emergencyPhone,
+          emergencyRelation: editForm.emergencyRelation,
         }),
       });
       if (!res.ok) throw new Error('Save failed');
@@ -416,9 +436,19 @@ ${sectionsHtml}
               <div className="card-title">Personal Information</div>
               <InfoRow label="Full Name" value={patient.name} />
               <InfoRow label="Date of Birth" value={fmt(patient.dob)} />
+              <InfoRow label="Cell Phone" value={patient.phone} />
+              <InfoRow label="Home Phone" value={patient.homePhone} />
               <InfoRow label="Email" value={patient.email} />
-              <InfoRow label="Phone" value={patient.phone} />
-              <InfoRow label="Insurance ID" value={patient.insuranceId} />
+              {(patient.street || patient.city) && (
+                <InfoRow label="Address" value={[patient.street, patient.city, patient.state, patient.zip].filter(Boolean).join(', ')} />
+              )}
+              {(patient.emergencyName) && (
+                <>
+                  <InfoRow label="Emergency" value={`${patient.emergencyName}${patient.emergencyRelation ? ` (${patient.emergencyRelation})` : ''}`} />
+                  <InfoRow label="Emerg. Phone" value={patient.emergencyPhone} />
+                </>
+              )}
+              <InfoRow label="Insurance" value={[patient.insuranceProvider, patient.insuranceId, patient.insuranceGroup ? `Group: ${patient.insuranceGroup}` : ''].filter(Boolean).join(' · ')} />
             </div>
             <div className="card">
               <div className="card-title">Clinical Information</div>
@@ -648,9 +678,22 @@ ${sectionsHtml}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div style={{ gridColumn: '1/-1' }}><Field label="Full Name *" field="name" /></div>
                 <Field label="Date of Birth" field="dob" type="date" />
+                <Field label="Cell Phone" field="phone" />
+                <Field label="Home Phone" field="homePhone" />
                 <Field label="Email" field="email" type="email" />
-                <Field label="Phone" field="phone" />
-                <Field label="Insurance ID" field="insuranceId" />
+                <div style={{ gridColumn: '1/-1', fontWeight: 700, fontSize: 12, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em', paddingTop: 8, borderTop: '1px solid #e2e8f0' }}>Address</div>
+                <div style={{ gridColumn: '1/-1' }}><Field label="Street" field="street" /></div>
+                <Field label="City" field="city" />
+                <Field label="State" field="state" />
+                <Field label="ZIP" field="zip" />
+                <div style={{ gridColumn: '1/-1', fontWeight: 700, fontSize: 12, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em', paddingTop: 8, borderTop: '1px solid #e2e8f0' }}>Insurance</div>
+                <Field label="Insurance Provider" field="insuranceProvider" />
+                <Field label="Member ID" field="insuranceId" />
+                <Field label="Group #" field="insuranceGroup" />
+                <div style={{ gridColumn: '1/-1', fontWeight: 700, fontSize: 12, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em', paddingTop: 8, borderTop: '1px solid #e2e8f0' }}>Emergency Contact</div>
+                <Field label="Name" field="emergencyName" />
+                <Field label="Phone" field="emergencyPhone" />
+                <Field label="Relationship" field="emergencyRelation" />
                 <div>
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Status</label>
                   <select className="form-input" value={editForm.status ?? ''} onChange={e => setEditForm(f => ({ ...f, status: e.target.value }))}>

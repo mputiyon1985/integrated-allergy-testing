@@ -84,19 +84,29 @@ model Nurse {
 
 // Patient — matches IMS schema but with IAT-specific date relations
 model Patient {
-  id              String    @id @default(cuid())
-  patientId       String    @unique
-  name            String
-  dob             DateTime
-  physician       String    @default("")
-  clinicLocation  String    @default("")
-  diagnosis       String    @default("")
-  startDate       DateTime  @default(now())
-  phone           String?
-  email           String?
-  insuranceId     String?
-  notes           String?
-  status          String    @default("build-up")
+  id               String    @id @default(cuid())
+  patientId        String    @unique
+  name             String
+  dob              DateTime
+  physician        String    @default("")
+  clinicLocation   String    @default("")
+  diagnosis        String    @default("")
+  startDate        DateTime  @default(now())
+  phone            String?
+  homePhone        String?
+  email            String?
+  street           String?
+  city             String?
+  state            String?
+  zip              String?
+  insuranceId      String?
+  insuranceProvider String?
+  insuranceGroup   String?
+  emergencyName    String?
+  emergencyPhone   String?
+  emergencyRelation String?
+  notes            String?
+  status           String    @default("build-up")
   doctorId        String?
   entityId        String?
   createdAt       DateTime  @default(now())
