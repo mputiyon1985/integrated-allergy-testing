@@ -7,10 +7,13 @@ interface TodayAppointment {
   id: string;
   title: string;
   patientName?: string | null;
+  patientId?: string | null;
   startTime: string;
   endTime: string;
   type: string;
   status: string;
+  notes?: string | null;
+  reasonName?: string | null;
 }
 
 const APPT_TYPE_COLORS: Record<string, { bg: string; text: string }> = {
