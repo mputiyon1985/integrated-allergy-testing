@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+        env:
+          DATABASE_URL: 'file:./prisma/dev.db'
+
+      - name: TypeScript check
+        run: npx tsc --noEmit
+
+      - name: Run tests
+        run: npm test
+        env:
+          DATABASE_URL: 'file:./prisma/dev.db'
+          JWT_SECRET: 'ci-test-secret-minimum-32-characters-long'
+          NODE_ENV: 'test'
+
+      - name: Build
+        run: npm run build
+        env:
+          DATABASE_URL: 'file:./prisma/dev.db'
+          JWT_SECRET: 'ci-test-secret-minimum-32-characters-long'
+          NODE_ENV: 'production'

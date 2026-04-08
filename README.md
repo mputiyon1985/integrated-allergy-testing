@@ -197,6 +197,13 @@ Set environment variables in Vercel dashboard. **For HIPAA production deployment
 
 ---
 
+## Database Backups
+
+Run `./scripts/backup.sh` for manual backup. Set `DATABASE_AUTH_TOKEN` env var first.
+HIPAA requires 6-year audit log retention — ensure backups are stored accordingly.
+
+---
+
 ## License
 
 Private — All rights reserved. Not for public distribution.
