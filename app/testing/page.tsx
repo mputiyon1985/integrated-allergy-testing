@@ -503,7 +503,91 @@ function TestingPageInner() {
   }
 
   function handlePrint() {
-    window.print();
+    // Build a clean print-only HTML page — avoids all the interactive UI clutter
+    const prickResults = prick.rows.filter(r => r.grade !== null);
+    const idResults = intradermal.rows.filter(r => r.grade !== null);
+
+    const gradeLabel: Record<number, string> = {
+      0: 'Negative', 1: 'Trace', 2: 'Positive', 3: 'Strong', 4: 'Very Strong', 5: 'Extreme',
+    };
+    const gradeColor: Record<number, string> = {
+      0: '#64748b', 1: '#ca8a04', 2: '#ea580c', 3: '#dc2626', 4: '#991b1b', 5: '#7f1d1d',
+    };
+
+    const renderRows = (rows: typeof prickResults) =>
+      rows.map((r, i) => `
+        <tr style="border-bottom:1px solid #e2e8f0; background:${(r.grade ?? 0) >= 2 ? '#fff7ed' : i % 2 === 0 ? '#fff' : '#f8fafc'}">
+          <td style="padding:6px 10px;">${i + 1}</td>
+          <td style="padding:6px 10px; font-weight:600;">${r.allergenName}</td>
+          <td style="padding:6px 10px; color:#64748b; font-size:12px;">${r.category ?? ''}</td>
+          <td style="padding:6px 10px; font-weight:800; font-size:16px; color:${gradeColor[r.grade ?? 0]};">${r.grade}</td>
+          <td style="padding:6px 10px; color:#64748b; font-size:12px;">${gradeLabel[r.grade ?? 0]}</td>
+          <td style="padding:6px 10px; color:#374151;">${r.wheal ? r.wheal + ' mm' : '—'}</td>
+          <td style="padding:6px 10px; color:#374151;">${r.flare ? r.flare + ' mm' : '—'}</td>
+          <td style="padding:6px 10px; color:#64748b;">${r.location}</td>
+        </tr>`).join('');
+
+    const tableHtml = (title: string, icon: string, rows: typeof prickResults) =>
+      rows.length === 0 ? '' : `
+        <div style="margin-bottom:24px;">
+          <h3 style="font-size:14px; font-weight:700; color:#0055A5; text-transform:uppercase; letter-spacing:0.06em; margin:0 0 8px; padding-bottom:6px; border-bottom:2px solid #0055A5;">
+            ${icon} ${title} — ${rows.length} allergen${rows.length !== 1 ? 's' : ''} tested
+          </h3>
+          <table style="width:100%; border-collapse:collapse; font-size:13px; font-family:system-ui,sans-serif;">
+            <thead>
+              <tr style="background:#0055A5; color:#fff;">
+                <th style="padding:6px 10px; text-align:left; width:30px;">#</th>
+                <th style="padding:6px 10px; text-align:left;">Allergen</th>
+                <th style="padding:6px 10px; text-align:left;">Category</th>
+                <th style="padding:6px 10px; text-align:left;">Grade</th>
+                <th style="padding:6px 10px; text-align:left;">Result</th>
+                <th style="padding:6px 10px; text-align:left;">Wheal</th>
+                <th style="padding:6px 10px; text-align:left;">Flare</th>
+                <th style="padding:6px 10px; text-align:left;">Site</th>
+              </tr>
+            </thead>
+            <tbody>${renderRows(rows)}</tbody>
+          </table>
+        </div>`;
+
+    const html = `<!DOCTYPE html>
+<html><head><title>Allergy Test Results — ${fullName}</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 0; padding: 20px; color: #1a2233; }
+  @media print { body { padding: 10px; } }
+</style>
+</head><body>
+<div style="border-bottom:3px solid #0055A5; padding-bottom:12px; margin-bottom:16px;">
+  <div style="font-size:20px; font-weight:800; color:#0055A5; margin-bottom:8px;">Integrated Allergy Testing — Allergy Test Results</div>
+  <div style="display:flex; gap:32px; font-size:13px; flex-wrap:wrap;">
+    <span><strong>Patient:</strong> ${fullName}</span>
+    <span><strong>ID:</strong> ${patient?.patientId ?? patient?.id?.slice(0,8).toUpperCase()}</span>
+    <span><strong>DOB:</strong> ${patient?.dob ? new Date(patient.dob).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}) : '—'}</span>
+    <span><strong>Physician:</strong> ${patient?.physician ?? '—'}</span>
+    <span><strong>Tested By:</strong> ${testedBy || '—'}</span>
+    <span><strong>Date:</strong> ${new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}</span>
+  </div>
+</div>
+<div style="background:#f0fdf4; border:1px solid #86efac; border-radius:6px; padding:8px 14px; margin-bottom:16px; font-size:12px; color:#166534;">
+  <strong>Grade Legend:</strong>&nbsp;
+  0 = Negative &nbsp;|&nbsp; 1 = Trace &nbsp;|&nbsp; 2 = Positive &nbsp;|&nbsp; 3 = Strong &nbsp;|&nbsp; 4 = Very Strong &nbsp;|&nbsp; 5 = Extreme
+</div>
+${tableHtml('Prick Test', '🩹', prickResults)}
+${tableHtml('Intradermal Test', '💉', idResults)}
+${(prickResults.length + idResults.length) === 0 ? '<p style="color:#94a3b8; text-align:center; padding:40px;">No graded results to print.</p>' : ''}
+<div style="margin-top:32px; border-top:1px solid #e2e8f0; padding-top:12px; font-size:11px; color:#94a3b8; display:flex; justify-content:space-between;">
+  <span>Integrated Allergy Testing — HIPAA Compliant</span>
+  <span>Printed: ${new Date().toLocaleString('en-US')}</span>
+</div>
+</body></html>`;
+
+    const w = window.open('', '_blank', 'width=900,height=700');
+    if (w) {
+      w.document.write(html);
+      w.document.close();
+      w.focus();
+      setTimeout(() => { w.print(); }, 400);
+    }
   }
 
   // ── Patient not yet selected

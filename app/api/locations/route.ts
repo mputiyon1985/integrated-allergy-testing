@@ -10,10 +10,16 @@ import prisma from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url)
+    const all = searchParams.get('all') === '1'
+
     const locations = await prisma.location.findMany({
-      where: { active: true },
+      where: {
+        deletedAt: null,
+        ...(all ? {} : { active: true }),
+      },
       orderBy: { name: 'asc' },
     })
 

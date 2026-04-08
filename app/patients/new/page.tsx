@@ -5,10 +5,12 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 interface Doctor { id: string; name: string; }
+interface Location { id: string; name: string; }
 
 export default function NewPatientPage() {
   const router = useRouter();
   const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -31,7 +33,11 @@ export default function NewPatientPage() {
   useEffect(() => {
     fetch('/api/doctors')
       .then(r => r.ok ? r.json() : [])
-      .then(d => setDoctors(Array.isArray(d) ? d : (d.doctors ?? [])))
+      .then((d: Doctor[] | { doctors?: Doctor[] }) => setDoctors(Array.isArray(d) ? d : (d.doctors ?? [])))
+      .catch(() => {});
+    fetch('/api/locations')
+      .then(r => r.ok ? r.json() : [])
+      .then((d: Location[]) => setLocations(Array.isArray(d) ? d : []))
       .catch(() => {});
   }, []);
 
@@ -177,14 +183,17 @@ export default function NewPatientPage() {
               </div>
               <div className="form-group">
                 <label className="form-label">Clinic Location</label>
-                <input
-                  type="text"
+                <select
                   className="form-input"
-                  placeholder="e.g. Main Street Clinic"
                   value={form.clinicLocation}
                   onChange={e => setField('clinicLocation', e.target.value)}
                   style={{ fontSize: 16 }}
-                />
+                >
+                  <option value="">— Select Location —</option>
+                  {locations.map(loc => (
+                    <option key={loc.id} value={loc.name}>{loc.name}</option>
+                  ))}
+                </select>
               </div>
             </div>
 

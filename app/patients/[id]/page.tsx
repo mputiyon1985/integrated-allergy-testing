@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 
@@ -43,6 +43,11 @@ interface VideoWatch {
   acknowledged?: boolean;
 }
 
+interface LocationOption {
+  id: string;
+  name: string;
+}
+
 interface FormSigned {
   id: string;
   form?: { name: string };
@@ -77,6 +82,8 @@ export default function PatientDetailPage() {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editForm, setEditForm] = useState<Partial<Patient>>({});
+  const [locationOptions, setLocationOptions] = useState<LocationOption[]>([]);
+  const locationsFetchedRef = useRef(false);
 
   const load = useCallback(() => {
     if (!id) return;
@@ -89,6 +96,16 @@ export default function PatientDetailPage() {
   }, [id]);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    if (editing && !locationsFetchedRef.current) {
+      locationsFetchedRef.current = true;
+      fetch('/api/locations')
+        .then(r => r.ok ? r.json() : [])
+        .then((d: LocationOption[]) => setLocationOptions(Array.isArray(d) ? d : []))
+        .catch(() => {});
+    }
+  }, [editing]);
 
   async function handleSave() {
     if (!patient) return;
@@ -384,7 +401,15 @@ export default function PatientDetailPage() {
                   </select>
                 </div>
                 <Field label="Physician" field="physician" />
-                <Field label="Clinic Location" field="clinicLocation" />
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Clinic Location</label>
+                  <select className="form-input" value={editForm.clinicLocation ?? ''} onChange={e => setEditForm(f => ({ ...f, clinicLocation: e.target.value }))}>
+                    <option value="">— Select Location —</option>
+                    {locationOptions.map(loc => (
+                      <option key={loc.id} value={loc.name}>{loc.name}</option>
+                    ))}
+                  </select>
+                </div>
                 <div style={{ gridColumn: '1/-1' }}><Field label="Diagnosis" field="diagnosis" /></div>
                 <div style={{ gridColumn: '1/-1' }}>
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Notes</label>
