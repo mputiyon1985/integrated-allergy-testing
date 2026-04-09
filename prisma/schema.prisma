@@ -484,7 +484,7 @@ model MaintenanceShot {
   reactionNotes   String?
   givenBy         String?
   givenAt         DateTime  @default(now())
-  waitMinutes     Int       @default(20)
+  waitMinutes     Int       @default(30)
   createdAt       DateTime  @default(now())
 
   vial            MaintenanceVial @relation(fields: [vialId], references: [id])

@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import prisma from '@/lib/db'
 import { HIPAA_HEADERS } from '@/lib/hipaaHeaders'
+import { requirePermission } from '@/lib/api-permissions'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,6 +25,8 @@ const createTestResultSchema = z.object({
 })
 
 export async function GET(request: NextRequest) {
+  const denied = await requirePermission(request, 'test_results_view')
+  if (denied) return denied
   try {
     const { searchParams } = new URL(request.url)
     const patientId = searchParams.get('patientId')
@@ -54,6 +57,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const denied = await requirePermission(request, 'test_results_create')
+  if (denied) return denied
   try {
     const body = await request.json()
 

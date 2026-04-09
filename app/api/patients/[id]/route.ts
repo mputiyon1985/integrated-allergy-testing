@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import { HIPAA_HEADERS } from '@/lib/hipaaHeaders'
+import { requirePermission } from '@/lib/api-permissions'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,6 +16,8 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const denied = await requirePermission(_request, 'patients_view')
+  if (denied) return denied
   try {
     const { id } = await params
 
@@ -55,6 +58,8 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const denied = await requirePermission(request, 'patients_edit')
+  if (denied) return denied
   try {
     const { id } = await params
     const body = await request.json() as Record<string, string | number | boolean | null | undefined>

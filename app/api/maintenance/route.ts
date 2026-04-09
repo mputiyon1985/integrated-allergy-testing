@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
+import { verifySession } from '@/lib/auth/session'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,6 +26,12 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const session = await verifySession(req)
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const allowedRoles = ['admin', 'provider', 'clinical_staff', 'office_manager']
+  if (!allowedRoles.includes(session.role as string)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
   try {
     const body = await req.json()
     const {

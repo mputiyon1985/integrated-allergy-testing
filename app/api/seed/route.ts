@@ -23,6 +23,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Not available in production' }, { status: 403 })
   }
 
+  // Only allow admin users
+  const userRole = request.headers.get('x-user-role')
+  if (userRole !== 'admin') {
+    return NextResponse.json({ error: 'Forbidden — admin only' }, { status: 403 })
+  }
+
   try {
     // Check if DB is already seeded
     const locationCount = await prisma.location.count()

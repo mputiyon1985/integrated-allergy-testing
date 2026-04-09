@@ -7,6 +7,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
+import { requirePermission } from '@/lib/api-permissions'
 
 export const dynamic = 'force-dynamic'
 
@@ -45,6 +46,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const denied = await requirePermission(request, 'allergens_manage')
+  if (denied) return denied
   try {
     const body = await request.json() as { name?: string; type?: string; showOnPrickTest?: boolean; showOnIntradermalTest?: boolean }
     const { name, type, showOnPrickTest, showOnIntradermalTest } = body
