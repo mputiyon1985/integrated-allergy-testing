@@ -110,6 +110,8 @@ export default function DashboardPage() {
   }
   const [nurses, setNurses] = useState<Nurse[]>([]);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [editingNoteText, setEditingNoteText] = useState('');
   const [quickLogEntry, setQuickLogEntry] = useState<WaitingEntry | null>(null);
   const [quickLogForm, setQuickLogForm] = useState({ activityType: 'note', notes: '' });
   const [quickLogSaving, setQuickLogSaving] = useState(false);
@@ -352,7 +354,39 @@ export default function DashboardPage() {
                     {isNew && e.status === 'waiting' && <span style={{ fontSize: 9, background: '#f59e0b', color: '#fff', borderRadius: 4, padding: '1px 5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>NEW</span>}
                     {e.patientName}
                   </div>
-                  {e.notes && <div style={{ fontSize: 11, color: '#64748b' }}>{e.notes}</div>}
+                  {editingNoteId === e.id ? (
+                    <div style={{ display: 'flex', gap: 4, marginTop: 3 }}>
+                      <input
+                        autoFocus
+                        value={editingNoteText}
+                        onChange={ev => setEditingNoteText(ev.target.value)}
+                        onKeyDown={async ev => {
+                          if (ev.key === 'Enter') {
+                            await fetch(`/api/waiting-room/${e.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ notes: editingNoteText }) });
+                            setEditingNoteId(null);
+                            loadWaiting();
+                          } else if (ev.key === 'Escape') {
+                            setEditingNoteId(null);
+                          }
+                        }}
+                        placeholder="Reason for visit…"
+                        style={{ fontSize: 11, padding: '2px 6px', border: '1px solid #0d9488', borderRadius: 5, width: 140, outline: 'none' }}
+                      />
+                      <button onClick={async () => {
+                        await fetch(`/api/waiting-room/${e.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ notes: editingNoteText }) });
+                        setEditingNoteId(null);
+                        loadWaiting();
+                      }} style={{ fontSize: 10, padding: '2px 6px', background: '#0d9488', color: '#fff', border: 'none', borderRadius: 5, cursor: 'pointer' }}>✓</button>
+                    </div>
+                  ) : (
+                    <div
+                      onClick={() => { setEditingNoteId(e.id); setEditingNoteText(e.notes ?? ''); }}
+                      style={{ fontSize: 11, color: e.notes ? '#374151' : '#cbd5e1', cursor: 'pointer', marginTop: 2, fontStyle: e.notes ? 'normal' : 'italic' }}
+                      title="Click to add/edit reason for visit"
+                    >
+                      {e.notes ?? '+ reason for visit'}
+                    </div>
+                  )}
                 </td>
                 <td style={{ padding: '5px 10px', color: '#64748b', fontSize: 12 }}>{waitTime(e.checkedInAt)}</td>
                 <td style={{ padding: '5px 10px' }}>
