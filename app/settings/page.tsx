@@ -1826,7 +1826,7 @@ export default function SettingsPage() {
 
       <div className="page-body">
         {/* Tab Navigation */}
-        <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid #e2e8f0', marginBottom: 20 }}>
+        <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid #e2e8f0', marginBottom: 20, flexWrap: 'wrap' }}>
           <button style={TAB_STYLE(activeTab === 'dashboard')} onClick={() => setActiveTab('dashboard')}>
             ⚙️ Dashboard
           </button>
@@ -1835,20 +1835,20 @@ export default function SettingsPage() {
               👥 Users
             </button>
           )}
-          <button style={TAB_STYLE(activeTab === 'audit')} onClick={() => setActiveTab('audit')}>
-            📋 Audit Log
-          </button>
-          <button style={TAB_STYLE(activeTab === 'services')} onClick={() => setActiveTab('services')}>
-            🎨 Services
-          </button>
           <button style={TAB_STYLE(activeTab === 'doctors')} onClick={() => setActiveTab('doctors')}>
             👨‍⚕️ Doctors
           </button>
           <button style={TAB_STYLE(activeTab === 'nurses')} onClick={() => setActiveTab('nurses')}>
             👩‍⚕️ Nurses
           </button>
+          <button style={TAB_STYLE(activeTab === 'services')} onClick={() => setActiveTab('services')}>
+            🎨 Services
+          </button>
           <button style={TAB_STYLE(activeTab === 'videos')} onClick={() => setActiveTab('videos')}>
             🎬 Videos
+          </button>
+          <button style={TAB_STYLE(activeTab === 'audit')} onClick={() => setActiveTab('audit')}>
+            📋 Audit Log
           </button>
         </div>
 
