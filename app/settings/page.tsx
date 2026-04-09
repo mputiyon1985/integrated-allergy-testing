@@ -1555,7 +1555,7 @@ export default function SettingsPage() {
                   <div className="card-title">Application Version</div>
                   <div className="flex flex-col gap-2">
                     {[
-                      { label: 'Version', value: '3.1.0' },
+                      { label: 'Version', value: '3.4.2' },
                       { label: 'Environment', value: 'Production' },
                       { label: 'Last Updated', value: new Date().toLocaleDateString() },
                     ].map(r => (
