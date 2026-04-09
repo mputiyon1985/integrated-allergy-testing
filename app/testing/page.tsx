@@ -285,9 +285,9 @@ function TestPanel({
 
   // Compact column header (used in multi-column mode)
   const compactHdr = (
-    <div style={{ display: 'grid', gridTemplateColumns: '16px minmax(60px,1fr) 32px 120px 40px 40px', gap: 1, padding: '3px 4px', background: '#f1f5f9', borderBottom: '1px solid #cbd5e1', position: 'sticky', top: 0 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: '16px minmax(60px,1fr) 42px 120px 42px 42px', gap: 1, padding: '3px 4px', background: '#f1f5f9', borderBottom: '1px solid #cbd5e1', position: 'sticky', top: 0 }}>
       {['#', 'Allergen', 'Loc', 'Grade', 'Whl', 'Flr'].map(h => (
-        <div key={h} style={{ fontSize: 9, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' as const, whiteSpace: 'nowrap' as const, overflow: 'hidden' }}>{h}</div>
+        <div key={h} style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' as const, whiteSpace: 'nowrap' as const, overflow: 'hidden' }}>{h}</div>
       ))}
     </div>
   );
@@ -298,18 +298,18 @@ function TestPanel({
     const bg = rowBg(row.grade, localIdx);
     return (
       <div key={row.allergenId} className={row.grade === null ? 'untested-row' : ''}
-        style={{ display: 'grid', gridTemplateColumns: '16px minmax(60px,1fr) 32px 120px 40px 40px', gap: 1, padding: '2px 4px', background: bg, borderBottom: '1px solid #f1f5f9', alignItems: 'center', outline: positive ? '1px solid #fed7aa' : 'none' }}>
-        <div style={{ fontSize: 9, color: '#94a3b8', textAlign: 'center' as const, fontWeight: 600 }}>{num}</div>
-        <div style={{ fontSize: 10, fontWeight: positive ? 700 : 400, color: positive ? '#7c2d12' : '#1a2233', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{row.allergenName}</div>
+        style={{ display: 'grid', gridTemplateColumns: '16px minmax(60px,1fr) 42px 120px 42px 42px', gap: 1, padding: '2px 4px', background: bg, borderBottom: '1px solid #f1f5f9', alignItems: 'center', outline: positive ? '1px solid #fed7aa' : 'none' }}>
+        <div style={{ fontSize: 11, color: '#94a3b8', textAlign: 'center' as const, fontWeight: 600 }}>{num}</div>
+        <div style={{ fontSize: 12, fontWeight: positive ? 700 : 400, color: positive ? '#7c2d12' : '#1a2233', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{row.allergenName}</div>
         <select value={row.location} onChange={e => updateRow(row.allergenId, 'location', e.target.value as Location)}
-          style={{ fontSize: 9, border: '1px solid #cbd5e1', borderRadius: 3, padding: '0 2px', background: '#fff', color: '#374151', width: '100%', height: 18, cursor: 'pointer' }}>
+          style={{ fontSize: 11, border: '1px solid #cbd5e1', borderRadius: 3, padding: '0 2px', background: '#fff', color: '#374151', width: '100%', height: 22, cursor: 'pointer' }}>
           {LOCATIONS.map(l => <option key={l} value={l}>{l}</option>)}
         </select>
         <GradeCell grade={row.grade} onChange={g => updateRow(row.allergenId, 'grade', g)} locked={locked} size={18} />
         <input type="number" min="0" max="99" step="0.1" value={row.wheal} onChange={e => updateRow(row.allergenId, 'wheal', e.target.value)} placeholder="mm"
-          style={{ width: '100%', height: 18, fontSize: 10, textAlign: 'center' as const, border: '1px solid #cbd5e1', borderRadius: 3, padding: '0 2px', background: '#fff' }} />
+          style={{ width: '100%', height: 22, fontSize: 12, textAlign: 'center' as const, border: '1px solid #cbd5e1', borderRadius: 3, padding: '0 2px', background: '#fff' }} />
         <input type="number" min="0" max="99" step="0.1" value={row.flare} onChange={e => updateRow(row.allergenId, 'flare', e.target.value)} placeholder="mm"
-          style={{ width: '100%', height: 18, fontSize: 10, textAlign: 'center' as const, border: '1px solid #cbd5e1', borderRadius: 3, padding: '0 2px', background: '#fff' }} />
+          style={{ width: '100%', height: 22, fontSize: 12, textAlign: 'center' as const, border: '1px solid #cbd5e1', borderRadius: 3, padding: '0 2px', background: '#fff' }} />
       </div>
     );
   };
@@ -364,7 +364,7 @@ function TestPanel({
                     return (
                       <div key={entry.row.allergenId}>
                         {showCatHeader && (
-                          <div style={{ background: '#1e293b', color: '#e2e8f0', padding: '2px 6px', fontSize: 9, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                          <div style={{ background: '#1e293b', color: '#e2e8f0', padding: '2px 6px', fontSize: 11, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
                             {entry.cat}
                           </div>
                         )}
