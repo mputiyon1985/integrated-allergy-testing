@@ -837,4 +837,8 @@ tbody tr:hover {
   justify-content: flex-end;
   padding: 16px 24px;
   border-top: 1px solid #e2e8f0;
+  position: sticky;
+  bottom: 0;
+  background: #fff;
+  z-index: 10;
 }
