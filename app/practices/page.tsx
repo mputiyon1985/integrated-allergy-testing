@@ -27,6 +27,27 @@ interface Location {
   practiceId?: string | null;
 }
 
+interface InsuranceCompany {
+  id: string;
+  name: string;
+  type: string;
+  payerId: string | null;
+  active: boolean;
+  sortOrder: number;
+}
+
+interface PracticeInsurance {
+  id: string;
+  practiceId: string;
+  insuranceId: string;
+  insurance: {
+    id: string;
+    name: string;
+    type: string;
+    payerId: string | null;
+  };
+}
+
 const EMPTY_FORM = {
   name: '',
   key: '',
@@ -41,6 +62,37 @@ const EMPTY_FORM = {
 
 type FormData = typeof EMPTY_FORM;
 
+const TYPE_BADGE_COLORS: Record<string, string> = {
+  medicare: '#1d4ed8',
+  medicaid: '#7c3aed',
+  bcbs: '#0369a1',
+  aetna: '#b91c1c',
+  united: '#065f46',
+  cigna: '#92400e',
+  tricare: '#1e3a5f',
+  commercial: '#374151',
+};
+
+function TypeBadge({ type }: { type: string }) {
+  const color = TYPE_BADGE_COLORS[type] ?? '#374151';
+  return (
+    <span style={{
+      display: 'inline-block',
+      padding: '1px 7px',
+      borderRadius: 4,
+      fontSize: 10,
+      fontWeight: 600,
+      textTransform: 'uppercase',
+      letterSpacing: '0.05em',
+      background: color + '22',
+      color,
+      border: `1px solid ${color}44`,
+    }}>
+      {type}
+    </span>
+  );
+}
+
 export default function PracticesPage() {
   const [practices, setPractices] = useState<Practice[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
@@ -53,6 +105,12 @@ export default function PracticesPage() {
   const [form, setForm] = useState<FormData>({ ...EMPTY_FORM });
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
+
+  // Insurance payer management state
+  const [allInsurers, setAllInsurers] = useState<InsuranceCompany[]>([]);
+  const [practiceInsurances, setPracticeInsurances] = useState<PracticeInsurance[]>([]);
+  const [insurersLoading, setInsurersLoading] = useState(false);
+  const [insurerToggling, setInsurerToggling] = useState<string | null>(null);
 
   async function loadData() {
     setLoading(true);
@@ -80,12 +138,32 @@ export default function PracticesPage() {
     }
   }
 
+  async function loadInsurers(practiceId: string) {
+    setInsurersLoading(true);
+    try {
+      const [allRes, practiceRes] = await Promise.all([
+        fetch('/api/insurance-companies?all=true'),
+        fetch(`/api/practices/${practiceId}/insurances`),
+      ]);
+      const allData = await allRes.json() as { companies?: InsuranceCompany[] };
+      const practiceData = await practiceRes.json() as { insurances?: PracticeInsurance[] };
+      setAllInsurers(allData.companies ?? []);
+      setPracticeInsurances(practiceData.insurances ?? []);
+    } catch {
+      // Non-fatal — insurers section will just be empty
+    } finally {
+      setInsurersLoading(false);
+    }
+  }
+
   useEffect(() => { void loadData(); }, []);
 
   function openAdd() {
     setEditPractice(null);
     setForm({ ...EMPTY_FORM });
     setFormError('');
+    setAllInsurers([]);
+    setPracticeInsurances([]);
     setShowModal(true);
   }
 
@@ -104,12 +182,15 @@ export default function PracticesPage() {
     });
     setFormError('');
     setShowModal(true);
+    void loadInsurers(p.id);
   }
 
   function closeModal() {
     setShowModal(false);
     setEditPractice(null);
     setFormError('');
+    setAllInsurers([]);
+    setPracticeInsurances([]);
   }
 
   function generatePracticeKey(name: string, existing: Practice[]): string {
@@ -117,8 +198,6 @@ export default function PracticesPage() {
       .replace(/[^A-Z0-9\s]/g, '')
       .split(/\s+/).filter(Boolean)
       .map(w => w[0]).join('').substring(0, 6) || 'PRC';
-    // No number suffix — just initials (e.g. IAT, MAP, NVAA)
-    // If duplicate, append number
     let key = initials;
     let n = 1;
     while (existing.some(p => p.key === key && p.id !== editPractice?.id)) {
@@ -130,7 +209,6 @@ export default function PracticesPage() {
   function setField(field: keyof FormData, value: string) {
     setForm(prev => {
       const next = { ...prev, [field]: value };
-      // Auto-generate key from name when adding (not editing)
       if (field === 'name' && !editPractice) {
         next.key = generatePracticeKey(value, practices);
       }
@@ -186,6 +264,38 @@ export default function PracticesPage() {
       await loadData();
     } catch {
       alert('Failed to update practice status');
+    }
+  }
+
+  async function toggleInsurer(insuranceId: string) {
+    if (!editPractice || insurerToggling) return;
+    setInsurerToggling(insuranceId);
+
+    const isActive = practiceInsurances.some(pi => pi.insuranceId === insuranceId);
+
+    try {
+      if (isActive) {
+        const res = await fetch(`/api/practices/${editPractice.id}/insurances/${insuranceId}`, {
+          method: 'DELETE',
+        });
+        if (!res.ok) throw new Error('Failed to remove');
+        setPracticeInsurances(prev => prev.filter(pi => pi.insuranceId !== insuranceId));
+      } else {
+        const res = await fetch(`/api/practices/${editPractice.id}/insurances`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ insuranceId }),
+        });
+        if (!res.ok) throw new Error('Failed to add');
+        // Reload to get full data
+        const practiceRes = await fetch(`/api/practices/${editPractice.id}/insurances`);
+        const practiceData = await practiceRes.json() as { insurances?: PracticeInsurance[] };
+        setPracticeInsurances(practiceData.insurances ?? []);
+      }
+    } catch {
+      alert('Failed to update insurance preference');
+    } finally {
+      setInsurerToggling(null);
     }
   }
 
@@ -314,7 +424,7 @@ export default function PracticesPage() {
       {/* Add / Edit Modal */}
       {showModal && (
         <div className="modal-overlay" onClick={closeModal}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
+          <div className="modal" style={{ maxWidth: 680 }} onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h2 className="modal-title">{editPractice ? 'Edit Practice' : 'Add Practice'}</h2>
               <button className="modal-close" onClick={closeModal}>✕</button>
@@ -434,6 +544,79 @@ export default function PracticesPage() {
                     />
                   </div>
                 </div>
+
+                {/* ── Accepted Insurances (edit mode only) ───────────── */}
+                {editPractice && (
+                  <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid #e2e8f0' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: 14, color: '#1e293b' }}>Accepted Insurance Payers</div>
+                        <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
+                          {insurersLoading ? 'Loading…' : `${practiceInsurances.length} of ${allInsurers.length} payers accepted`}
+                        </div>
+                      </div>
+                    </div>
+
+                    {insurersLoading ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#64748b', fontSize: 13, padding: '12px 0' }}>
+                        <div className="spinner" style={{ width: 16, height: 16 }} />
+                        Loading insurers…
+                      </div>
+                    ) : allInsurers.length === 0 ? (
+                      <div style={{ color: '#94a3b8', fontSize: 13, padding: '8px 0' }}>No insurance companies configured yet.</div>
+                    ) : (
+                      <div style={{
+                        border: '1px solid #e2e8f0',
+                        borderRadius: 8,
+                        overflow: 'hidden',
+                        maxHeight: 320,
+                        overflowY: 'auto',
+                      }}>
+                        {allInsurers.map((ins, idx) => {
+                          const isChecked = practiceInsurances.some(pi => pi.insuranceId === ins.id);
+                          const isToggling = insurerToggling === ins.id;
+                          return (
+                            <label
+                              key={ins.id}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 12,
+                                padding: '10px 14px',
+                                borderBottom: idx < allInsurers.length - 1 ? '1px solid #f1f5f9' : 'none',
+                                cursor: isToggling ? 'wait' : 'pointer',
+                                background: isChecked ? '#f0fdf4' : '#fff',
+                                transition: 'background 0.15s',
+                              }}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                disabled={isToggling}
+                                onChange={() => void toggleInsurer(ins.id)}
+                                style={{ width: 16, height: 16, accentColor: '#0d9488', cursor: 'pointer', flexShrink: 0 }}
+                              />
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                  <span style={{ fontWeight: 500, fontSize: 13, color: '#1e293b' }}>{ins.name}</span>
+                                  <TypeBadge type={ins.type} />
+                                </div>
+                                {ins.payerId && (
+                                  <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
+                                    Payer ID: <code style={{ fontFamily: 'monospace', background: '#f8fafc', padding: '0 4px', borderRadius: 3 }}>{ins.payerId}</code>
+                                  </div>
+                                )}
+                              </div>
+                              {isToggling && (
+                                <div className="spinner" style={{ width: 14, height: 14, flexShrink: 0 }} />
+                              )}
+                            </label>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="modal-footer">
