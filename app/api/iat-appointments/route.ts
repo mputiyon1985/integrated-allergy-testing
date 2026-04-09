@@ -35,13 +35,23 @@ function getWeekRange(date: Date) {
   return { start: monday, end: sunday }
 }
 
+function getMonthRange(date: Date) {
+  const start = new Date(date.getFullYear(), date.getMonth(), 1, 0, 0, 0, 0)
+  const end   = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59, 999)
+  return { start, end }
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const dateParam = searchParams.get('date')
+    const rangeParam = searchParams.get('range') // 'week' | 'month'
     const locationId = searchParams.get('locationId')
     const base = dateParam ? new Date(dateParam) : new Date()
-    const { start, end } = getWeekRange(base)
+
+    const { start, end } = rangeParam === 'month'
+      ? getMonthRange(base)
+      : getWeekRange(base)
 
     const appointments = await prisma.iATAppointment.findMany({
       where: {

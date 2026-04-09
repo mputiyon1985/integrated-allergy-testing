@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import Link from 'next/link';
 
 interface Appointment {
   id: string;
@@ -57,8 +56,17 @@ function formatHour(h: number) {
   return `${h}am`;
 }
 
+// Timezone-safe: uses local date parts so UTC conversion never shifts the date
 function isoDate(d: Date) {
-  return d.toISOString().slice(0, 10);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+// Timezone-safe sameDay: compare local YYYY-MM-DD strings directly
+function localDateStr(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
 function startOfWeek(d: Date) {
@@ -77,9 +85,8 @@ function addDays(d: Date, n: number) {
 }
 
 function sameDay(a: Date, b: Date) {
-  return a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate();
+  // Compare local date strings — avoids UTC-vs-local off-by-one bugs
+  return localDateStr(a) === localDateStr(b);
 }
 
 function apptHour(appt: Appointment) {
@@ -115,7 +122,8 @@ const EMPTY_FORM = {
 
 function CalendarInner() {
   const searchParams = useSearchParams();
-  const [view, setView] = useState<'week' | 'month'>('week');
+  // ── DEFAULT: month view ──
+  const [view, setView] = useState<'week' | 'month'>('month');
   const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(new Date()));
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -132,20 +140,29 @@ function CalendarInner() {
   const [editMode, setEditMode] = useState(false);
   const [titleManuallyEdited, setTitleManuallyEdited] = useState(false);
 
+  // Day detail panel state
+  const [selectedDay, setSelectedDay] = useState<Date | null>(null);
+  const [dayPanelOpen, setDayPanelOpen] = useState(false);
+
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
   const today = new Date();
 
+  // ── For month view: load all appointments in the current month ──
   const loadAppointments = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/iat-appointments?date=${isoDate(weekStart)}`);
+      // Pass the first day of the month so API returns the full month range
+      const refDate = view === 'month'
+        ? new Date(weekStart.getFullYear(), weekStart.getMonth(), 1)
+        : weekStart;
+      const res = await fetch(`/api/iat-appointments?date=${isoDate(refDate)}&range=${view}`);
       if (res.ok) {
         const data = await res.json();
         setAppointments(Array.isArray(data) ? data : []);
       }
     } catch {}
     setLoading(false);
-  }, [weekStart]);
+  }, [weekStart, view]);
 
   useEffect(() => {
     loadAppointments();
@@ -194,6 +211,42 @@ function CalendarInner() {
       setForm(f => ({ ...f, title: `${form.patientName} - ${form.reasonName}` }));
     }
   }, [form.patientName, form.reasonName, titleManuallyEdited]);
+
+  // ── Day panel helpers ──
+  function openDayPanel(day: Date) {
+    setSelectedDay(day);
+    setDayPanelOpen(true);
+  }
+
+  function closeDayPanel() {
+    setDayPanelOpen(false);
+  }
+
+  // Group same-time + same-type appointments into a single chip
+  function buildDayChips(dayAppts: Appointment[]) {
+    const groups = new Map<string, {
+      appts: Appointment[];
+      colors: ReturnType<typeof getApptColors>;
+      typeName: string;
+      time: string;
+    }>();
+    dayAppts.forEach(a => {
+      const timePart = a.startTime.slice(0, 16);
+      const typeName = getReasonForAppt(a)?.name ?? a.type;
+      const key = `${timePart}|${typeName}`;
+      if (!groups.has(key)) {
+        groups.set(key, { appts: [], colors: getApptColors(a), typeName, time: formatTime(a.startTime) });
+      }
+      groups.get(key)!.appts.push(a);
+    });
+    return Array.from(groups.values()).map(({ appts, colors, typeName, time }) => ({
+      label: appts.length > 1 ? `${appts.length}× ${typeName}` : (appts[0].patientName ?? appts[0].title),
+      sublabel: time,
+      colors,
+      count: appts.length,
+      appts,
+    }));
+  }
 
   function openAddModal(date?: Date, hour?: number) {
     const d = date ? isoDate(date) : isoDate(today);
@@ -369,7 +422,7 @@ function CalendarInner() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
           {/* View toggle */}
           <div style={{ display: 'flex', border: '1.5px solid #e2e8f0', borderRadius: 8, overflow: 'hidden' }}>
-            {(['week', 'month'] as const).map(v => (
+            {(['month', 'week'] as const).map(v => (
               <button key={v} onClick={() => setView(v)}
                 style={{ padding: '6px 18px', fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', background: view === v ? '#0d9488' : '#fff', color: view === v ? '#fff' : '#374151' }}>
                 {v.charAt(0).toUpperCase() + v.slice(1)}
@@ -397,7 +450,7 @@ function CalendarInner() {
           {loading && <span style={{ fontSize: 12, color: '#9ca3af' }}>Loading…</span>}
         </div>
 
-        {/* WEEK VIEW */}
+        {/* ══ WEEK VIEW (unchanged) ══ */}
         {view === 'week' && (
           <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '60px repeat(7, 1fr)', borderBottom: '2px solid #e2e8f0' }}>
@@ -481,48 +534,102 @@ function CalendarInner() {
           </div>
         )}
 
-        {/* MONTH VIEW */}
+        {/* ══ MONTH VIEW ══ */}
         {view === 'month' && (
           <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+            {/* Day-of-week header */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: '2px solid #e2e8f0' }}>
               {DAYS_SHORT.map(d => (
                 <div key={d} style={{ padding: '10px 0', textAlign: 'center', background: '#f8fafc', fontSize: 12, fontWeight: 700, color: '#6b7280', textTransform: 'uppercase' }}>{d}</div>
               ))}
             </div>
+
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
-              {/* Leading empty cells: monthFirstDay offset (Monday-first) */}
+              {/* Leading empty cells (Monday-first grid) */}
               {Array.from({ length: (monthFirstDay === 0 ? 6 : monthFirstDay - 1) }).map((_, i) => (
-                <div key={`empty-${i}`} style={{ minHeight: 100, background: '#fafafa', borderRight: '1px solid #f1f5f9', borderBottom: '1px solid #f1f5f9' }} />
+                <div key={`empty-${i}`} style={{ minHeight: 120, background: '#fafafa', borderRight: '1px solid #f1f5f9', borderBottom: '1px solid #f1f5f9' }} />
               ))}
+
+              {/* Day cells */}
               {Array.from({ length: daysInMonth }, (_, i) => {
                 const day = new Date(weekStart.getFullYear(), weekStart.getMonth(), i + 1);
                 const isToday = sameDay(day, today);
                 const dayAppts = appointments.filter(a => sameDay(apptDay(a), day));
+                const chips = buildDayChips(dayAppts);
+                // Show up to 3 grouped chips; +N more = remaining raw appointments
+                const MAX_CHIPS = 3;
+                const visibleChips = chips.slice(0, MAX_CHIPS);
+                const shownApptCount = visibleChips.reduce((s, c) => s + c.count, 0);
+                const hiddenCount = dayAppts.length - shownApptCount;
+
                 return (
                   <div
                     key={i}
-                    onClick={() => openAddModal(day)}
-                    style={{ minHeight: 100, borderRight: '1px solid #f1f5f9', borderBottom: '1px solid #f1f5f9', padding: 6, cursor: 'pointer', background: isToday ? '#fafffe' : 'white' }}
+                    onClick={() => openDayPanel(day)}
+                    style={{
+                      minHeight: 120,
+                      borderRight: '1px solid #f1f5f9',
+                      borderBottom: '1px solid #f1f5f9',
+                      padding: '6px 5px',
+                      cursor: 'pointer',
+                      background: isToday ? '#f0fdf9' : 'white',
+                      transition: 'background 0.1s',
+                    }}
                     onMouseEnter={e => (e.currentTarget.style.background = '#f0fdf4')}
-                    onMouseLeave={e => (e.currentTarget.style.background = isToday ? '#fafffe' : 'white')}
+                    onMouseLeave={e => (e.currentTarget.style.background = isToday ? '#f0fdf9' : 'white')}
                   >
-                    <div style={{ fontWeight: 700, fontSize: 13, color: isToday ? '#0d9488' : '#374151', marginBottom: 4,
-                      ...(isToday ? { background: '#0d9488', color: '#fff', width: 24, height: 24, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 } : {}) }}>
-                      {i + 1}
-                    </div>
-                    {dayAppts.slice(0, 3).map(appt => {
-                      const colors = getApptColors(appt);
-                      const reason = getReasonForAppt(appt);
-                      const icon = reason ? getReasonIcon(reason.name) : '📅';
-                      return (
-                        <div key={appt.id} onClick={e => { e.stopPropagation(); openViewModal(appt); }}
-                          style={{ background: colors.bg, border: `1px solid ${colors.border}`, borderRadius: 4, padding: '2px 5px', marginBottom: 2, fontSize: 10, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600, color: colors.text, cursor: 'pointer' }}>
-                          {icon} {formatTime(appt.startTime)} {appt.title}
+                    {/* Day number row + count badge */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
+                      {isToday ? (
+                        <div style={{ background: '#0d9488', color: '#fff', width: 26, height: 26, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, flexShrink: 0 }}>
+                          {i + 1}
                         </div>
-                      );
-                    })}
-                    {dayAppts.length > 3 && (
-                      <div style={{ fontSize: 10, color: '#9ca3af', fontWeight: 600 }}>+{dayAppts.length - 3} more</div>
+                      ) : (
+                        <div style={{ fontWeight: 700, fontSize: 13, color: '#374151' }}>{i + 1}</div>
+                      )}
+                      {dayAppts.length > 0 && (
+                        <span style={{
+                          background: '#0d9488', color: '#fff',
+                          borderRadius: 999, fontSize: 10, fontWeight: 700,
+                          padding: '1px 7px', lineHeight: '16px', flexShrink: 0,
+                        }}>
+                          {dayAppts.length} appt{dayAppts.length !== 1 ? 's' : ''}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Grouped appointment chips */}
+                    {visibleChips.map((chip, ci) => (
+                      <div
+                        key={ci}
+                        title={`${chip.sublabel} – ${chip.label}`}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          background: hexToRgba(chip.colors.bg, 0.11),
+                          borderLeft: `3px solid ${chip.colors.bg}`,
+                          borderRadius: '0 4px 4px 0',
+                          padding: '2px 5px',
+                          marginBottom: 3,
+                          fontSize: 10,
+                          overflow: 'hidden',
+                        }}
+                      >
+                        <span style={{ fontWeight: 700, color: chip.colors.bg, flexShrink: 0, fontSize: 10 }}>
+                          {chip.sublabel}
+                        </span>
+                        <span style={{ color: '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600, fontSize: 10 }}>
+                          {chip.label}
+                        </span>
+                      </div>
+                    ))}
+
+                    {/* +N more overflow */}
+                    {hiddenCount > 0 && (
+                      <div style={{ fontSize: 10, color: '#6b7280', fontWeight: 600, paddingLeft: 4 }}>
+                        +{hiddenCount} more
+                      </div>
                     )}
                   </div>
                 );
@@ -544,7 +651,125 @@ function CalendarInner() {
         )}
       </div>
 
-      {/* ── MODAL ── */}
+      {/* ══ DAY DETAIL SLIDE PANEL ══ */}
+      {dayPanelOpen && selectedDay && (() => {
+        const panelAppts = appointments
+          .filter(a => sameDay(apptDay(a), selectedDay))
+          .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+        const dayLabel = selectedDay.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+
+        return (
+          <>
+            {/* Backdrop */}
+            <div
+              onClick={closeDayPanel}
+              style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', zIndex: 900 }}
+            />
+            {/* Slide-in panel */}
+            <div style={{
+              position: 'fixed', top: 0, right: 0, bottom: 0,
+              width: 420, maxWidth: '93vw',
+              background: '#fff', zIndex: 901,
+              boxShadow: '-4px 0 32px rgba(0,0,0,0.18)',
+              display: 'flex', flexDirection: 'column',
+              animation: 'slideInRight 0.22s ease',
+            }}>
+              {/* Panel header */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 20px', borderBottom: '1.5px solid #e2e8f0', background: '#f8fafc' }}>
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: 16, color: '#111827' }}>📅 {dayLabel}</div>
+                  <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>
+                    {panelAppts.length === 0 ? 'No appointments' : `${panelAppts.length} appointment${panelAppts.length !== 1 ? 's' : ''}`}
+                  </div>
+                </div>
+                <button
+                  onClick={closeDayPanel}
+                  style={{ background: '#f1f5f9', border: 'none', borderRadius: 8, width: 34, height: 34, fontSize: 20, cursor: 'pointer', color: '#6b7280', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 }}
+                >×</button>
+              </div>
+
+              {/* Appointment cards */}
+              <div style={{ flex: 1, overflowY: 'auto', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {panelAppts.length === 0 ? (
+                  <div style={{ textAlign: 'center', color: '#9ca3af', fontSize: 14, marginTop: 48 }}>
+                    <div style={{ fontSize: 40, marginBottom: 10 }}>🗓️</div>
+                    <div style={{ fontWeight: 600, color: '#6b7280' }}>No appointments</div>
+                    <div style={{ fontSize: 12, marginTop: 4 }}>Click below to book one</div>
+                  </div>
+                ) : panelAppts.map(appt => {
+                  const colors = getApptColors(appt);
+                  const reason = getReasonForAppt(appt);
+                  const icon = reason ? getReasonIcon(reason.name) : '📅';
+                  return (
+                    <div
+                      key={appt.id}
+                      onClick={() => { closeDayPanel(); openViewModal(appt); }}
+                      style={{
+                        borderLeft: `4px solid ${colors.bg}`,
+                        background: '#fff',
+                        borderRadius: '0 10px 10px 0',
+                        padding: '12px 14px',
+                        boxShadow: '0 1px 4px rgba(0,0,0,0.07)',
+                        cursor: 'pointer',
+                        transition: 'box-shadow 0.1s, transform 0.1s',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.13)'; e.currentTarget.style.transform = 'translateX(2px)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.07)'; e.currentTarget.style.transform = 'translateX(0)'; }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          {/* Patient name */}
+                          <div style={{ fontWeight: 700, fontSize: 14, color: '#111827', marginBottom: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {appt.patientName ?? appt.title}
+                          </div>
+                          {/* Time */}
+                          <div style={{ fontSize: 12, color: '#6b7280', marginBottom: appt.notes ? 5 : 0 }}>
+                            🕐 {formatTime(appt.startTime)} – {formatTime(appt.endTime)}
+                          </div>
+                          {/* Notes */}
+                          {appt.notes && (
+                            <div style={{ fontSize: 12, color: '#374151', background: '#f8fafc', borderRadius: 6, padding: '4px 8px', marginTop: 5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              📝 {appt.notes}
+                            </div>
+                          )}
+                        </div>
+                        {/* Service badge */}
+                        <span style={{
+                          background: colors.bg, color: colors.text,
+                          borderRadius: 999, padding: '3px 10px',
+                          fontSize: 11, fontWeight: 700,
+                          whiteSpace: 'nowrap', flexShrink: 0,
+                        }}>
+                          {icon} {reason?.name ?? appt.type}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Footer: Book button */}
+              <div style={{ padding: '14px 16px', borderTop: '1.5px solid #e2e8f0', background: '#f8fafc' }}>
+                <button
+                  onClick={() => { closeDayPanel(); openAddModal(selectedDay); }}
+                  style={{ width: '100%', padding: '12px 0', borderRadius: 10, border: 'none', background: '#0d9488', color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer', letterSpacing: 0.3 }}
+                >
+                  + Book Appointment
+                </button>
+              </div>
+            </div>
+
+            <style>{`
+              @keyframes slideInRight {
+                from { transform: translateX(100%); opacity: 0; }
+                to   { transform: translateX(0);    opacity: 1; }
+              }
+            `}</style>
+          </>
+        );
+      })()}
+
+      {/* ══ MODAL ══ */}
       {showModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
           <div style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
