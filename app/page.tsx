@@ -19,7 +19,6 @@ const DEFAULT_LAYOUTS: ResponsiveLayouts = {
     { i: 'waiting-room',   x: 0,  y: 4,  w: 8, h: 16, minW: 4, minH: 8 },
     { i: 'appointments',   x: 8,  y: 4,  w: 4, h: 16, minW: 3, minH: 6 },
     { i: 'quick-actions',  x: 0,  y: 20, w: 6, h: 10, minW: 3, minH: 5 },
-    { i: 'system-status',  x: 6,  y: 20, w: 6, h: 10, minW: 3, minH: 5 },
   ],
   md: [
     { i: 'kpi-patients',   x: 0, y: 0,  w: 5,  h: 4 },
@@ -29,7 +28,6 @@ const DEFAULT_LAYOUTS: ResponsiveLayouts = {
     { i: 'waiting-room',   x: 0, y: 8,  w: 10, h: 14 },
     { i: 'appointments',   x: 0, y: 22, w: 10, h: 10 },
     { i: 'quick-actions',  x: 0, y: 32, w: 5,  h: 10 },
-    { i: 'system-status',  x: 5, y: 32, w: 5,  h: 10 },
   ],
   sm: [
     { i: 'kpi-patients',   x: 0, y: 0,  w: 3, h: 4 },
@@ -39,7 +37,6 @@ const DEFAULT_LAYOUTS: ResponsiveLayouts = {
     { i: 'waiting-room',   x: 0, y: 8,  w: 6, h: 14 },
     { i: 'appointments',   x: 0, y: 22, w: 6, h: 10 },
     { i: 'quick-actions',  x: 0, y: 32, w: 6, h: 10 },
-    { i: 'system-status',  x: 0, y: 42, w: 6, h: 10 },
   ],
 };
 
@@ -572,26 +569,6 @@ export default function DashboardPage() {
     </div>
   );
 
-  const systemStatusTile = (
-    <div className="card" style={{ height: '100%', overflow: 'auto', border: editMode ? '2px dashed #f59e0b' : '1px solid #e2e8f0' }}>
-      <div className="card-title">System Status</div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        {[
-          { label: 'Patient Kiosk', status: 'Online', icon: '📲' },
-          { label: 'API Server', status: 'Operational', icon: '🟢' },
-          { label: 'Database', status: 'Operational', icon: '🟢' },
-          { label: 'Waiting Room', status: `${waitingCount + inServiceCount} active`, icon: '🏥' },
-          { label: 'Auth Service', status: 'Operational', icon: '🟢' },
-          { label: 'HIPAA Compliance', status: 'Active', icon: '🔐' },
-        ].map(s => (
-          <div key={s.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #f1f5f9' }}>
-            <span style={{ fontSize: 14, color: '#374151' }}>{s.icon} {s.label}</span>
-            <span style={{ fontSize: 12, fontWeight: 700, padding: '2px 10px', borderRadius: 999, background: '#e8f9f7', color: '#0d9488' }}>{s.status}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
 
   // Suppress unused warning
   void nurseCount;
@@ -674,7 +651,6 @@ export default function DashboardPage() {
             { id: 'waiting-room',  content: waitingRoomTile },
             { id: 'appointments',  content: appointmentsTile },
             { id: 'quick-actions', content: quickActionsTile },
-            { id: 'system-status', content: systemStatusTile },
           ]}
         />
       </div>
