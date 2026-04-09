@@ -10,27 +10,20 @@
  */
 import { SignJWT, jwtVerify } from 'jose'
 import { cookies } from 'next/headers'
-import { getSecret } from '@/lib/keyVault'
 
 const COOKIE_NAME = 'iat_session'
 
-// Lazy-loaded secret — fetched from Key Vault on first use, cached in memory
-let _secretBytes: Uint8Array | null = null;
-
-async function getSecretBytes(): Promise<Uint8Array> {
-  if (_secretBytes) return _secretBytes;
-  // Key Vault first (prod w/ Azure), then JWT_SECRET env var, then dev fallback.
-  // middleware.ts uses JWT_SECRET directly (Edge runtime can't call Azure SDK) —
-  // ensure JWT_SECRET is set on Vercel to match Key Vault secret when Key Vault is configured.
-  const secret = await getSecret('iat-jwt-secret', 'JWT_SECRET')
-    ?? process.env.JWT_SECRET
-    ?? 'iat-dev-secret-change-in-production-32c';
-  _secretBytes = new TextEncoder().encode(secret);
-  return _secretBytes;
+// JWT signing uses JWT_SECRET env var only — NOT Azure Key Vault.
+// proxy.ts (Edge runtime) cannot call the Azure SDK, so both signing and
+// verification must use the same env var. Set JWT_SECRET on Vercel.
+function getSecretBytes(): Uint8Array {
+  return new TextEncoder().encode(
+    process.env.JWT_SECRET ?? 'iat-dev-secret-change-in-production-32c'
+  );
 }
 
 export async function signSession(payload: Record<string, unknown>) {
-  const secret = await getSecretBytes();
+  const secret = getSecretBytes();
   return new SignJWT(payload)
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
@@ -43,8 +36,7 @@ export async function verifySession(req: Request): Promise<Record<string, unknow
     const cookieHeader = req.headers.get('cookie') || ''
     const match = cookieHeader.match(new RegExp(`${COOKIE_NAME}=([^;]+)`))
     if (!match) return null
-    const secret = await getSecretBytes();
-    const { payload } = await jwtVerify(match[1], secret)
+    const { payload } = await jwtVerify(match[1], getSecretBytes())
     return payload as Record<string, unknown>
   } catch { return null }
 }
