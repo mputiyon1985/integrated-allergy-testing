@@ -13,6 +13,7 @@ export async function log(params: {
   entity?: string
   entityId?: string
   patientId?: string
+  performedBy?: string
   details?: string
 }): Promise<void> {
   try {

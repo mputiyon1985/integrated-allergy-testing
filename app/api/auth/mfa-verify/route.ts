@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
     })
 
     if (!valid) {
-      await log({ action: 'LOGIN_FAILED', entity: 'StaffUser', entityId: user.id, details: `MFA verification failed for ${user.email}` })
+      await log({ action: 'LOGIN_FAILED', entity: 'StaffUser', entityId: user.id, performedBy: user.name, details: `MFA verification failed for ${user.email}` })
       return NextResponse.json({ error: 'Invalid code' }, { status: 400 })
     }
 
@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
       defaultLocationId: user.defaultLocationId ?? 'loc-iat-001',
     })
 
-    await log({ action: 'LOGIN_SUCCESS', entity: 'StaffUser', entityId: user.id, details: `${user.name} (${user.email}) logged in via MFA` })
+    await log({ action: 'LOGIN_SUCCESS', entity: 'StaffUser', entityId: user.id, performedBy: user.name, details: `${user.name} (${user.email}) logged in via MFA` })
 
     const response = NextResponse.json({ success: true, role: user.role, name: user.name })
     response.cookies.set('iat_session', token, {

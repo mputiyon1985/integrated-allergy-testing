@@ -6,7 +6,7 @@ export async function POST(req: NextRequest) {
   try {
     const session = await verifySession(req)
     if (session?.userId) {
-      await log({ action: 'LOGOUT', entity: 'StaffUser', entityId: session.userId as string, details: `${session.name ?? session.email} logged out` })
+      await log({ action: 'LOGOUT', entity: 'StaffUser', entityId: session.userId as string, performedBy: session.name as string ?? session.email as string, details: `${session.name ?? session.email} logged out` })
     }
   } catch { /* non-fatal */ }
   const response = NextResponse.json({ ok: true })

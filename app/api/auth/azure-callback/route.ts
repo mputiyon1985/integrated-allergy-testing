@@ -65,6 +65,7 @@ export async function GET(req: NextRequest) {
         action: 'SSO_LOGIN',
         entity: 'StaffUser',
         entityId: staffUser.id,
+        performedBy: staffUser.name,
         details: `Azure AD SSO login: ${email}`,
       },
     }).catch(() => {})

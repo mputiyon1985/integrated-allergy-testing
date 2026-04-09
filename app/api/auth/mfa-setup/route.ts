@@ -97,7 +97,7 @@ export async function POST(req: NextRequest) {
       defaultLocationId: user.defaultLocationId ?? 'loc-iat-001',
     })
 
-    await log({ action: 'LOGIN_SUCCESS', entity: 'StaffUser', entityId: user.id, details: `${user.name} (${user.email}) completed MFA setup and logged in` })
+    await log({ action: 'LOGIN_SUCCESS', entity: 'StaffUser', entityId: user.id, performedBy: user.name, details: `${user.name} (${user.email}) completed MFA setup and logged in` })
 
     const response = NextResponse.json({ success: true, role: user.role, name: user.name })
     response.cookies.set('iat_session', token, {

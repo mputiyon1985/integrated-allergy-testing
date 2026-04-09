@@ -33,13 +33,13 @@ export async function POST(req: NextRequest) {
     // Verify password
     const valid = await bcrypt.compare(password, user.passwordHash)
     if (!valid) {
-      await log({ action: 'LOGIN_FAILED', entity: 'StaffUser', entityId: user.id, details: `Failed password attempt for ${email}` })
+      await log({ action: 'LOGIN_FAILED', entity: 'StaffUser', entityId: user.id, performedBy: user.name, details: `Failed password attempt for ${email}` })
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 })
     }
 
     // If MFA is explicitly disabled for this user — issue session directly
     if (!user.mfaEnabled) {
-      await log({ action: 'LOGIN_SUCCESS', entity: 'StaffUser', entityId: user.id, details: `${user.name} (${user.email}) logged in (MFA disabled)` })
+      await log({ action: 'LOGIN_SUCCESS', entity: 'StaffUser', entityId: user.id, performedBy: user.name, details: `${user.name} (${user.email}) logged in (MFA disabled)` })
       const token = await signSession({
         userId: user.id,
         email: user.email,

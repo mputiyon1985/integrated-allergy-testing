@@ -270,14 +270,15 @@ model FormActivity {
 }
 
 model AuditLog {
-  id        String   @id @default(cuid())
-  action    String
-  entity    String   @default("")
-  entityId  String?
-  patientId String?
-  details   String?
-  createdAt DateTime @default(now())
-  patient   Patient? @relation(fields: [patientId], references: [id])
+  id          String   @id @default(cuid())
+  action      String
+  entity      String   @default("")
+  entityId    String?
+  patientId   String?
+  performedBy String?  // Name of the staff user who performed the action
+  details     String?
+  createdAt   DateTime @default(now())
+  patient     Patient? @relation(fields: [patientId], references: [id])
 
   @@index([action])
   @@index([entityId])
