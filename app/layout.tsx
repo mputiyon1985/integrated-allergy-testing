@@ -14,13 +14,10 @@ const navItems = [
   { href: '/calendar', label: 'Calendar', icon: '📅' },
   { href: '/insurance', label: 'Insurance', icon: '🏥' },
 
-  { href: '/doctors', label: 'Doctors', icon: '👨‍⚕️' },
-  { href: '/nurses', label: 'Nurses', icon: '👩‍⚕️' },
   { href: '/practices', label: 'Practice', icon: '🏥', children: [
     { href: '/practices', label: 'Practices', icon: '🏥' },
     { href: '/locations', label: 'Locations', icon: '📍' },
   ]},
-  { href: '/videos', label: 'Videos', icon: '🎬' },
   { href: '/kiosk', label: 'Kiosk', icon: '📲' },
   { href: '/settings', label: 'Settings', icon: '⚙️' },
 ];
