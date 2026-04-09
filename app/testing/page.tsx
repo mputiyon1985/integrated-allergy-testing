@@ -285,7 +285,7 @@ function TestPanel({
 
   // Compact column header (used in multi-column mode)
   const compactHdr = (
-    <div style={{ display: 'grid', gridTemplateColumns: '16px minmax(60px,1fr) 42px 120px 42px 42px', gap: 1, padding: '3px 4px', background: '#f1f5f9', borderBottom: '1px solid #cbd5e1', position: 'sticky', top: 0 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: '16px minmax(60px,1fr) 42px 120px 42px 42px', gap: 1, padding: '2px 4px', background: '#f1f5f9', borderBottom: '1px solid #cbd5e1', position: 'sticky', top: 0 }}>
       {['#', 'Allergen', 'Loc', 'Grade', 'Whl', 'Flr'].map(h => (
         <div key={h} style={{ fontSize: 12, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' as const, whiteSpace: 'nowrap' as const, overflow: 'hidden' }}>{h}</div>
       ))}
