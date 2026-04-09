@@ -892,13 +892,14 @@ ${(prickResults.length + idResults.length) === 0 ? '<p style="color:#94a3b8; tex
       ) : (
         <div style={{ flex: 1, display: 'flex', gap: 0, padding: '16px 12px', overflow: 'auto' }}>
           {/* Left: Prick */}
-          <div style={{ flex: 1, minWidth: 0, paddingRight: 8 }}>
+          <div style={{ flex: 3, minWidth: 0, paddingRight: 8 }}>
             <TestPanel
               title="Prick Test"
               color="#0055A5"
               state={prick}
               onChange={rows => setPrick({ rows })}
               locked={!testedBy}
+              columns={3}
             />
           </div>
 
@@ -913,6 +914,7 @@ ${(prickResults.length + idResults.length) === 0 ? '<p style="color:#94a3b8; tex
               state={intradermal}
               onChange={rows => setIntradermal({ rows })}
               locked={!testedBy}
+              columns={1}
             />
           </div>
         </div>
