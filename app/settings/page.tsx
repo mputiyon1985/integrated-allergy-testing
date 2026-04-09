@@ -467,7 +467,7 @@ function Icd10CodesContent() {
 }
 
 function CptCodesContent() {
-  const [codes, setCodes] = useState<{ id: string; code: string; description: string; category?: string; defaultFee?: number | null; nonFacilityFee?: number | null; facilityFee?: number | null; active: boolean }[]>([]);
+  const [codes, setCodes] = useState<{ id: string; code: string; description: string; category?: string; defaultFee?: number | null; nonFacilityFee?: number | null; facilityFee?: number | null; maximumAllowable?: number | null; active: boolean }[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
   const [addForm, setAddForm] = useState({ code: '', description: '', category: '' });
@@ -582,7 +582,7 @@ function CptCodesContent() {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
               <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
-                {['Code', 'Description', 'Category', '2026 Medicare NF', '2026 Medicare FAC', 'Actions'].map(h => (
+                {['Code', 'Description', 'Category', '2026 Medicare NF', '2026 Medicare FAC', 'NoVA MAC (Max Allowable)', 'Actions'].map(h => (
                   <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: '#475569' }}>{h}</th>
                 ))}
               </tr>
@@ -635,6 +635,9 @@ function CptCodesContent() {
                       </td>
                       <td style={{ padding: '8px 12px', fontFamily: 'monospace', fontSize: 12, color: c.facilityFee ? '#0369a1' : '#94a3b8', fontWeight: c.facilityFee ? 600 : 400 }}>
                         {c.facilityFee ? `$${Number(c.facilityFee).toFixed(2)}` : '—'}
+                      </td>
+                      <td style={{ padding: '8px 12px', fontFamily: 'monospace', fontSize: 12, color: c.maximumAllowable ? '#7c3aed' : '#94a3b8', fontWeight: c.maximumAllowable ? 700 : 400 }}>
+                        {c.maximumAllowable ? `$${Number(c.maximumAllowable).toFixed(2)}` : '—'}
                       </td>
                       {/* Your Fee ($) hidden from display but kept in DB */}
                       <td style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>

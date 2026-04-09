@@ -410,7 +410,8 @@ model CPTCode {
   category        String?
   defaultFee      Float?   // clinic's own fee (editable)
   nonFacilityFee  Float?   // 2026 Medicare non-facility rate (read-only)
-  facilityFee     Float?   // 2026 Medicare facility rate (read-only)
+  facilityFee       Float?   // 2026 Medicare facility rate (read-only)
+  maximumAllowable  Float?   // 2026 Medicare max allowable (locality-adjusted NoVA)
   active          Boolean  @default(true)
   sortOrder       Int      @default(0)
   createdAt       DateTime @default(now())
