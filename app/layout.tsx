@@ -26,11 +26,11 @@ const navItems = [
 ];
 
 function UserCard() {
-  const [user, setUser] = useState<{ name: string; email: string; role: string } | null>(() => {
-    try { const c = localStorage.getItem('iat_user'); return c ? JSON.parse(c) : null; } catch { return null; }
-  });
+  const [user, setUser] = useState<{ name: string; email: string; role: string } | null>(null);
 
   useEffect(() => {
+    // Load from cache instantly, then refresh from API
+    try { const c = localStorage.getItem('iat_user'); if (c) setUser(JSON.parse(c)); } catch {}
     fetch('/api/auth/me').then(r => r.ok ? r.json() : null).then(d => {
       if (d?.user) {
         setUser(d.user);
@@ -206,11 +206,11 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
 }
 
 function TopBar() {
-  const [userName, setUserName] = useState(() => {
-    try { const c = localStorage.getItem('iat_user'); return c ? (JSON.parse(c)?.name ?? '') : ''; } catch { return ''; }
-  });
+  const [userName, setUserName] = useState('');
 
   useEffect(() => {
+    // Load from cache instantly, then refresh from API
+    try { const c = localStorage.getItem('iat_user'); if (c) setUserName(JSON.parse(c)?.name ?? ''); } catch {}
     fetch('/api/auth/me')
       .then(r => r.ok ? r.json() : null)
       .then(d => {
