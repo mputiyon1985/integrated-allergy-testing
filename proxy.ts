@@ -32,6 +32,7 @@ export async function proxy(req: NextRequest) {
     const headers = new Headers(req.headers)
     headers.set('x-user-id', payload.userId as string || '')
     headers.set('x-user-role', payload.role as string || '')
+    headers.set('x-location-id', payload.defaultLocationId as string || '')
     return NextResponse.next({ request: { headers } })
   } catch {
     if (pathname.startsWith('/api/')) {

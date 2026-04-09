@@ -20,8 +20,14 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    const { searchParams } = new URL(req.url)
+    const locationId = searchParams.get('locationId')
+
     const entries = await prisma.waitingRoom.findMany({
-      where: { status: { in: ['waiting', 'in-service'] } },
+      where: {
+        status: { in: ['waiting', 'in-service'] },
+        ...(locationId ? { locationId } : {}),
+      },
       orderBy: { checkedInAt: 'asc' },
     })
     return NextResponse.json({ entries }, { headers: HIPAA_HEADERS })

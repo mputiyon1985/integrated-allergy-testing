@@ -2,6 +2,7 @@
 
 import './globals.css';
 import Link from 'next/link';
+import { LocationSelector } from '@/components/LocationSelector';
 
 import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
@@ -156,6 +157,61 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
   );
 }
 
+function TopBar() {
+  const [userName, setUserName] = useState('');
+
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.user?.name) setUserName(d.user.name); })
+      .catch(() => {});
+  }, []);
+
+  return (
+    <div style={{
+      position: 'sticky',
+      top: 0,
+      zIndex: 200,
+      background: '#fff',
+      borderBottom: '1px solid #e2e8f0',
+      height: 48,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'flex-end',
+      padding: '0 24px',
+      gap: 16,
+    }}>
+      <LocationSelector />
+      {userName && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          fontSize: 13,
+          color: '#374151',
+          fontWeight: 500,
+        }}>
+          <div style={{
+            width: 28,
+            height: 28,
+            borderRadius: '50%',
+            background: '#0d9488',
+            color: '#fff',
+            fontWeight: 700,
+            fontSize: 12,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+            {userName.charAt(0).toUpperCase()}
+          </div>
+          <span>{userName}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AppShell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = usePathname();
@@ -181,7 +237,10 @@ function AppShell({ children }: { children: React.ReactNode }) {
     <div className="app-shell">
       <button className="sidebar-toggle" onClick={() => setSidebarOpen((v) => !v)} aria-label="Toggle navigation">☰</button>
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <div className="main-content">{children}</div>
+      <div className="main-content">
+        <TopBar />
+        {children}
+      </div>
     </div>
   );
 }

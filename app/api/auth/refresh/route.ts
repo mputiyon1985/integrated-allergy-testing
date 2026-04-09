@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
     // Verify user still exists and is active
     const user = await prisma.staffUser.findUnique({
       where: { id: session.userId as string },
-      select: { id: true, email: true, role: true, name: true, active: true },
+      select: { id: true, email: true, role: true, name: true, active: true, defaultLocationId: true },
     })
 
     if (!user || !user.active) {
@@ -34,6 +34,7 @@ export async function POST(req: NextRequest) {
       email: user.email,
       role: user.role,
       name: user.name,
+      defaultLocationId: user.defaultLocationId ?? 'loc-iat-001',
     })
 
     const response = NextResponse.json({ ok: true, refreshed: true })

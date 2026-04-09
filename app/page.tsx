@@ -137,9 +137,15 @@ export default function DashboardPage() {
   const [addingAppt, setAddingAppt] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
+  const getActiveLocation = useCallback(() => {
+    try { return localStorage.getItem('iat_active_location') ?? ''; } catch { return ''; }
+  }, []);
+
   const loadWaiting = useCallback(async () => {
     try {
-      const r = await fetch('/api/waiting-room');
+      const locId = getActiveLocation();
+      const url = locId ? `/api/waiting-room?locationId=${locId}` : '/api/waiting-room';
+      const r = await fetch(url);
       if (!r.ok) throw new Error(r.status === 401 ? 'session_expired' : `HTTP ${r.status}`);
       const d = await r.json();
       setWaiting(d.entries ?? []);
@@ -148,15 +154,32 @@ export default function DashboardPage() {
       console.error('[Dashboard] waitingRoom fetch error:', msg);
       setLoadError(msg === 'session_expired' ? 'Session expired — please refresh and log in again' : `Failed to load waiting room: ${msg}`);
     }
-  }, []);
+  }, [getActiveLocation]);
+
+  // Re-fetch when location changes
+  useEffect(() => {
+    function onLocationChange() {
+      loadWaiting();
+      // Re-run the full data load
+      const ev = new Event('iat-reload-dashboard');
+      window.dispatchEvent(ev);
+    }
+    window.addEventListener('locationchange', onLocationChange);
+    return () => window.removeEventListener('locationchange', onLocationChange);
+  }, [loadWaiting]);
 
   useEffect(() => {
     async function loadData() {
       try {
+        const locId = getActiveLocation();
+        const locParam = locId ? `&locationId=${locId}` : '';
         const todayStr = new Date().toISOString().split('T')[0]
         const [patientsRes, , nursesRes, meRes, encounterCountRes] = await Promise.allSettled([
-          fetch('/api/patients'), fetch('/api/doctors'), fetch('/api/nurses'), fetch('/api/auth/me'),
-          fetch(`/api/encounters/count?date=${todayStr}`),
+          fetch(`/api/patients${locId ? `?locationId=${locId}` : ''}`),
+          fetch('/api/doctors'),
+          fetch('/api/nurses'),
+          fetch('/api/auth/me'),
+          fetch(`/api/encounters/count?date=${todayStr}${locParam}`),
         ]);
         if (patientsRes.status === 'fulfilled' && patientsRes.value.ok) {
           const d = await patientsRes.value.json();
@@ -188,13 +211,21 @@ export default function DashboardPage() {
     setGridLayouts(loadLayouts());
     // Auto-refresh waiting room every 10s
     const interval = setInterval(loadWaiting, 10000);
-    return () => clearInterval(interval);
-  }, [loadWaiting]);
+    // Also listen for manual dashboard reload trigger
+    function onReload() { loadData(); }
+    window.addEventListener('iat-reload-dashboard', onReload);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('iat-reload-dashboard', onReload);
+    };
+  }, [loadWaiting, getActiveLocation]);
 
-  // Load today's appointments
+  // Load today's appointments (location-aware)
   useEffect(() => {
     const today = new Date().toISOString().slice(0, 10);
-    fetch(`/api/iat-appointments?date=${today}`)
+    const locId = getActiveLocation();
+    const url = `/api/iat-appointments?date=${today}${locId ? `&locationId=${locId}` : ''}`;
+    fetch(url)
       .then(async r => {
         if (!r.ok) throw new Error(r.status === 401 ? 'session_expired' : `HTTP ${r.status}`);
         return r.json();

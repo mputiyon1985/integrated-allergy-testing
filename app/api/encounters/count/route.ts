@@ -14,6 +14,7 @@ export async function GET(req: NextRequest) {
   try {
     const date = req.nextUrl.searchParams.get('date') // YYYY-MM-DD
     const patientId = req.nextUrl.searchParams.get('patientId')
+    const locationId = req.nextUrl.searchParams.get('locationId')
 
     // Build date range — default to today
     const targetDate = date ? new Date(date) : new Date()
@@ -27,6 +28,7 @@ export async function GET(req: NextRequest) {
         deletedAt: null,
         encounterDate: { gte: start, lte: end },
         ...(patientId ? { patientId } : {}),
+        ...(locationId ? { locationId } : {}),
       },
     })
 

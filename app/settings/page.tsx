@@ -17,6 +17,7 @@ const SECTION_IDS = [
   'quick-links',
   'billing-rules',
   'audit-log',
+  'practices',
 ] as const;
 
 type SectionId = typeof SECTION_IDS[number];
@@ -782,6 +783,153 @@ const EMPTY_RULE_FORM = {
   sortOrder: '0',
 };
 
+interface PracticeData {
+  id: string;
+  name: string;
+  shortName: string | null;
+  phone: string | null;
+  fax: string | null;
+  email: string | null;
+  website: string | null;
+  npi: string | null;
+  taxId: string | null;
+  locations?: { id: string; name: string; key: string; active: boolean; city?: string; state?: string }[];
+}
+
+function PracticeInfoContent() {
+  const [practice, setPractice] = useState<PracticeData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [form, setForm] = useState({
+    name: '',
+    shortName: '',
+    phone: '',
+    fax: '',
+    email: '',
+    website: '',
+    npi: '',
+    taxId: '',
+  });
+
+  useEffect(() => {
+    fetch('/api/practices')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        const p: PracticeData = d?.practices?.[0] ?? null;
+        if (p) {
+          setPractice(p);
+          setForm({
+            name: p.name ?? '',
+            shortName: p.shortName ?? '',
+            phone: p.phone ?? '',
+            fax: p.fax ?? '',
+            email: p.email ?? '',
+            website: p.website ?? '',
+            npi: p.npi ?? '',
+            taxId: p.taxId ?? '',
+          });
+        }
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, []);
+
+  async function handleSave() {
+    if (!practice) return;
+    setSaving(true);
+    await fetch(`/api/practices/${practice.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(form),
+    });
+    setSaving(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2500);
+  }
+
+  if (loading) return <div style={{ color: '#64748b', fontSize: 13 }}>Loading…</div>;
+
+  return (
+    <>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+        <div className="card-title" style={{ marginBottom: 0 }}>🏥 Your Practice Information</div>
+        {saved && (
+          <span style={{ fontSize: 12, color: '#16a34a', fontWeight: 700, background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 6, padding: '2px 8px' }}>
+            ✓ Saved
+          </span>
+        )}
+      </div>
+      <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
+        This information appears on claims, patient documents, and billing. Update it to reflect your actual practice name and credentials.
+      </p>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+        <div style={{ gridColumn: '1 / -1' }}>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Practice Name *</label>
+          <input className="form-input" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} placeholder="e.g. Northern Virginia Allergy Associates" />
+        </div>
+        <div>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Short Name / Abbreviation</label>
+          <input className="form-input" value={form.shortName} onChange={e => setForm(p => ({ ...p, shortName: e.target.value }))} placeholder="e.g. NVAA" />
+        </div>
+        <div>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>NPI (Practice)</label>
+          <input className="form-input" value={form.npi} onChange={e => setForm(p => ({ ...p, npi: e.target.value }))} placeholder="10-digit NPI" />
+        </div>
+        <div>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Tax ID / EIN</label>
+          <input className="form-input" value={form.taxId} onChange={e => setForm(p => ({ ...p, taxId: e.target.value }))} placeholder="XX-XXXXXXX" />
+        </div>
+        <div>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Phone</label>
+          <input className="form-input" value={form.phone} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))} placeholder="(703) 555-0100" />
+        </div>
+        <div>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Fax</label>
+          <input className="form-input" value={form.fax} onChange={e => setForm(p => ({ ...p, fax: e.target.value }))} placeholder="(703) 555-0101" />
+        </div>
+        <div>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Email</label>
+          <input className="form-input" type="email" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} placeholder="admin@yourpractice.com" />
+        </div>
+        <div>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Website</label>
+          <input className="form-input" value={form.website} onChange={e => setForm(p => ({ ...p, website: e.target.value }))} placeholder="https://yourpractice.com" />
+        </div>
+      </div>
+
+      <button onClick={handleSave} disabled={saving || !form.name.trim()}
+        style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: '#0d9488', color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer', opacity: saving ? 0.7 : 1 }}>
+        {saving ? '⏳ Saving…' : '💾 Save Practice Info'}
+      </button>
+
+      {practice?.locations && practice.locations.length > 0 && (
+        <div style={{ marginTop: 24 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#374151', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            Locations under this practice
+          </div>
+          {practice.locations.map(loc => (
+            <div key={loc.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: '#f8fafc', borderRadius: 8, marginBottom: 6, fontSize: 13 }}>
+              <span>📍</span>
+              <div style={{ flex: 1 }}>
+                <span style={{ fontWeight: 600 }}>{loc.name}</span>
+                {(loc.city || loc.state) && (
+                  <span style={{ color: '#9ca3af', marginLeft: 8 }}>{[loc.city, loc.state].filter(Boolean).join(', ')}</span>
+                )}
+              </div>
+              <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 999, background: loc.active ? '#e8f9f7' : '#f1f5f9', color: loc.active ? '#0d9488' : '#94a3b8', fontWeight: 700 }}>
+                {loc.active ? 'Active' : 'Inactive'}
+              </span>
+              <Link href="/locations" style={{ fontSize: 11, color: '#0d9488', textDecoration: 'none', fontWeight: 600 }}>Manage →</Link>
+            </div>
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
 function BillingRulesContent() {
   const [rules, setRules] = useState<BillingRuleRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1115,23 +1263,8 @@ export default function SettingsPage() {
             {
               id: 'clinic-info',
               content: (
-                <div style={tileStyle()}>
-                  <div className="card-title">Clinic Information</div>
-                  <div className="flex flex-col gap-3">
-                    <div className="form-group">
-                      <label className="form-label">Clinic Name</label>
-                      <input type="text" className="form-input" defaultValue="Integrated Allergy Testing" />
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">Address</label>
-                      <input type="text" className="form-input" placeholder="123 Medical Drive" />
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">Phone</label>
-                      <input type="tel" className="form-input" placeholder="(555) 555-0100" />
-                    </div>
-                    <button className="btn" style={{ alignSelf: 'flex-start' }}>Save Changes</button>
-                  </div>
+                <div style={tileStyle('#0d9488')}>
+                  <PracticeInfoContent />
                 </div>
               ),
             },
@@ -1203,6 +1336,14 @@ export default function SettingsPage() {
               content: (
                 <div style={tileStyle('#2563eb')}>
                   <AuditLogContent />
+                </div>
+              ),
+            },
+            {
+              id: 'practices',
+              content: (
+                <div style={tileStyle('#0d9488')}>
+                  <PracticeInfoContent />
                 </div>
               ),
             },

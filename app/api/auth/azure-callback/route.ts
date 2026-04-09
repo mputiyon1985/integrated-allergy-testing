@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Find or create staff user
-    let staffUser = await prisma.staffUser.findUnique({ where: { email } })
+    let staffUser = await prisma.staffUser.findUnique({ where: { email }, })
     if (!staffUser) {
       staffUser = await prisma.staffUser.create({
         data: {
@@ -46,6 +46,7 @@ export async function GET(req: NextRequest) {
       email: staffUser.email,
       role: staffUser.role,
       name: staffUser.name,
+      defaultLocationId: staffUser.defaultLocationId ?? 'loc-iat-001',
       provider: 'azure',
     })
 

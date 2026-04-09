@@ -9,20 +9,42 @@ datasource db {
 
 // ── Shared tables (match integrated-allergy IMS schema exactly) ───────────────
 
-model Location {
-  id        String   @id @default(cuid())
+model Practice {
+  id        String     @id @default(cuid())
   name      String
-  key       String   @unique
-  suite     String?
-  street    String
-  city      String
-  state     String
-  zip       String
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  deletedAt DateTime?
-  dates     LocationDate[]
+  shortName String?
+  phone     String?
+  fax       String?
+  email     String?
+  website   String?
+  npi       String?
+  taxId     String?
+  logoUrl   String?
+  active    Boolean    @default(true)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  locations Location[]
+}
+
+model Location {
+  id         String    @id @default(cuid())
+  name       String
+  key        String    @unique
+  suite      String?
+  street     String
+  city       String
+  state      String
+  zip        String
+  phone      String?
+  fax        String?
+  email      String?
+  active     Boolean   @default(true)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  deletedAt  DateTime?
+  practiceId String?
+  practice   Practice? @relation(fields: [practiceId], references: [id])
+  dates      LocationDate[]
 }
 
 model LocationDate {
@@ -116,6 +138,8 @@ model Patient {
   updatedAt       DateTime  @updatedAt
   deletedAt       DateTime?
 
+  locationId      String    @default("loc-iat-001")
+
   doctor          Doctor?   @relation(fields: [doctorId], references: [id])
 
   dates           PatientDate[]
@@ -128,6 +152,7 @@ model Patient {
   @@index([dob])
   @@index([deletedAt])
   @@index([status])
+  @@index([locationId])
 }
 
 model PatientDate {
@@ -285,23 +310,27 @@ model WaitingRoom {
   videosWatched Int       @default(0)
   videoAckBy    String?
   videoAckAt    DateTime?
+  locationId    String    @default("loc-iat-001")
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+
+  @@index([locationId])
 }
 
 model StaffUser {
-  id               String    @id @default(cuid())
-  email            String    @unique
-  passwordHash     String
-  name             String
-  role             String    @default("staff")
-  active           Boolean   @default(true)
-  mfaEnabled       Boolean   @default(false)
-  mfaSecret        String?
-  tempToken        String?
-  tempTokenExpiry  DateTime?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  id                String    @id @default(cuid())
+  email             String    @unique
+  passwordHash      String
+  name              String
+  role              String    @default("staff")
+  active            Boolean   @default(true)
+  mfaEnabled        Boolean   @default(false)
+  mfaSecret         String?
+  tempToken         String?
+  tempTokenExpiry   DateTime?
+  defaultLocationId String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 }
 
 model IATAppointment {
@@ -317,6 +346,7 @@ model IATAppointment {
   notes       String?
   status      String    @default("scheduled")
   createdBy   String?
+  locationId  String    @default("loc-iat-001")
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
@@ -324,6 +354,17 @@ model IATAppointment {
   @@index([startTime])
   @@index([deletedAt])
   @@index([patientId])
+  @@index([locationId])
+}
+
+model UserLocationAccess {
+  id         String   @id @default(cuid())
+  userId     String
+  locationId String
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, locationId])
+  @@index([userId])
 }
 
 model Encounter {
@@ -348,11 +389,13 @@ model Encounter {
   updatedAt           DateTime  @updatedAt
   deletedAt           DateTime?
 
+  locationId          String    @default("loc-iat-001")
   activities          EncounterActivity[]
 
   @@index([patientId])
   @@index([encounterDate])
   @@index([deletedAt])
+  @@index([locationId])
 }
 
 model EncounterActivity {

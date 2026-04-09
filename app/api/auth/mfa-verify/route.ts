@@ -65,6 +65,7 @@ export async function POST(req: NextRequest) {
       email: user.email,
       role: user.role,
       name: user.name,
+      defaultLocationId: user.defaultLocationId ?? 'loc-iat-001',
     })
 
     await log({ action: 'LOGIN_SUCCESS', entity: 'StaffUser', entityId: user.id, details: `${user.name} (${user.email}) logged in via MFA` })

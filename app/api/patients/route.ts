@@ -28,12 +28,14 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const search = searchParams.get('search')
+    const locationId = searchParams.get('locationId')
 
     const patients = await prisma.patient.findMany({
       where: {
         deletedAt: null,
         // Only show IAT patients (patientId starts with PAT-)
         patientId: { startsWith: 'PAT-' },
+        ...(locationId ? { locationId } : {}),
         ...(search
           ? {
               OR: [

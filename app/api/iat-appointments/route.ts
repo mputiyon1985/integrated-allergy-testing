@@ -39,6 +39,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const dateParam = searchParams.get('date')
+    const locationId = searchParams.get('locationId')
     const base = dateParam ? new Date(dateParam) : new Date()
     const { start, end } = getWeekRange(base)
 
@@ -46,6 +47,7 @@ export async function GET(request: NextRequest) {
       where: {
         deletedAt: null,
         startTime: { gte: start, lte: end },
+        ...(locationId ? { locationId } : {}),
       },
       orderBy: { startTime: 'asc' },
     })

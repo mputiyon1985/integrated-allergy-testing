@@ -6,10 +6,15 @@ export const dynamic = 'force-dynamic'
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const patientId = searchParams.get('patientId')
+  const locationId = searchParams.get('locationId')
   const limit = Math.min(parseInt(searchParams.get('limit') || '50'), 200)
   try {
     const encounters = await prisma.encounter.findMany({
-      where: { ...(patientId ? { patientId } : {}), deletedAt: null },
+      where: {
+        ...(patientId ? { patientId } : {}),
+        ...(locationId ? { locationId } : {}),
+        deletedAt: null,
+      },
       orderBy: { encounterDate: 'desc' },
       take: limit,
     })
