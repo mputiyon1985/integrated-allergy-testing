@@ -12,7 +12,7 @@ const navItems = [
   { href: '/patients', label: 'Patients', icon: '👥' },
   { href: '/testing', label: 'Testing', icon: '🧪' },
   { href: '/calendar', label: 'Calendar', icon: '📅' },
-  { href: '/insurance', label: 'Insurance', icon: '🏥' },
+  { href: '/insurance', label: 'Insurance Hub', icon: '🏥' },
 
   { href: '/practices', label: 'Practice', icon: '🏥', children: [
     { href: '/practices', label: 'Practices', icon: '🏥' },
