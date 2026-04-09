@@ -576,10 +576,10 @@ export default function DashboardPage() {
             {
               id: 'kpi-patients',
               content: (
-                <div className="kpi-card" style={{ height: '100%', border: editMode ? '2px dashed #f59e0b' : undefined }}>
-                  <div className="kpi-icon">👥</div>
-                  <div className="kpi-label">Total Patients</div>
-                  {loading ? <div style={{width:40,height:24,borderRadius:6,background:'#e2e8f0',animation:'pulse 1.5s infinite'}} /> : <div className="kpi-value">{patientCount ?? 0}</div>}
+                <div className="kpi-card" style={{ height: '100%', borderTop: '4px solid #6366f1', border: editMode ? '2px dashed #f59e0b' : undefined }}>
+                  <div className="kpi-icon">📅</div>
+                  <div className="kpi-label">Appointments Today</div>
+                  {loading ? <div style={{width:40,height:24,borderRadius:6,background:'#e2e8f0',animation:'pulse 1.5s infinite'}} /> : <div className="kpi-value" style={{ color: todayAppts.length > 0 ? '#4f46e5' : '#64748b' }}>{todayAppts.length}</div>}
                 </div>
               ),
             },
