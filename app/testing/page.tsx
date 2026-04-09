@@ -331,8 +331,8 @@ function TestPanel({
       {columns === 1 && (
         <div style={{
           display: 'grid',
-          gridTemplateColumns: '24px 1fr 52px 142px 40px 40px',
-          gap: 2, padding: '4px 6px',
+          gridTemplateColumns: '16px minmax(60px,1fr) 42px 120px 42px 42px',
+          gap: 1, padding: '2px 4px',
           background: '#f1f5f9',
           borderLeft: '1px solid #e2e8f0',
           borderRight: '1px solid #e2e8f0',
@@ -400,8 +400,8 @@ function TestPanel({
                       className={row.grade === null ? 'untested-row' : ''}
                       style={{
                         display: 'grid',
-                        gridTemplateColumns: '24px 1fr 52px 142px 40px 40px',
-                        gap: 2, padding: '3px 6px',
+                        gridTemplateColumns: '16px minmax(60px,1fr) 42px 120px 42px 42px',
+                        gap: 1, padding: '2px 4px',
                         background: bg,
                         borderBottom: '1px solid #f1f5f9',
                         alignItems: 'center',
@@ -470,7 +470,7 @@ const colHdr: React.CSSProperties = {
 };
 
 const numInput: React.CSSProperties = {
-  width: '100%', height: 22, fontSize: 11, textAlign: 'center',
+  width: '100%', height: 22, fontSize: 13, textAlign: 'center',
   border: '1px solid #cbd5e1', borderRadius: 3, padding: '1px 2px',
   background: '#fff', color: '#1a2233',
 };
