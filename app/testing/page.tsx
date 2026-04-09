@@ -20,6 +20,8 @@ interface Allergen {
   id: string;
   name: string;
   category?: string;
+  type?: string;
+  showOnTestingScreen?: boolean;
 }
 
 type Location = 'Back' | 'LA' | 'RA' | 'LE' | 'RE';
@@ -41,8 +43,21 @@ interface PanelState {
 const LOCATIONS: Location[] = ['Back', 'LA', 'RA', 'LE', 'RE'];
 
 const CATEGORY_ORDER = [
-  'Trees', 'Grasses', 'Weeds', 'Mold', 'Dust/Mites', 'Animal/Environment',
+  'Trees', 'Grasses', 'Weeds', 'Dust Mites', 'Insects', 'Animals', 'Molds', 'Other',
 ];
+
+// Map DB type → display category
+function typeToCategory(type?: string): string {
+  const t = (type ?? '').toLowerCase();
+  if (t === 'trees') return 'Trees';
+  if (t === 'grasses') return 'Grasses';
+  if (t === 'weeds') return 'Weeds';
+  if (t === 'dust mites') return 'Dust Mites';
+  if (t === 'insects') return 'Insects';
+  if (t === 'animals') return 'Animals';
+  if (t === 'molds') return 'Molds';
+  return 'Other';
+}
 
 const GRADE_COLORS: Record<number, { bg: string; text: string; border: string }> = {
   0: { bg: '#e2e8f0', text: '#475569', border: '#94a3b8' },
@@ -247,7 +262,8 @@ function TestPanel({
   const grouped = new Map<string, AllergenEntry[]>();
   for (const cat of CATEGORY_ORDER) grouped.set(cat, []);
   for (const row of state.rows) {
-    const cat = CATEGORY_ORDER.includes(row.category) ? row.category : 'Animal/Environment';
+    const cat = CATEGORY_ORDER.includes(row.category) ? row.category : 'Other';
+    if (!grouped.has(cat)) grouped.set(cat, []);
     grouped.get(cat)!.push(row);
   }
 
@@ -391,7 +407,7 @@ function buildRows(allergens: Allergen[]): AllergenEntry[] {
   return allergens.map(a => ({
     allergenId: a.id,
     allergenName: a.name,
-    category: a.category && CATEGORY_ORDER.includes(a.category) ? a.category : 'Animal/Environment',
+    category: typeToCategory(a.type ?? a.category),
     grade: null,
     wheal: '',
     flare: '',
@@ -432,7 +448,7 @@ function TestingPageInner() {
 
   // Load allergens
   useEffect(() => {
-    fetch('/api/allergens')
+    fetch('/api/allergens?testingScreen=true')
       .then(r => r.ok ? r.json() : [])
       .then((data: Allergen[] | { allergens?: Allergen[] }) => {
         const list: Allergen[] = Array.isArray(data) ? data : (data.allergens ?? []);
