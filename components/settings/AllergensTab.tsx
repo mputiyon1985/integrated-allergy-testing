@@ -150,11 +150,11 @@ function EditModal({ allergen, onClose, onSaved }: EditModalProps) {
             <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#374151', textTransform: 'uppercase' }}>Test Panels</label>
             <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none' }}>
               <ToggleSwitch checked={showOnPrickTest} onChange={() => setShowOnPrickTest(v => !v)} />
-              <span style={{ fontSize: 13, color: '#374151' }}>💉 Include in Prick Test panel</span>
+              <span style={{ fontSize: 13, color: '#374151' }}>💉 Prick Test panel</span>
             </label>
             <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none' }}>
               <ToggleSwitch checked={showOnIntradermalTest} onChange={() => setShowOnIntradermalTest(v => !v)} />
-              <span style={{ fontSize: 13, color: '#374151' }}>🩺 Include in Intradermal panel</span>
+              <span style={{ fontSize: 13, color: '#374151' }}>🩺 Intradermal panel</span>
             </label>
           </div>
         </div>
@@ -228,11 +228,11 @@ function AddModal({ onClose, onSaved }: AddModalProps) {
             <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#374151', textTransform: 'uppercase' }}>Test Panels</label>
             <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none' }}>
               <ToggleSwitch checked={showOnPrickTest} onChange={() => setShowOnPrickTest(v => !v)} />
-              <span style={{ fontSize: 13, color: '#374151' }}>💉 Include in Prick Test panel</span>
+              <span style={{ fontSize: 13, color: '#374151' }}>💉 Prick Test panel</span>
             </label>
             <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none' }}>
               <ToggleSwitch checked={showOnIntradermalTest} onChange={() => setShowOnIntradermalTest(v => !v)} />
-              <span style={{ fontSize: 13, color: '#374151' }}>🩺 Include in Intradermal panel</span>
+              <span style={{ fontSize: 13, color: '#374151' }}>🩺 Intradermal panel</span>
             </label>
           </div>
         </div>
@@ -365,11 +365,8 @@ export default function AllergensTab() {
 
       {/* Stats bar */}
       <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
-        <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 700, color: '#15803d' }}>
-          ✅ {totalPanel} <span style={{ fontWeight: 400, color: '#374151' }}>on panel</span>
-        </div>
         <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 700, color: '#1d4ed8' }}>
-          💉 {totalPrick} <span style={{ fontWeight: 400, color: '#374151' }}>on Prick panel</span>
+          💉 {totalPanel} <span style={{ fontWeight: 400, color: '#374151' }}>on Prick panel</span>
         </div>
         <div style={{ background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 700, color: '#7c3aed' }}>
           🩺 {totalIntradermal} <span style={{ fontWeight: 400, color: '#374151' }}>on Intradermal panel</span>
@@ -425,7 +422,6 @@ export default function AllergensTab() {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
               <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
-                <th style={{ padding: '10px 12px', textAlign: 'center', fontWeight: 600, color: '#475569', width: 80 }}>On Panel</th>
                 <th style={{ padding: '10px 12px', textAlign: 'center', fontWeight: 600, color: '#1d4ed8', width: 80 }}>💉 Prick</th>
                 <th style={{ padding: '10px 12px', textAlign: 'center', fontWeight: 600, color: '#7c3aed', width: 100 }}>🩺 Intradermal</th>
                 <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, color: '#475569' }}>Name</th>
@@ -451,7 +447,7 @@ export default function AllergensTab() {
                       opacity: isDeleted ? 0.7 : 1,
                     }}
                   >
-                    {/* On Panel toggle */}
+                    {/* Prick toggle (reuses showOnTestingScreen) */}
                     <td style={{ padding: '10px 12px', textAlign: 'center' }}>
                       {isDeleted ? (
                         <span style={{ fontSize: 11, color: '#94a3b8' }}>—</span>
@@ -459,19 +455,6 @@ export default function AllergensTab() {
                         <ToggleSwitch
                           checked={allergen.showOnTestingScreen}
                           onChange={() => togglePanel(allergen)}
-                          disabled={togglingId === allergen.id}
-                        />
-                      )}
-                    </td>
-
-                    {/* Prick toggle */}
-                    <td style={{ padding: '10px 12px', textAlign: 'center' }}>
-                      {isDeleted ? (
-                        <span style={{ fontSize: 11, color: '#94a3b8' }}>—</span>
-                      ) : (
-                        <ToggleSwitch
-                          checked={allergen.showOnPrickTest}
-                          onChange={() => togglePrick(allergen)}
                           disabled={togglingId === allergen.id}
                         />
                       )}
