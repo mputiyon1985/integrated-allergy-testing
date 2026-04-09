@@ -16,8 +16,6 @@ const SECTION_IDS = [
   'system-status',
   'app-version',
   'quick-links',
-  'billing-rules',
-  'audit-log',
 ] as const;
 
 type SectionId = typeof SECTION_IDS[number];
@@ -43,7 +41,7 @@ function buildDefaultLayouts(): ResponsiveLayouts {
     minH: 6,
   }));
   // Override full-width sections
-  const fullWidth: SectionId[] = ['billing-rules', 'audit-log'];
+  const fullWidth: SectionId[] = [];
   lg.forEach(item => {
     if (fullWidth.includes(item.i as SectionId)) {
       item.x = 0;
@@ -1078,7 +1076,7 @@ function BillingRulesContent() {
 }
 
 type CurrentUser = { id: string; role: string; email: string; name: string };
-type SettingsTab = 'dashboard' | 'users';
+type SettingsTab = 'dashboard' | 'users' | 'audit';
 
 export default function SettingsPage() {
   const [editMode, setEditMode] = useState(false);
@@ -1154,12 +1152,22 @@ export default function SettingsPage() {
               👥 Users
             </button>
           )}
+          <button style={TAB_STYLE(activeTab === 'audit')} onClick={() => setActiveTab('audit')}>
+            📋 Audit Log
+          </button>
         </div>
 
         {/* Users Tab */}
         {activeTab === 'users' && currentUser && (
           <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #e2e8f0', padding: 24 }}>
             <UsersManagement currentUser={currentUser} />
+          </div>
+        )}
+
+        {/* Audit Log Tab */}
+        {activeTab === 'audit' && (
+          <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #e2e8f0', padding: 24 }}>
+            <AuditLogContent />
           </div>
         )}
 
@@ -1228,23 +1236,6 @@ export default function SettingsPage() {
                     <Link href="/testing" className="btn btn-secondary" style={{ justifyContent: 'flex-start' }}>🧪 Start Testing Session</Link>
                     <Link href="/videos" className="btn btn-secondary" style={{ justifyContent: 'flex-start' }}>🎬 Manage Videos</Link>
                   </div>
-                </div>
-              ),
-            },
-            // ICD-10 and CPT codes moved to Insurance Hub (/insurance)
-            {
-              id: 'billing-rules',
-              content: (
-                <div style={tileStyle('#f59e0b')}>
-                  <BillingRulesContent />
-                </div>
-              ),
-            },
-            {
-              id: 'audit-log',
-              content: (
-                <div style={tileStyle('#2563eb')}>
-                  <AuditLogContent />
                 </div>
               ),
             },
