@@ -207,9 +207,9 @@ function TestingSetup({ onStart }: {
 
 /* ─── GradeCell ─────────────────────────────────────────────────── */
 
-function GradeCell({ grade, onChange, locked }: { grade: number | null; onChange: (g: number | null) => void; locked?: boolean }) {
+function GradeCell({ grade, onChange, locked, size = 22 }: { grade: number | null; onChange: (g: number | null) => void; locked?: boolean; size?: number }) {
   return (
-    <div style={{ display: 'flex', gap: 2 }} title={locked ? 'Select a nurse before recording results' : undefined}>
+    <div style={{ display: 'flex', gap: 1 }} title={locked ? 'Select a nurse before recording results' : undefined}>
       {[0, 1, 2, 3, 4, 5].map(n => {
         const selected = grade === n;
         const c = GRADE_COLORS[n];
@@ -219,7 +219,7 @@ function GradeCell({ grade, onChange, locked }: { grade: number | null; onChange
             onClick={() => !locked && onChange(selected ? null : n)}
             title={locked ? 'Select a nurse first' : `Grade ${n}`}
             style={{
-              width: 22, height: 22, borderRadius: 3,
+              width: size, height: size, borderRadius: 3,
               border: `1.5px solid ${locked ? '#e2e8f0' : selected ? c.border : '#cbd5e1'}`,
               background: locked ? '#f8fafc' : selected ? c.bg : '#fff',
               color: locked ? '#d1d5db' : selected ? c.text : '#94a3b8',
@@ -285,7 +285,7 @@ function TestPanel({
 
   // Compact column header (used in multi-column mode)
   const compactHdr = (
-    <div style={{ display: 'grid', gridTemplateColumns: '18px 1fr 40px 110px 34px 34px', gap: 2, padding: '3px 4px', background: '#f1f5f9', borderBottom: '1px solid #cbd5e1', position: 'sticky', top: 0 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: '18px 1fr 36px 132px 44px 44px', gap: 2, padding: '3px 4px', background: '#f1f5f9', borderBottom: '1px solid #cbd5e1', position: 'sticky', top: 0 }}>
       {['#', 'Allergen', 'Loc', 'Grade', 'Whl', 'Flr'].map(h => (
         <div key={h} style={{ fontSize: 9, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' as const, whiteSpace: 'nowrap' as const, overflow: 'hidden' }}>{h}</div>
       ))}
@@ -298,14 +298,14 @@ function TestPanel({
     const bg = rowBg(row.grade, localIdx);
     return (
       <div key={row.allergenId} className={row.grade === null ? 'untested-row' : ''}
-        style={{ display: 'grid', gridTemplateColumns: '18px 1fr 40px 110px 34px 34px', gap: 2, padding: '2px 4px', background: bg, borderBottom: '1px solid #f1f5f9', alignItems: 'center', outline: positive ? '1px solid #fed7aa' : 'none' }}>
+        style={{ display: 'grid', gridTemplateColumns: '18px 1fr 36px 132px 44px 44px', gap: 2, padding: '2px 4px', background: bg, borderBottom: '1px solid #f1f5f9', alignItems: 'center', outline: positive ? '1px solid #fed7aa' : 'none' }}>
         <div style={{ fontSize: 9, color: '#94a3b8', textAlign: 'center' as const, fontWeight: 600 }}>{num}</div>
         <div style={{ fontSize: 10, fontWeight: positive ? 700 : 400, color: positive ? '#7c2d12' : '#1a2233', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{row.allergenName}</div>
         <select value={row.location} onChange={e => updateRow(row.allergenId, 'location', e.target.value as Location)}
           style={{ fontSize: 9, border: '1px solid #cbd5e1', borderRadius: 3, padding: '0 2px', background: '#fff', color: '#374151', width: '100%', height: 18, cursor: 'pointer' }}>
           {LOCATIONS.map(l => <option key={l} value={l}>{l}</option>)}
         </select>
-        <GradeCell grade={row.grade} onChange={g => updateRow(row.allergenId, 'grade', g)} locked={locked} />
+        <GradeCell grade={row.grade} onChange={g => updateRow(row.allergenId, 'grade', g)} locked={locked} size={18} />
         <input type="number" min="0" max="99" step="0.1" value={row.wheal} onChange={e => updateRow(row.allergenId, 'wheal', e.target.value)} placeholder="mm"
           style={{ width: '100%', height: 18, fontSize: 10, textAlign: 'center' as const, border: '1px solid #cbd5e1', borderRadius: 3, padding: '0 2px', background: '#fff' }} />
         <input type="number" min="0" max="99" step="0.1" value={row.flare} onChange={e => updateRow(row.allergenId, 'flare', e.target.value)} placeholder="mm"
