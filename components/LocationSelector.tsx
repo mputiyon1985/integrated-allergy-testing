@@ -18,7 +18,7 @@ interface Practice {
 
 const ACTIVE_LOC_KEY = 'iat_active_location';
 
-const LOC_CACHE_KEY = 'iat_location_data';
+const LOC_CACHE_KEY = 'iat_location_data_v2';
 
 export function LocationSelector() {
   const [practice, setPractice] = useState<Practice | null>(null);
@@ -42,6 +42,9 @@ export function LocationSelector() {
 
     // Then refresh from API
     try {
+      // Clear old stale cache key
+      try { localStorage.removeItem('iat_location_data'); } catch {}
+
       const res = await fetch('/api/user/locations');
       if (!res.ok) return;
       const data = await res.json() as {
@@ -60,6 +63,20 @@ export function LocationSelector() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  // Re-sync when sidebar switches location
+  useEffect(() => {
+    function handleLocationChange(e: Event) {
+      const locId = (e as CustomEvent).detail?.locationId;
+      if (locId) {
+        setActiveId(locId);
+        setOpen(false);
+        load(); // re-fetch to get updated practice name
+      }
+    }
+    window.addEventListener('locationchange', handleLocationChange);
+    return () => window.removeEventListener('locationchange', handleLocationChange);
+  }, [load]);
 
   // Close dropdown on outside click
   useEffect(() => {

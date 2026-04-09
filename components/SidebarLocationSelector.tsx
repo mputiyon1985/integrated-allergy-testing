@@ -19,7 +19,7 @@ interface Practice {
 
 const ACTIVE_LOC_KEY = 'iat_active_location';
 const ACTIVE_PRACTICE_KEY = 'iat_active_practice';
-const LOC_CACHE_KEY = 'iat_location_data';
+const LOC_CACHE_KEY = 'iat_location_data_v2';
 
 export function SidebarLocationSelector() {
   const [practices, setPractices] = useState<Practice[]>([]);
@@ -27,6 +27,9 @@ export function SidebarLocationSelector() {
   const [activeLocationId, setActiveLocationId] = useState<string>('');
 
   const load = useCallback(async () => {
+    // Clear stale old cache format
+    try { localStorage.removeItem('iat_location_data'); } catch {}
+
     // Load cached values instantly
     try {
       const cached = localStorage.getItem(LOC_CACHE_KEY);
