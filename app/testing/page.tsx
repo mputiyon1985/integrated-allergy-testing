@@ -364,7 +364,7 @@ function TestPanel({
                     />
                     {/* Wheal */}
                     <input
-                      type="number" min="0" max="99" step="0.5"
+                      type="number" min="0" max="99" step="0.1"
                       value={row.wheal}
                       onChange={e => updateRow(row.allergenId, 'wheal', e.target.value)}
                       placeholder="mm"
@@ -372,7 +372,7 @@ function TestPanel({
                     />
                     {/* Flare */}
                     <input
-                      type="number" min="0" max="99" step="0.5"
+                      type="number" min="0" max="99" step="0.1"
                       value={row.flare}
                       onChange={e => updateRow(row.allergenId, 'flare', e.target.value)}
                       placeholder="mm"
@@ -868,7 +868,7 @@ ${(prickResults.length + idResults.length) === 0 ? '<p style="color:#94a3b8; tex
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <span style={{ fontSize: 12, color: '#374151' }}>Wheal</span>
             <input
-              type="number" min="0" max="99" step="0.5"
+              type="number" min="0" max="99" step="0.1"
               value={applyWheal}
               onChange={e => setApplyWheal(e.target.value)}
               placeholder="mm"
@@ -884,7 +884,7 @@ ${(prickResults.length + idResults.length) === 0 ? '<p style="color:#94a3b8; tex
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <span style={{ fontSize: 12, color: '#374151' }}>Flare</span>
             <input
-              type="number" min="0" max="99" step="0.5"
+              type="number" min="0" max="99" step="0.1"
               value={applyFlare}
               onChange={e => setApplyFlare(e.target.value)}
               placeholder="mm"
