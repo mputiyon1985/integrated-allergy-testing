@@ -353,20 +353,23 @@ function BusinessRulesTab() {
     setLoadError(null);
     Promise.allSettled([
       fetch('/api/billing-rules?all=true').then(async r => {
+        const data = await r.json();
         if (r.status === 401) throw new Error('session_expired');
-        if (!r.ok) throw new Error(`billing-rules: ${r.status}`);
-        return r.json();
+        if (!r.ok) throw new Error(data?.error ?? `HTTP ${r.status}`);
+        if (!Array.isArray(data.rules)) throw new Error('unexpected response format');
+        return data;
       }),
       fetch('/api/insurance-companies').then(async r => {
-        if (!r.ok && r.status !== 401) throw new Error(`insurance-companies: ${r.status}`);
-        return r.ok ? r.json() : { companies: [] };
+        if (!r.ok) return { companies: [] };
+        return r.json();
       }),
     ]).then(([rd, cd]) => {
       if (rd.status === 'rejected') {
-        if ((rd.reason as Error)?.message === 'session_expired') {
+        const msg = (rd.reason as Error)?.message ?? 'unknown error';
+        if (msg === 'session_expired') {
           setLoadError('Your session has expired. Please refresh the page and log in again.');
         } else {
-          setLoadError(`Failed to load billing rules: ${(rd.reason as Error)?.message ?? 'unknown error'}`);
+          setLoadError(`Failed to load billing rules: ${msg}`);
         }
         setRules([]);
       } else {
