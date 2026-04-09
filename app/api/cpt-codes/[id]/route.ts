@@ -31,19 +31,16 @@ export async function PUT(
 }
 
 export async function DELETE(
-  req: NextRequest,
+  _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params
-    await prisma.cPTCode.update({
-      where: { id },
-      data: { active: false },
-    })
+    await prisma.cPTCode.delete({ where: { id } })
     return NextResponse.json({ success: true })
   } catch (err) {
     console.error('[CPT] DELETE error:', err)
-    return NextResponse.json({ error: 'Failed to deactivate CPT code' }, { status: 500 })
+    return NextResponse.json({ error: 'Failed to delete CPT code' }, { status: 500 })
   }
 }
 

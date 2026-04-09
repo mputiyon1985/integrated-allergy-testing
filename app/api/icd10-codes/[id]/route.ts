@@ -30,19 +30,16 @@ export async function PUT(
 }
 
 export async function DELETE(
-  req: NextRequest,
+  _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params
-    await prisma.iCD10Code.update({
-      where: { id },
-      data: { active: false },
-    })
+    await prisma.iCD10Code.delete({ where: { id } })
     return NextResponse.json({ success: true })
   } catch (err) {
     console.error('[ICD10] DELETE error:', err)
-    return NextResponse.json({ error: 'Failed to deactivate ICD-10 code' }, { status: 500 })
+    return NextResponse.json({ error: 'Failed to delete ICD-10 code' }, { status: 500 })
   }
 }
 

@@ -292,6 +292,8 @@ function Icd10CodesContent() {
   const [showAdd, setShowAdd] = useState(false);
   const [addForm, setAddForm] = useState({ code: '', description: '', category: '' });
   const [saving, setSaving] = useState(false);
+  const [editingRowId, setEditingRowId] = useState<string | null>(null);
+  const [editingRowData, setEditingRowData] = useState({ description: '', category: '' });
 
   function load() {
     fetch('/api/icd10-codes?all=true')
@@ -322,6 +324,27 @@ function Icd10CodesContent() {
     setSaving(false);
     setAddForm({ code: '', description: '', category: '' });
     setShowAdd(false);
+    load();
+  }
+
+  function startEditRow(c: { id: string; description: string; category?: string }) {
+    setEditingRowId(c.id);
+    setEditingRowData({ description: c.description, category: c.category ?? '' });
+  }
+
+  async function saveEditRow(id: string) {
+    await fetch(`/api/icd10-codes/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ description: editingRowData.description, category: editingRowData.category }),
+    }).catch(() => {});
+    setEditingRowId(null);
+    load();
+  }
+
+  async function deleteCode(id: string, code: string) {
+    if (!confirm(`Delete ${code}? This action cannot be undone.`)) return;
+    await fetch(`/api/icd10-codes/${id}`, { method: 'DELETE' }).catch(() => {});
     load();
   }
 
@@ -367,7 +390,7 @@ function Icd10CodesContent() {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
               <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
-                {['Code', 'Description', 'Category', 'Active'].map(h => (
+                {['Code', 'Description', 'Category', 'Actions'].map(h => (
                   <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: '#475569' }}>{h}</th>
                 ))}
               </tr>
@@ -375,16 +398,64 @@ function Icd10CodesContent() {
             <tbody>
               {codes.map((c, i) => (
                 <tr key={c.id} style={{ borderBottom: '1px solid #f1f5f9', background: i % 2 === 0 ? '#fff' : '#f8fafc' }}>
-                  <td style={{ padding: '8px 12px', fontWeight: 700, color: '#0d9488', fontFamily: 'monospace' }}>{c.code}</td>
-                  <td style={{ padding: '8px 12px', color: '#374151' }}>{c.description}</td>
-                  <td style={{ padding: '8px 12px', color: '#64748b', fontSize: 12 }}>{c.category ?? '—'}</td>
-                  <td style={{ padding: '8px 12px' }}>
-                    <button onClick={() => toggleActive(c.id, c.active)}
-                      style={{ padding: '3px 12px', borderRadius: 999, border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer',
-                        background: c.active ? '#dcfce7' : '#f3f4f6', color: c.active ? '#15803d' : '#64748b' }}>
-                      {c.active ? '✅ Active' : '⬜ Inactive'}
-                    </button>
-                  </td>
+                  <td style={{ padding: '8px 12px', fontWeight: 700, color: '#0d9488', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>{c.code}</td>
+                  {editingRowId === c.id ? (
+                    <>
+                      <td style={{ padding: '6px 12px' }}>
+                        <input
+                          className="form-input"
+                          value={editingRowData.description}
+                          onChange={e => setEditingRowData(d => ({ ...d, description: e.target.value }))}
+                          style={{ width: '100%', minWidth: 180 }}
+                          autoFocus
+                        />
+                      </td>
+                      <td style={{ padding: '6px 12px' }}>
+                        <input
+                          className="form-input"
+                          value={editingRowData.category}
+                          onChange={e => setEditingRowData(d => ({ ...d, category: e.target.value }))}
+                          style={{ width: '100%', minWidth: 120 }}
+                        />
+                      </td>
+                      <td style={{ padding: '6px 12px', whiteSpace: 'nowrap' }}>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <button onClick={() => saveEditRow(c.id)}
+                            style={{ padding: '4px 12px', borderRadius: 6, border: 'none', background: '#0d9488', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                            💾 Save
+                          </button>
+                          <button onClick={() => setEditingRowId(null)}
+                            style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid #e2e8f0', background: '#fff', fontSize: 12, cursor: 'pointer' }}>
+                            Cancel
+                          </button>
+                        </div>
+                      </td>
+                    </>
+                  ) : (
+                    <>
+                      <td style={{ padding: '8px 12px', color: '#374151' }}>{c.description}</td>
+                      <td style={{ padding: '8px 12px', color: '#64748b', fontSize: 12 }}>{c.category ?? '—'}</td>
+                      <td style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                          <button onClick={() => startEditRow(c)}
+                            style={{ padding: '3px 10px', borderRadius: 6, border: '1px solid #e2e8f0', background: '#fff', fontSize: 12, cursor: 'pointer' }}
+                            title="Edit">
+                            ✏️
+                          </button>
+                          <button onClick={() => deleteCode(c.id, c.code)}
+                            style={{ padding: '3px 10px', borderRadius: 6, border: '1px solid #fecaca', background: '#fff7f7', fontSize: 12, cursor: 'pointer' }}
+                            title="Delete">
+                            🗑️
+                          </button>
+                          <button onClick={() => toggleActive(c.id, c.active)}
+                            style={{ padding: '3px 12px', borderRadius: 999, border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                              background: c.active ? '#dcfce7' : '#f3f4f6', color: c.active ? '#15803d' : '#64748b' }}>
+                            {c.active ? '✅ Active' : '⬜ Inactive'}
+                          </button>
+                        </div>
+                      </td>
+                    </>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -403,6 +474,8 @@ function CptCodesContent() {
   const [saving, setSaving] = useState(false);
   const [editingFeeId, setEditingFeeId] = useState<string | null>(null);
   const [editingFeeVal, setEditingFeeVal] = useState('');
+  const [editingRowId, setEditingRowId] = useState<string | null>(null);
+  const [editingRowData, setEditingRowData] = useState({ description: '', category: '' });
 
   function load() {
     fetch('/api/cpt-codes?all=true')
@@ -443,6 +516,28 @@ function CptCodesContent() {
       body: JSON.stringify({ defaultFee: fee }),
     }).catch(() => {});
     setEditingFeeId(null); setEditingFeeVal(''); load();
+  }
+
+  function startEditRow(c: { id: string; description: string; category?: string }) {
+    setEditingRowId(c.id);
+    setEditingRowData({ description: c.description, category: c.category ?? '' });
+    setEditingFeeId(null);
+  }
+
+  async function saveEditRow(id: string) {
+    await fetch(`/api/cpt-codes/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ description: editingRowData.description, category: editingRowData.category }),
+    }).catch(() => {});
+    setEditingRowId(null);
+    load();
+  }
+
+  async function deleteCode(id: string, code: string) {
+    if (!confirm(`Delete ${code}? This action cannot be undone.`)) return;
+    await fetch(`/api/cpt-codes/${id}`, { method: 'DELETE' }).catch(() => {});
+    load();
   }
 
   return (
@@ -487,7 +582,7 @@ function CptCodesContent() {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
               <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
-                {['Code', 'Description', 'Category', 'Your Fee ($)', 'Active'].map(h => (
+                {['Code', 'Description', 'Category', 'Your Fee ($)', 'Actions'].map(h => (
                   <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: '#475569' }}>{h}</th>
                 ))}
               </tr>
@@ -495,33 +590,84 @@ function CptCodesContent() {
             <tbody>
               {codes.map((c, i) => (
                 <tr key={c.id} style={{ borderBottom: '1px solid #f1f5f9', background: i % 2 === 0 ? '#fff' : '#f8fafc' }}>
-                  <td style={{ padding: '8px 12px', fontWeight: 700, color: '#7c3aed', fontFamily: 'monospace' }}>{c.code}</td>
-                  <td style={{ padding: '8px 12px', color: '#374151' }}>{c.description}</td>
-                  <td style={{ padding: '8px 12px', color: '#64748b', fontSize: 12 }}>{c.category ?? '—'}</td>
-                  <td style={{ padding: '6px 12px' }}>
-                    {editingFeeId === c.id ? (
-                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                        <input type="number" step="0.01" value={editingFeeVal} onChange={e => setEditingFeeVal(e.target.value)}
-                          placeholder="0.00" autoFocus
-                          style={{ width: 80, padding: '3px 8px', border: '1px solid #7c3aed', borderRadius: 6, fontSize: 13 }} />
-                        <button onClick={() => saveFee(c.id)} style={{ padding: '3px 10px', borderRadius: 6, border: 'none', background: '#7c3aed', color: '#fff', fontSize: 12, cursor: 'pointer', fontWeight: 700 }}>✓</button>
-                        <button onClick={() => { setEditingFeeId(null); setEditingFeeVal(''); }} style={{ padding: '3px 8px', borderRadius: 6, border: '1px solid #e2e8f0', background: '#fff', fontSize: 12, cursor: 'pointer' }}>✕</button>
-                      </div>
-                    ) : (
-                      <span onClick={() => { setEditingFeeId(c.id); setEditingFeeVal(c.defaultFee != null ? String(c.defaultFee) : ''); }}
-                        style={{ cursor: 'pointer', padding: '2px 8px', borderRadius: 6, border: '1px dashed #e2e8f0', fontSize: 13, color: c.defaultFee != null ? '#7c3aed' : '#94a3b8', fontFamily: 'monospace' }}
-                        title="Click to set fee">
-                        {c.defaultFee != null ? `$${Number(c.defaultFee).toFixed(2)}` : '+ Set fee'}
-                      </span>
-                    )}
-                  </td>
-                  <td style={{ padding: '8px 12px' }}>
-                    <button onClick={() => toggleActive(c.id, c.active)}
-                      style={{ padding: '3px 12px', borderRadius: 999, border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer',
-                        background: c.active ? '#dcfce7' : '#f3f4f6', color: c.active ? '#15803d' : '#64748b' }}>
-                      {c.active ? '✅ Active' : '⬜ Inactive'}
-                    </button>
-                  </td>
+                  <td style={{ padding: '8px 12px', fontWeight: 700, color: '#7c3aed', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>{c.code}</td>
+                  {editingRowId === c.id ? (
+                    <>
+                      <td style={{ padding: '6px 12px' }}>
+                        <input
+                          className="form-input"
+                          value={editingRowData.description}
+                          onChange={e => setEditingRowData(d => ({ ...d, description: e.target.value }))}
+                          style={{ width: '100%', minWidth: 180 }}
+                          autoFocus
+                        />
+                      </td>
+                      <td style={{ padding: '6px 12px' }}>
+                        <input
+                          className="form-input"
+                          value={editingRowData.category}
+                          onChange={e => setEditingRowData(d => ({ ...d, category: e.target.value }))}
+                          style={{ width: '100%', minWidth: 120 }}
+                        />
+                      </td>
+                      <td style={{ padding: '8px 12px', color: '#64748b', fontSize: 12 }}>
+                        {c.defaultFee != null ? `$${Number(c.defaultFee).toFixed(2)}` : '—'}
+                      </td>
+                      <td style={{ padding: '6px 12px', whiteSpace: 'nowrap' }}>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <button onClick={() => saveEditRow(c.id)}
+                            style={{ padding: '4px 12px', borderRadius: 6, border: 'none', background: '#7c3aed', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                            💾 Save
+                          </button>
+                          <button onClick={() => setEditingRowId(null)}
+                            style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid #e2e8f0', background: '#fff', fontSize: 12, cursor: 'pointer' }}>
+                            Cancel
+                          </button>
+                        </div>
+                      </td>
+                    </>
+                  ) : (
+                    <>
+                      <td style={{ padding: '8px 12px', color: '#374151' }}>{c.description}</td>
+                      <td style={{ padding: '8px 12px', color: '#64748b', fontSize: 12 }}>{c.category ?? '—'}</td>
+                      <td style={{ padding: '6px 12px' }}>
+                        {editingFeeId === c.id ? (
+                          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                            <input type="number" step="0.01" value={editingFeeVal} onChange={e => setEditingFeeVal(e.target.value)}
+                              placeholder="0.00" autoFocus
+                              style={{ width: 80, padding: '3px 8px', border: '1px solid #7c3aed', borderRadius: 6, fontSize: 13 }} />
+                            <button onClick={() => saveFee(c.id)} style={{ padding: '3px 10px', borderRadius: 6, border: 'none', background: '#7c3aed', color: '#fff', fontSize: 12, cursor: 'pointer', fontWeight: 700 }}>✓</button>
+                            <button onClick={() => { setEditingFeeId(null); setEditingFeeVal(''); }} style={{ padding: '3px 8px', borderRadius: 6, border: '1px solid #e2e8f0', background: '#fff', fontSize: 12, cursor: 'pointer' }}>✕</button>
+                          </div>
+                        ) : (
+                          <span onClick={() => { setEditingFeeId(c.id); setEditingFeeVal(c.defaultFee != null ? String(c.defaultFee) : ''); }}
+                            style={{ cursor: 'pointer', padding: '2px 8px', borderRadius: 6, border: '1px dashed #e2e8f0', fontSize: 13, color: c.defaultFee != null ? '#7c3aed' : '#94a3b8', fontFamily: 'monospace' }}
+                            title="Click to set fee">
+                            {c.defaultFee != null ? `$${Number(c.defaultFee).toFixed(2)}` : '+ Set fee'}
+                          </span>
+                        )}
+                      </td>
+                      <td style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                          <button onClick={() => startEditRow(c)}
+                            style={{ padding: '3px 10px', borderRadius: 6, border: '1px solid #e2e8f0', background: '#fff', fontSize: 12, cursor: 'pointer' }}
+                            title="Edit">
+                            ✏️
+                          </button>
+                          <button onClick={() => deleteCode(c.id, c.code)}
+                            style={{ padding: '3px 10px', borderRadius: 6, border: '1px solid #fecaca', background: '#fff7f7', fontSize: 12, cursor: 'pointer' }}
+                            title="Delete">
+                            🗑️
+                          </button>
+                          <button onClick={() => toggleActive(c.id, c.active)}
+                            style={{ padding: '3px 12px', borderRadius: 999, border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                              background: c.active ? '#dcfce7' : '#f3f4f6', color: c.active ? '#15803d' : '#64748b' }}>
+                            {c.active ? '✅ Active' : '⬜ Inactive'}
+                          </button>
+                        </div>
+                      </td>
+                    </>
+                  )}
                 </tr>
               ))}
             </tbody>
