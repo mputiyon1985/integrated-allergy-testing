@@ -16,9 +16,9 @@ const navItems = [
 
   { href: '/doctors', label: 'Doctors', icon: '👨‍⚕️' },
   { href: '/nurses', label: 'Nurses', icon: '👩‍⚕️' },
-  { href: '/locations', label: 'Locations', icon: '📍', children: [
+  { href: '/practices', label: 'Practice', icon: '🏥', children: [
     { href: '/practices', label: 'Practices', icon: '🏥' },
-    { href: '/locations', label: 'All Locations', icon: '📍' },
+    { href: '/locations', label: 'Locations', icon: '📍' },
   ]},
   { href: '/videos', label: 'Videos', icon: '🎬' },
   { href: '/kiosk', label: 'Kiosk', icon: '📲' },
@@ -113,18 +113,29 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
                 </button>
               );
             }
-            // Group with children (e.g. Locations → Practices + All Locations)
+            // Group with children — hover to expand, auto-collapse on mouse-out
             if (item.children) {
               const groupActive = item.children.some(c => pathname.startsWith(c.href));
               return (
-                <div key={item.href}>
-                  <div className={`nav-link ${groupActive ? 'active' : ''}`} style={{ cursor: 'default', display: 'flex', alignItems: 'center' }}>
-                    <span className="nav-icon">{item.icon}</span>
-                    {item.label}
+                <div
+                  key={item.href}
+                  style={{ position: 'relative' }}
+                  onMouseEnter={e => { const el = e.currentTarget.querySelector('[data-submenu]') as HTMLElement; if (el) el.style.display = 'block'; }}
+                  onMouseLeave={e => { const el = e.currentTarget.querySelector('[data-submenu]') as HTMLElement; if (el && !groupActive) el.style.display = 'none'; }}
+                >
+                  <div className={`nav-link ${groupActive ? 'active' : ''}`} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ display: 'flex', alignItems: 'center' }}>
+                      <span className="nav-icon">{item.icon}</span>
+                      {item.label}
+                    </span>
+                    <span style={{ fontSize: 10, color: '#94a3b8', marginLeft: 4 }}>▾</span>
                   </div>
-                  <div style={{ paddingLeft: 16, borderLeft: '2px solid #e2e8f0', marginLeft: 20, marginBottom: 4 }}>
+                  <div
+                    data-submenu
+                    style={{ display: groupActive ? 'block' : 'none', paddingLeft: 14, borderLeft: '2px solid #e2e8f0', marginLeft: 20, marginBottom: 4 }}
+                  >
                     {item.children.map(child => {
-                      const childActive = child.href === '/' ? pathname === '/' : pathname.startsWith(child.href);
+                      const childActive = child.href === '/' ? pathname === '/' : pathname === child.href || (child.href !== '/practices' && pathname.startsWith(child.href));
                       return (
                         <Link
                           key={child.href}
