@@ -1,6 +1,16 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { ROLE_LABELS } from '@/lib/permissions';
+
+const ROLE_OPTIONS = [
+  { value: 'admin',          label: '🔴 Admin' },
+  { value: 'provider',       label: '🟣 Provider (MD/DO)' },
+  { value: 'clinical_staff', label: '🟢 Clinical Staff (RN/MA)' },
+  { value: 'front_desk',     label: '🔵 Front Desk' },
+  { value: 'billing',        label: '🟡 Billing' },
+  { value: 'office_manager', label: '🟠 Office Manager' },
+];
 
 type StaffUser = {
   id: string;
@@ -30,8 +40,18 @@ type CurrentUser = {
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
+const ROLE_COLORS: Record<string, { bg: string; color: string }> = {
+  admin:          { bg: '#fee2e2', color: '#dc2626' },
+  provider:       { bg: '#ede9fe', color: '#7c3aed' },
+  clinical_staff: { bg: '#dcfce7', color: '#16a34a' },
+  front_desk:     { bg: '#dbeafe', color: '#2563eb' },
+  billing:        { bg: '#fef9c3', color: '#ca8a04' },
+  office_manager: { bg: '#ffedd5', color: '#ea580c' },
+};
+
 function RoleBadge({ role }: { role: string }) {
-  const isAdmin = role === 'admin';
+  const colors = ROLE_COLORS[role] ?? { bg: '#f1f5f9', color: '#64748b' };
+  const label = ROLE_LABELS[role] ?? role;
   return (
     <span style={{
       display: 'inline-block',
@@ -39,12 +59,11 @@ function RoleBadge({ role }: { role: string }) {
       borderRadius: 999,
       fontSize: 11,
       fontWeight: 700,
-      background: isAdmin ? '#dbeafe' : '#f1f5f9',
-      color: isAdmin ? '#1d4ed8' : '#64748b',
-      textTransform: 'uppercase',
-      letterSpacing: '0.04em',
+      background: colors.bg,
+      color: colors.color,
+      whiteSpace: 'nowrap',
     }}>
-      {role}
+      {label}
     </span>
   );
 }
@@ -122,7 +141,7 @@ function AddUserModal({ locations, onClose, onSuccess }: {
   onClose: () => void;
   onSuccess: () => void;
 }) {
-  const [form, setForm] = useState({ name: '', email: '', password: '', role: 'staff', defaultLocationId: '' });
+  const [form, setForm] = useState({ name: '', email: '', password: '', role: 'front_desk', defaultLocationId: '' });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -173,8 +192,7 @@ function AddUserModal({ locations, onClose, onSuccess }: {
           <div>
             <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Role</label>
             <select className="form-input" value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))}>
-              <option value="staff">Staff</option>
-              <option value="admin">Admin</option>
+              {ROLE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </div>
           <div>
@@ -256,8 +274,7 @@ function EditUserModal({ user, locations, currentUserId, onClose, onSuccess }: {
           <div>
             <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Role</label>
             <select className="form-input" value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))} disabled={isSelf}>
-              <option value="staff">Staff</option>
-              <option value="admin">Admin</option>
+              {ROLE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
             {isSelf && <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>Cannot change your own role.</p>}
           </div>

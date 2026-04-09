@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import type { Layout, LayoutItem, ResponsiveLayouts } from 'react-grid-layout';
 import UsersManagement from '@/components/settings/UsersManagement';
+import RolesManagement from '@/components/settings/RolesManagement';
 
 const DashboardGrid = dynamic(() => import('@/components/DashboardGrid'), { ssr: false });
 const DoctorsTab = dynamic(() => import('@/components/settings/DoctorsTab'), { ssr: false });
@@ -1369,7 +1370,7 @@ function ServicesManagement() {
 }
 
 type CurrentUser = { id: string; role: string; email: string; name: string };
-type SettingsTab = 'dashboard' | 'users' | 'audit' | 'services' | 'doctors' | 'nurses' | 'videos' | 'allergens' | 'practices' | 'locations';
+type SettingsTab = 'dashboard' | 'roles' | 'users' | 'audit' | 'services' | 'doctors' | 'nurses' | 'videos' | 'allergens' | 'practices' | 'locations';
 
 export default function SettingsPage() {
   const [editMode, setEditMode] = useState(false);
@@ -1444,6 +1445,11 @@ export default function SettingsPage() {
             ⚙️ Dashboard
           </button>
           {isAdmin && (
+            <button style={TAB_STYLE(activeTab === 'roles')} onClick={() => setActiveTab('roles')}>
+              🔐 Roles
+            </button>
+          )}
+          {isAdmin && (
             <button style={TAB_STYLE(activeTab === 'users')} onClick={() => setActiveTab('users')}>
               👥 Users
             </button>
@@ -1473,6 +1479,13 @@ export default function SettingsPage() {
             📋 Audit Log
           </button>
         </div>
+
+        {/* Roles Tab */}
+        {activeTab === 'roles' && (
+          <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #e2e8f0', padding: 24 }}>
+            <RolesManagement />
+          </div>
+        )}
 
         {/* Users Tab */}
         {activeTab === 'users' && currentUser && (
