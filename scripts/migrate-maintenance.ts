@@ -34,7 +34,7 @@ async function main() {
       "reactionNotes" TEXT,
       "givenBy" TEXT,
       "givenAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      "waitMinutes" INTEGER NOT NULL DEFAULT 20,
+      "waitMinutes" INTEGER NOT NULL DEFAULT 30,
       "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY ("vialId") REFERENCES "MaintenanceVial"("id")
     )`,

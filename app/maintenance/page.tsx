@@ -101,7 +101,7 @@ function ShotModal({ vial, onClose, onSaved }: { vial: MaintenanceVial; onClose:
   const [reaction, setReaction] = useState(0);
   const [reactionNotes, setReactionNotes] = useState('');
   const [givenBy, setGivenBy] = useState('');
-  const [waitMinutes, setWaitMinutes] = useState(20);
+  const [waitMinutes, setWaitMinutes] = useState(30);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -221,6 +221,9 @@ function ShotModal({ vial, onClose, onSaved }: { vial: MaintenanceVial; onClose:
               onChange={e => setWaitMinutes(parseInt(e.target.value))}
               style={{ width: '100%', padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: 14 }}
             />
+            <div style={{ fontSize: 11, color: '#b45309', marginTop: 4, background: '#fef3c7', padding: '4px 8px', borderRadius: 6 }}>
+              ⚠️ AAAAI guidelines require <strong>30-minute</strong> observation post-injection
+            </div>
           </div>
 
           {/* Nurse */}
