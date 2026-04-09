@@ -25,7 +25,7 @@ const EMPTY_FORM = {
 export default function NursesPage() {
   const [nurses, setNurses] = useState<Nurse[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [editNurse, setEditNurse] = useState<Nurse | null>(null);
   const [form, setForm] = useState({ ...EMPTY_FORM });
@@ -34,13 +34,17 @@ export default function NursesPage() {
 
   async function loadNurses() {
     setLoading(true);
+    setLoadError(null);
     try {
       const res = await fetch('/api/nurses?all=1');
-      if (!res.ok) throw new Error('Failed to load nurses');
+      if (!res.ok) throw new Error(res.status === 401 ? 'session_expired' : `HTTP ${res.status}`);
       const data = await res.json();
       setNurses(Array.isArray(data) ? data : (data.nurses ?? []));
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Failed to load');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to load';
+      console.error('[Nurses] fetch error:', msg);
+      if (msg === 'session_expired') setLoadError('Session expired — please refresh and log in again.');
+      else setLoadError(`Failed to load nurses: ${msg}`);
     } finally {
       setLoading(false);
     }
@@ -138,7 +142,7 @@ export default function NursesPage() {
       </div>
 
       <div className="page-body">
-        {error && <div className="alert alert-error">⚠️ {error}</div>}
+        {loadError && <div style={{background:'#fef2f2',border:'1px solid #fecaca',borderRadius:8,padding:'12px 16px',marginBottom:16,color:'#b91c1c',fontSize:13}}>🔐 {loadError} <button onClick={() => { setLoadError(null); loadNurses(); }} style={{marginLeft:12,padding:'3px 10px',background:'#b91c1c',color:'#fff',border:'none',borderRadius:6,cursor:'pointer',fontSize:12}}>Retry</button></div>}
 
         {loading ? (
           <div className="loading-center"><div className="spinner" /><span>Loading nurses…</span></div>

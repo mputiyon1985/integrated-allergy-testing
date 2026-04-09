@@ -135,13 +135,19 @@ export default function DashboardPage() {
   const [newApptTime, setNewApptTime] = useState('09:00');
   const [newApptEndTime, setNewApptEndTime] = useState('10:00');
   const [addingAppt, setAddingAppt] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const loadWaiting = useCallback(async () => {
     try {
       const r = await fetch('/api/waiting-room');
+      if (!r.ok) throw new Error(r.status === 401 ? 'session_expired' : `HTTP ${r.status}`);
       const d = await r.json();
       setWaiting(d.entries ?? []);
-    } catch {}
+    } catch (err) {
+      const msg = (err as Error).message;
+      console.error('[Dashboard] waitingRoom fetch error:', msg);
+      setLoadError(msg === 'session_expired' ? 'Session expired — please refresh and log in again' : `Failed to load waiting room: ${msg}`);
+    }
   }, []);
 
   useEffect(() => {
@@ -165,7 +171,12 @@ export default function DashboardPage() {
           const d = await meRes.value.json();
           setUserName(d?.user?.name ?? d?.name ?? '');
         }
-        fetch('/api/encounters?limit=100').then(r => r.json()).then(d => { const today = new Date().toDateString(); setEncounterCount((d.encounters ?? []).filter((e: {encounterDate: string}) => new Date(e.encounterDate).toDateString() === today).length) })
+        fetch('/api/encounters?limit=100').then(async r => {
+          if (!r.ok) throw new Error(r.status === 401 ? 'session_expired' : `HTTP ${r.status}`);
+          return r.json();
+        }).then(d => { const today = new Date().toDateString(); setEncounterCount((d.encounters ?? []).filter((e: {encounterDate: string}) => new Date(e.encounterDate).toDateString() === today).length) }).catch(err => {
+          console.error('[Dashboard] encounters fetch error:', err.message);
+        })
       } catch {}
       finally { setLoading(false); }
     }
@@ -181,13 +192,19 @@ export default function DashboardPage() {
   useEffect(() => {
     const today = new Date().toISOString().slice(0, 10);
     fetch(`/api/iat-appointments?date=${today}`)
-      .then(r => r.ok ? r.json() : [])
+      .then(async r => {
+        if (!r.ok) throw new Error(r.status === 401 ? 'session_expired' : `HTTP ${r.status}`);
+        return r.json();
+      })
       .then(data => {
         const arr: TodayAppointment[] = Array.isArray(data) ? data : [];
         const todayStr = new Date().toDateString();
         setTodayAppts(arr.filter(a => new Date(a.startTime).toDateString() === todayStr));
       })
-      .catch(() => {});
+      .catch(err => {
+        console.error('[Dashboard] appointments fetch error:', err.message);
+        setLoadError(err.message === 'session_expired' ? 'Session expired — please refresh and log in again' : `Failed to load appointments: ${err.message}`);
+      });
   }, []);
 
   async function handleQuickAddAppt() {
@@ -487,6 +504,12 @@ export default function DashboardPage() {
       </div>
 
       <div className="page-body">
+        {loadError && (
+          <div style={{background:'#fef2f2',border:'1px solid #fecaca',borderRadius:8,padding:'12px 16px',marginBottom:16,color:'#b91c1c',fontSize:13}}>
+            🔐 {loadError}
+            <button onClick={() => { setLoadError(null); loadWaiting(); }} style={{marginLeft:12,padding:'2px 10px',borderRadius:6,border:'1px solid #fecaca',background:'#fff',color:'#b91c1c',fontSize:12,cursor:'pointer',fontWeight:600}}>↻ Retry</button>
+          </div>
+        )}
         {editMode && (
           <div style={{ background: '#fefce8', border: '1px solid #fde68a', borderRadius: 8, padding: '10px 16px', marginBottom: 8, fontSize: 13, color: '#92400e', fontWeight: 600 }}>
             ⊞ Drag tiles to move · Drag bottom-right corner to resize · Click <strong>&quot;✅ Done&quot;</strong> to save
@@ -736,7 +759,12 @@ export default function DashboardPage() {
                 });
                 setSavingAppt(false); setEditingAppt(null);
                 const todayStr = new Date().toISOString().split('T')[0];
-                fetch(`/api/iat-appointments?date=${todayStr}`).then(r => r.json()).then(d => setTodayAppts(d.appointments ?? d ?? []));
+                fetch(`/api/iat-appointments?date=${todayStr}`).then(async r => {
+                  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                  return r.json();
+                }).then(d => setTodayAppts(d.appointments ?? d ?? [])).catch(err => {
+                  console.error('[Dashboard] appointment refresh error:', err.message);
+                });
               }}
                 style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: '#0d9488', color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: 13 }}>
                 {savingAppt ? '⏳' : '💾 Save'}

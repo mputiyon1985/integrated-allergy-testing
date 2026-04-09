@@ -783,13 +783,22 @@ function ConsentStatus({ patientId }: { patientId: string }) {
 
   useEffect(() => {
     Promise.allSettled([
-      fetch(`/api/consent/check?patientId=${patientId}`).then(r => r.json()),
-      fetch('/api/nurses').then(r => r.json()),
+      fetch(`/api/consent/check?patientId=${patientId}`).then(async r => {
+        if (!r.ok) throw new Error(r.status === 401 ? 'session_expired' : `HTTP ${r.status}`);
+        return r.json();
+      }),
+      fetch('/api/nurses').then(async r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      }),
     ]).then(([formsRes, nursesRes]) => {
       if (formsRes.status === 'fulfilled') setForms(formsRes.value.forms ?? [])
+      else console.error('[ConsentStatus] consent fetch error:', (formsRes.reason as Error)?.message)
       if (nursesRes.status === 'fulfilled') {
         const d = nursesRes.value
         setNurses(Array.isArray(d) ? d : (d.nurses ?? []))
+      } else {
+        console.error('[ConsentStatus] nurses fetch error:', (nursesRes.reason as Error)?.message)
       }
       setLoading(false)
     }).catch(() => setLoading(false))
@@ -1342,14 +1351,23 @@ function NewEncounterModal({
 function EncountersTab({ patientId, patientName }: { patientId: string; patientName: string }) {
   const [encounters, setEncounters] = useState<EncounterRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [showNew, setShowNew] = useState(false);
 
   function load() {
     setLoading(true);
+    setLoadError(null);
     fetch(`/api/encounters?patientId=${patientId}`)
-      .then(r => r.json())
+      .then(async r => {
+        if (!r.ok) throw new Error(r.status === 401 ? 'session_expired' : `HTTP ${r.status}`);
+        return r.json();
+      })
       .then(d => { setEncounters(d.encounters ?? []); setLoading(false); })
-      .catch(() => setLoading(false));
+      .catch(err => {
+        console.error('[PatientDetail] encounters fetch error:', err.message);
+        setLoadError(err.message === 'session_expired' ? 'Session expired — please refresh and log in again' : `Failed to load encounters: ${err.message}`);
+        setLoading(false);
+      });
   }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, [patientId]);
@@ -1368,6 +1386,12 @@ function EncountersTab({ patientId, patientName }: { patientId: string; patientN
         </button>
       </div>
 
+      {loadError && (
+        <div style={{background:'#fef2f2',border:'1px solid #fecaca',borderRadius:8,padding:'12px 16px',marginBottom:16,color:'#b91c1c',fontSize:13}}>
+          🔐 {loadError}
+          <button onClick={() => load()} style={{marginLeft:12,padding:'2px 10px',borderRadius:6,border:'1px solid #fecaca',background:'#fff',color:'#b91c1c',fontSize:12,cursor:'pointer',fontWeight:600}}>↻ Retry</button>
+        </div>
+      )}
       {loading ? (
         <div className="loading-center"><div className="spinner" /></div>
       ) : sorted.length === 0 ? (

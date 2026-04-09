@@ -75,7 +75,7 @@ function LoginPageInner() {
         window.location.replace('/');
       }
     } catch {
-      setError('Network error. Please try again.');
+      setError('Unable to connect — please try again.');
     } finally {
       setLoading(false);
     }
@@ -98,7 +98,7 @@ function LoginPageInner() {
       }
       window.location.replace('/');
     } catch {
-      setError('Network error. Please try again.');
+      setError('Unable to connect — please try again.');
     } finally {
       setLoading(false);
     }
@@ -121,7 +121,7 @@ function LoginPageInner() {
       }
       window.location.replace('/');
     } catch {
-      setError('Network error. Please try again.');
+      setError('Unable to connect — please try again.');
     } finally {
       setLoading(false);
     }

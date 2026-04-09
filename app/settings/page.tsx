@@ -150,18 +150,32 @@ function formatTimestamp(ts: string): string {
 function AuditLogContent() {
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [filter, setFilter] = useState('');
   const [page, setPage] = useState(0);
   const PAGE_SIZE = 50;
 
-  useEffect(() => {
+  function fetchLogs() {
+    setLoading(true);
+    setLoadError(null);
     fetch('/api/audit?limit=200')
-      .then(r => r.json())
+      .then(async r => {
+        if (!r.ok) throw new Error(r.status === 401 ? 'session_expired' : `HTTP ${r.status}`);
+        return r.json();
+      })
       .then(d => {
         setLogs(Array.isArray(d) ? d : (d.logs ?? d.entries ?? []));
         setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch(err => {
+        console.error('[AuditLogContent] fetch error:', err.message);
+        setLoadError(err.message === 'session_expired' ? 'Session expired — please refresh and log in again' : `Failed to load audit log: ${err.message}`);
+        setLoading(false);
+      });
+  }
+
+  useEffect(() => {
+    fetchLogs();
   }, []);
 
   const filtered = logs.filter(l =>
@@ -181,6 +195,13 @@ function AuditLogContent() {
       <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
         HIPAA compliance audit trail — recent activity across the system.
       </p>
+
+      {loadError && (
+        <div style={{background:'#fef2f2',border:'1px solid #fecaca',borderRadius:8,padding:'12px 16px',marginBottom:16,color:'#b91c1c',fontSize:13}}>
+          🔐 {loadError}
+          <button onClick={fetchLogs} style={{marginLeft:12,padding:'2px 10px',borderRadius:6,border:'1px solid #fecaca',background:'#fff',color:'#b91c1c',fontSize:12,cursor:'pointer',fontWeight:700}}>Retry</button>
+        </div>
+      )}
 
       <div style={{ display: 'flex', gap: 12, marginBottom: 16, alignItems: 'center' }}>
         <input
@@ -288,6 +309,7 @@ function AuditLogContent() {
 function Icd10CodesContent() {
   const [codes, setCodes] = useState<{ id: string; code: string; description: string; category?: string; active: boolean }[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [addForm, setAddForm] = useState({ code: '', description: '', category: '' });
   const [saving, setSaving] = useState(false);
@@ -295,10 +317,18 @@ function Icd10CodesContent() {
   const [editingRowData, setEditingRowData] = useState({ description: '', category: '' });
 
   function load() {
+    setLoadError(null);
     fetch('/api/icd10-codes?all=true')
-      .then(r => r.json())
+      .then(async r => {
+        if (!r.ok) throw new Error(r.status === 401 ? 'session_expired' : `HTTP ${r.status}`);
+        return r.json();
+      })
       .then(d => { setCodes(d.codes ?? (Array.isArray(d) ? d : [])); setLoading(false); })
-      .catch(() => setLoading(false));
+      .catch(err => {
+        console.error('[Icd10CodesContent] fetch error:', err.message);
+        setLoadError(err.message === 'session_expired' ? 'Session expired — please refresh and log in again' : `Failed to load ICD-10 codes: ${err.message}`);
+        setLoading(false);
+      });
   }
 
   useEffect(() => { load(); }, []);
@@ -356,6 +386,12 @@ function Icd10CodesContent() {
           + Add Code
         </button>
       </div>
+      {loadError && (
+        <div style={{background:'#fef2f2',border:'1px solid #fecaca',borderRadius:8,padding:'12px 16px',marginBottom:16,color:'#b91c1c',fontSize:13}}>
+          🔐 {loadError}
+          <button onClick={load} style={{marginLeft:12,padding:'2px 10px',borderRadius:6,border:'1px solid #fecaca',background:'#fff',color:'#b91c1c',fontSize:12,cursor:'pointer',fontWeight:700}}>Retry</button>
+        </div>
+      )}
       {showAdd && (
         <div style={{ background: '#f0fdf4', borderRadius: 10, padding: 16, marginBottom: 16, display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
           <div>
@@ -468,6 +504,7 @@ function Icd10CodesContent() {
 function CptCodesContent() {
   const [codes, setCodes] = useState<{ id: string; code: string; description: string; category?: string; defaultFee?: number | null; nonFacilityFee?: number | null; facilityFee?: number | null; maximumAllowable?: number | null; active: boolean }[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [addForm, setAddForm] = useState({ code: '', description: '', category: '' });
   const [saving, setSaving] = useState(false);
@@ -477,10 +514,18 @@ function CptCodesContent() {
   const [editingRowData, setEditingRowData] = useState({ description: '', category: '' });
 
   function load() {
+    setLoadError(null);
     fetch('/api/cpt-codes?all=true')
-      .then(r => r.json())
+      .then(async r => {
+        if (!r.ok) throw new Error(r.status === 401 ? 'session_expired' : `HTTP ${r.status}`);
+        return r.json();
+      })
       .then(d => { setCodes(d.codes ?? (Array.isArray(d) ? d : [])); setLoading(false); })
-      .catch(() => setLoading(false));
+      .catch(err => {
+        console.error('[CptCodesContent] fetch error:', err.message);
+        setLoadError(err.message === 'session_expired' ? 'Session expired — please refresh and log in again' : `Failed to load CPT codes: ${err.message}`);
+        setLoading(false);
+      });
   }
 
   useEffect(() => { load(); }, []);
@@ -548,6 +593,12 @@ function CptCodesContent() {
           + Add Code
         </button>
       </div>
+      {loadError && (
+        <div style={{background:'#fef2f2',border:'1px solid #fecaca',borderRadius:8,padding:'12px 16px',marginBottom:16,color:'#b91c1c',fontSize:13}}>
+          🔐 {loadError}
+          <button onClick={load} style={{marginLeft:12,padding:'2px 10px',borderRadius:6,border:'1px solid #fecaca',background:'#fff',color:'#b91c1c',fontSize:12,cursor:'pointer',fontWeight:700}}>Retry</button>
+        </div>
+      )}
       {showAdd && (
         <div style={{ background: '#f5f3ff', borderRadius: 10, padding: 16, marginBottom: 16, display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
           <div>
@@ -734,6 +785,7 @@ const EMPTY_RULE_FORM = {
 function BillingRulesContent() {
   const [rules, setRules] = useState<BillingRuleRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [addForm, setAddForm] = useState(EMPTY_RULE_FORM);
   const [saving, setSaving] = useState(false);
@@ -741,10 +793,18 @@ function BillingRulesContent() {
   const [editForm, setEditForm] = useState(EMPTY_RULE_FORM);
 
   function load() {
+    setLoadError(null);
     fetch('/api/billing-rules?all=true')
-      .then(r => r.json())
+      .then(async r => {
+        if (!r.ok) throw new Error(r.status === 401 ? 'session_expired' : `HTTP ${r.status}`);
+        return r.json();
+      })
       .then(d => { setRules(d.rules ?? []); setLoading(false); })
-      .catch(() => setLoading(false));
+      .catch(err => {
+        console.error('[BillingRulesContent] fetch error:', err.message);
+        setLoadError(err.message === 'session_expired' ? 'Session expired — please refresh and log in again' : `Failed to load billing rules: ${err.message}`);
+        setLoading(false);
+      });
   }
 
   useEffect(() => { load(); }, []);
@@ -912,6 +972,13 @@ function BillingRulesContent() {
       <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
         Per-encounter billing compliance rules. Soft warnings only — staff are alerted but can proceed.
       </p>
+
+      {loadError && (
+        <div style={{background:'#fef2f2',border:'1px solid #fecaca',borderRadius:8,padding:'12px 16px',marginBottom:16,color:'#b91c1c',fontSize:13}}>
+          🔐 {loadError}
+          <button onClick={load} style={{marginLeft:12,padding:'2px 10px',borderRadius:6,border:'1px solid #fecaca',background:'#fff',color:'#b91c1c',fontSize:12,cursor:'pointer',fontWeight:700}}>Retry</button>
+        </div>
+      )}
 
       {showAdd && (
         <RuleForm
