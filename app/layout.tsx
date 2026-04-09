@@ -113,6 +113,35 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
                 </button>
               );
             }
+            // Group with children (e.g. Locations → Practices + All Locations)
+            if (item.children) {
+              const groupActive = item.children.some(c => pathname.startsWith(c.href));
+              return (
+                <div key={item.href}>
+                  <div className={`nav-link ${groupActive ? 'active' : ''}`} style={{ cursor: 'default', display: 'flex', alignItems: 'center' }}>
+                    <span className="nav-icon">{item.icon}</span>
+                    {item.label}
+                  </div>
+                  <div style={{ paddingLeft: 16, borderLeft: '2px solid #e2e8f0', marginLeft: 20, marginBottom: 4 }}>
+                    {item.children.map(child => {
+                      const childActive = child.href === '/' ? pathname === '/' : pathname.startsWith(child.href);
+                      return (
+                        <Link
+                          key={child.href}
+                          href={child.href}
+                          className={`nav-link ${childActive ? 'active' : ''}`}
+                          onClick={onClose}
+                          style={{ fontSize: 13, padding: '5px 10px' }}
+                        >
+                          <span className="nav-icon" style={{ fontSize: 13 }}>{child.icon}</span>
+                          {child.label}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            }
             return (
               <Link
                 key={item.href}
