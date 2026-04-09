@@ -14,8 +14,8 @@ const navItems = [
   { href: '/calendar', label: 'Calendar', icon: '📅' },
   { href: '/insurance', label: 'Insurance Hub', icon: '🏥' },
 
-  { href: '/practices', label: 'Practice', icon: '🏥', children: [
-    { href: '/practices', label: 'Practices', icon: '🏥' },
+  { href: '/practices', label: 'Practice', icon: '🏢', children: [
+    { href: '/practices', label: 'Practices', icon: '🏢' },
     { href: '/locations', label: 'Locations', icon: '📍' },
   ]},
   { href: '/kiosk', label: 'Kiosk', icon: '📲' },
@@ -123,7 +123,7 @@ function Sidebar({ open, onClose, userName }: { open: boolean; onClose: () => vo
                   onMouseLeave={e => { const el = e.currentTarget.querySelector('[data-submenu]') as HTMLElement; if (el && !groupActive) el.style.display = 'none'; }}
                 >
                   <div className={`nav-link ${groupActive ? 'active' : ''}`} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ display: 'flex', alignItems: 'center' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                       <span className="nav-icon">{item.icon}</span>
                       {item.label}
                     </span>
