@@ -83,16 +83,15 @@ export default function LocationsPage() {
   }
 
   function generateKey(name: string, existing: Location[]): string {
-    const base = name.trim().toUpperCase()
-      .replace(/[^A-Z0-9\s]/g, '')
-      .replace(/\s+/g, '-')
-      .substring(0, 12);
-    let key = base;
+    // Build prefix from initials of each word (max 4 chars), e.g. "Main Office" → "MO"
+    const words = name.trim().toUpperCase().replace(/[^A-Z0-9\s]/g, '').split(/\s+/).filter(Boolean);
+    const prefix = words.map(w => w[0]).join('').substring(0, 4) || 'LOC';
+    // Find next available number
     let n = 1;
-    while (existing.some(l => l.key === key && l.id !== editLocation?.id)) {
-      key = `${base}-${n++}`;
+    while (existing.some(l => l.key === `${prefix}-${String(n).padStart(3, '0')}` && l.id !== editLocation?.id)) {
+      n++;
     }
-    return key;
+    return `${prefix}-${String(n).padStart(3, '0')}`;
   }
 
   function setField(field: string, value: string) {
