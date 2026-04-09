@@ -168,29 +168,6 @@ function Sidebar({ open, onClose, userName }: { open: boolean; onClose: () => vo
 
         <UserCard userName={userName} />
 
-        {/* Sign Out — above the footer line */}
-        <div style={{ padding: '0 12px 10px' }}>
-          <button
-            onClick={async () => {
-              await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
-              window.location.href = '/api/auth/signout?callbackUrl=/login';
-            }}
-            style={{
-              width: '100%',
-              padding: '8px 0',
-              background: 'rgba(255,255,255,0.1)',
-              color: '#ffffff',
-              border: '1px solid rgba(255,255,255,0.25)',
-              borderRadius: 8,
-              fontSize: 12,
-              fontWeight: 600,
-              cursor: 'pointer',
-            }}
-          >
-            🚪 Sign Out
-          </button>
-        </div>
-
         <div className="sidebar-footer">
           © 2026 Integrated Allergy Testing
         </div>
