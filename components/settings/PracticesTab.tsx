@@ -333,7 +333,7 @@ export default function PracticesTab() {
                 <tr>
                   <th>Practice Name</th>
                   <th>Short Name</th>
-                  <th>NPI</th>
+                  <th>Type 2 NPI</th>
                   <th>Phone</th>
                   <th>Email</th>
                   <th>Locations</th>
@@ -462,14 +462,15 @@ export default function PracticesTab() {
                     />
                   </div>
                   <div className="form-group">
-                    <label className="form-label">NPI (Practice)</label>
+                    <label className="form-label">Type 2 NPI <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 400 }}>(Organization)</span></label>
                     <input
                       type="text"
                       className="form-input"
-                      placeholder="10-digit NPI"
+                      placeholder="10-digit organization NPI"
                       value={form.npi}
                       onChange={e => setField('npi', e.target.value)}
                     />
+                    <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 3 }}>Used on claims for the practice as a whole</div>
                   </div>
                 </div>
 

@@ -9,12 +9,13 @@ interface Doctor {
   specialty?: string;
   phone?: string;
   email?: string;
+  npi?: string;
   clinicLocation?: string;
   active: boolean;
 }
 
 const DOCTOR_TITLE_OPTIONS = ['MD', 'DO', 'NP', 'PA'];
-const EMPTY_DOCTOR_FORM = { name: '', title: '', specialty: '', email: '', phone: '', clinicLocation: '' };
+const EMPTY_DOCTOR_FORM = { name: '', title: '', specialty: '', email: '', phone: '', npi: '', clinicLocation: '' };
 
 export default function DoctorsTab() {
   const [doctors, setDoctors] = useState<Doctor[]>([]);
@@ -44,7 +45,7 @@ export default function DoctorsTab() {
   function openAdd() { setEditDoctor(null); setForm({ ...EMPTY_DOCTOR_FORM }); setFormError(''); setShowModal(true); }
   function openEdit(doc: Doctor) {
     setEditDoctor(doc);
-    setForm({ name: doc.name, title: doc.title ?? '', specialty: doc.specialty ?? '', email: doc.email ?? '', phone: doc.phone ?? '', clinicLocation: doc.clinicLocation ?? '' });
+    setForm({ name: doc.name, title: doc.title ?? '', specialty: doc.specialty ?? '', email: doc.email ?? '', phone: doc.phone ?? '', npi: doc.npi ?? '', clinicLocation: doc.clinicLocation ?? '' });
     setFormError(''); setShowModal(true);
   }
   function closeModal() { setShowModal(false); setEditDoctor(null); setFormError(''); }
@@ -56,7 +57,7 @@ export default function DoctorsTab() {
     setSaving(true);
     try {
       const url = editDoctor ? `/api/doctors/${editDoctor.id}` : '/api/doctors';
-      const res = await fetch(url, { method: editDoctor ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: form.name.trim(), title: form.title || undefined, specialty: form.specialty || undefined, email: form.email || undefined, phone: form.phone || undefined, clinicLocation: form.clinicLocation || undefined }) });
+      const res = await fetch(url, { method: editDoctor ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: form.name.trim(), title: form.title || undefined, specialty: form.specialty || undefined, email: form.email || undefined, phone: form.phone || undefined, npi: form.npi || undefined, clinicLocation: form.clinicLocation || undefined }) });
       if (!res.ok) { const data = await res.json().catch(() => ({})); throw new Error(data.error ?? `Request failed: ${res.status}`); }
       closeModal(); await loadDoctors();
     } catch (e: unknown) { setFormError(e instanceof Error ? e.message : 'Failed to save'); }
@@ -108,7 +109,14 @@ export default function DoctorsTab() {
                   <div className="form-group"><label className="form-label">Email</label><input type="email" className="form-input" placeholder="doctor@clinic.com" value={form.email} onChange={e => setField('email', e.target.value)} /></div>
                   <div className="form-group"><label className="form-label">Phone</label><input type="tel" className="form-input" placeholder="(555) 555-0100" value={form.phone} onChange={e => setField('phone', e.target.value)} /></div>
                 </div>
-                <div className="form-group"><label className="form-label">Clinic Location</label><input type="text" className="form-input" placeholder="e.g. Main Street Clinic" value={form.clinicLocation} onChange={e => setField('clinicLocation', e.target.value)} /></div>
+                <div className="form-row form-row-2">
+                  <div className="form-group">
+                    <label className="form-label">Type 1 NPI <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 400 }}>(Individual)</span></label>
+                    <input type="text" className="form-input" placeholder="10-digit individual NPI" value={form.npi} onChange={e => setField('npi', e.target.value)} />
+                    <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 3 }}>Individual provider NPI for claims</div>
+                  </div>
+                  <div className="form-group"><label className="form-label">Clinic Location</label><input type="text" className="form-input" placeholder="e.g. Main Street Clinic" value={form.clinicLocation} onChange={e => setField('clinicLocation', e.target.value)} /></div>
+                </div>
               </div>
               <div className="modal-footer"><button type="button" className="btn btn-secondary" onClick={closeModal}>Cancel</button><button type="submit" className="btn" disabled={saving}>{saving ? 'Saving…' : editDoctor ? 'Save Changes' : 'Add Doctor'}</button></div>
             </form>
