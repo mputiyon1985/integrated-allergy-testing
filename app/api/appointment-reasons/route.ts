@@ -10,10 +10,12 @@ import prisma from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const { searchParams } = new URL(req.url)
+    const all = searchParams.get('all') === 'true'
     const reasons = await prisma.appointmentReason.findMany({
-      where: { active: true },
+      where: all ? undefined : { active: true },
       orderBy: { sortOrder: 'asc' },
     })
     return NextResponse.json({ reasons })
@@ -25,7 +27,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json() as { name: string; color?: string; duration?: number }
+    const body = await req.json() as { name: string; color?: string; duration?: number; sortOrder?: number; active?: boolean }
     if (!body.name?.trim()) return NextResponse.json({ error: 'Name is required' }, { status: 400 })
     
     const maxOrder = await prisma.appointmentReason.aggregate({ _max: { sortOrder: true } })
@@ -33,8 +35,9 @@ export async function POST(req: NextRequest) {
       data: {
         name: body.name.trim(),
         color: body.color || '#0d9488',
-        duration: body.duration || 30,
-        sortOrder: (maxOrder._max.sortOrder || 0) + 1,
+        duration: body.duration ?? 30,
+        active: body.active !== undefined ? body.active : true,
+        sortOrder: body.sortOrder !== undefined ? body.sortOrder : (maxOrder._max.sortOrder || 0) + 1,
       },
     })
     return NextResponse.json({ reason }, { status: 201 })
