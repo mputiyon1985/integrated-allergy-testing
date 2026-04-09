@@ -18,7 +18,6 @@ const DEFAULT_LAYOUTS: ResponsiveLayouts = {
     { i: 'kpi-encounters', x: 9,  y: 0,  w: 3, h: 4,  minW: 2, minH: 3 },
     { i: 'waiting-room',   x: 0,  y: 4,  w: 8, h: 16, minW: 4, minH: 8 },
     { i: 'appointments',   x: 8,  y: 4,  w: 4, h: 16, minW: 3, minH: 6 },
-    { i: 'quick-actions',  x: 0,  y: 20, w: 6, h: 10, minW: 3, minH: 5 },
   ],
   md: [
     { i: 'kpi-patients',   x: 0, y: 0,  w: 5,  h: 4 },
@@ -27,7 +26,6 @@ const DEFAULT_LAYOUTS: ResponsiveLayouts = {
     { i: 'kpi-encounters', x: 5, y: 4,  w: 5,  h: 4 },
     { i: 'waiting-room',   x: 0, y: 8,  w: 10, h: 14 },
     { i: 'appointments',   x: 0, y: 22, w: 10, h: 10 },
-    { i: 'quick-actions',  x: 0, y: 32, w: 5,  h: 10 },
   ],
   sm: [
     { i: 'kpi-patients',   x: 0, y: 0,  w: 3, h: 4 },
@@ -36,7 +34,6 @@ const DEFAULT_LAYOUTS: ResponsiveLayouts = {
     { i: 'kpi-encounters', x: 3, y: 4,  w: 3, h: 4 },
     { i: 'waiting-room',   x: 0, y: 8,  w: 6, h: 14 },
     { i: 'appointments',   x: 0, y: 22, w: 6, h: 10 },
-    { i: 'quick-actions',  x: 0, y: 32, w: 6, h: 10 },
   ],
 };
 
@@ -548,26 +545,6 @@ export default function DashboardPage() {
     </div>
   );
 
-  const quickActionsTile = (
-    <div className="card" style={{ height: '100%', overflow: 'auto', border: editMode ? '2px dashed #f59e0b' : '1px solid #e2e8f0' }}>
-      <div className="card-title">Quick Actions</div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {[
-          { href: '/patients/new', label: '👤 Register New Patient' },
-          { href: '/testing', label: '🧪 Start Testing' },
-          { href: '/patients', label: '👥 View All Patients' },
-          { href: '/kiosk', label: '📲 Open Patient Kiosk', target: '_blank' },
-          { href: '/doctors', label: '👨‍⚕️ Manage Doctors' },
-          { href: '/nurses', label: '👩‍⚕️ Manage Nurses' },
-        ].map(a => (
-          <a key={a.href} href={a.href} target={a.target}
-            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', color: '#374151', fontSize: 15, fontWeight: 600, textDecoration: 'none' }}>
-            {a.label}
-          </a>
-        ))}
-      </div>
-    </div>
-  );
 
 
   // Suppress unused warning
@@ -650,7 +627,6 @@ export default function DashboardPage() {
             },
             { id: 'waiting-room',  content: waitingRoomTile },
             { id: 'appointments',  content: appointmentsTile },
-            { id: 'quick-actions', content: quickActionsTile },
           ]}
         />
       </div>
