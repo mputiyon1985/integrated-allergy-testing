@@ -213,8 +213,8 @@ function TopBar({ userName }: { userName: string }) {
       justifyContent: 'space-between',
       padding: '0 24px',
     }}>
-      {/* Left: Practice + Location */}
-      <LocationSelector />
+      {/* Location managed via sidebar */}
+      <div />
 
       {/* Right: User name */}
       {userName && (
