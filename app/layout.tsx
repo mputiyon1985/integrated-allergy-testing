@@ -3,6 +3,7 @@
 import './globals.css';
 import Link from 'next/link';
 import { LocationSelector } from '@/components/LocationSelector';
+import { SidebarLocationSelector } from '@/components/SidebarLocationSelector';
 
 import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
@@ -165,9 +166,8 @@ function Sidebar({ open, onClose, userName }: { open: boolean; onClose: () => vo
         </div>
 
         {/* Practice / Location switcher */}
-        <div style={{ margin: '0 8px 8px', padding: '10px 12px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>📍 Practice / Location</div>
-          <LocationSelector />
+        <div style={{ margin: '0 8px 8px', padding: '12px 12px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12 }}>
+          <SidebarLocationSelector />
         </div>
 
         <UserCard userName={userName} />
