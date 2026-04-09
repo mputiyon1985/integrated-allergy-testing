@@ -211,11 +211,13 @@ function TopBar({ userName }: { userName: string }) {
       height: 48,
       display: 'flex',
       alignItems: 'center',
-      justifyContent: 'flex-end',
+      justifyContent: 'space-between',
       padding: '0 24px',
-      gap: 16,
     }}>
+      {/* Left: Practice + Location */}
       <LocationSelector />
+
+      {/* Right: User name */}
       {userName && (
         <div style={{
           display: 'flex',
