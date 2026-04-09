@@ -167,15 +167,16 @@ model PatientDate {
 
 // Allergen — matches IMS schema (no category column in shared table)
 model Allergen {
-  id           String    @id @default(cuid())
-  name         String
-  type         String    @default("other")
-  manufacturer String    @default("")
-  lotNumber    String?
-  stockConc    String?
-  expiresAt    DateTime?
-  createdAt    DateTime  @default(now())
-  deletedAt    DateTime?
+  id                   String    @id @default(cuid())
+  name                 String
+  type                 String    @default("other")
+  manufacturer         String    @default("")
+  lotNumber            String?
+  stockConc            String?
+  expiresAt            DateTime?
+  showOnTestingScreen  Boolean   @default(false)
+  createdAt            DateTime  @default(now())
+  deletedAt            DateTime?
 
   testResults  AllergyTestResult[]
 }

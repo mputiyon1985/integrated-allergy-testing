@@ -10,11 +10,15 @@ import prisma from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const testingOnly = req.nextUrl.searchParams.get('testingScreen') === 'true';
     const allergens = await prisma.allergen.findMany({
-      where: { deletedAt: null },
-      orderBy: [{ type: 'asc' }, { name: 'asc' }],
+      where: {
+        deletedAt: null,
+        ...(testingOnly ? { showOnTestingScreen: true } : {}),
+      },
+      orderBy: [{ type: 'asc' }, { id: 'asc' }],
     })
 
     return NextResponse.json(allergens)
