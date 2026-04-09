@@ -126,6 +126,7 @@ function SeverityBadge({ severity }: { severity: string }) {
       background: s.bg, color: s.color,
       padding: '2px 8px', borderRadius: 12, fontSize: 11,
       fontWeight: 700, border: `1px solid ${s.color}33`,
+      whiteSpace: 'nowrap', display: 'inline-block',
     }}>
       {severity === 'hard_block' ? '🚫' : severity === 'warning' ? '⚠️' : 'ℹ️'} {s.label}
     </span>
@@ -578,7 +579,7 @@ function BusinessRulesTab() {
               <thead>
                 <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
                   {['Rule Name', 'Insurance', 'CPT Code(s)', 'Type', 'Severity', 'Warning Message', 'Status', 'Actions'].map(h => (
-                    <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 700, color: '#374151', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap' }}>{h}</th>
+                    <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 700, color: '#374151', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap', minWidth: h === 'Severity' ? 110 : undefined }}>{h}</th>
                   ))}
                 </tr>
               </thead>
