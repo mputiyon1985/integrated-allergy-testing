@@ -2,6 +2,108 @@
 
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
+import type { Layout, LayoutItem, ResponsiveLayouts } from 'react-grid-layout';
+
+const DashboardGrid = dynamic(() => import('@/components/DashboardGrid'), { ssr: false });
+
+const SETTINGS_LAYOUT_KEY = 'iat-settings-layout-v1';
+
+// 17 sections, each w:6 in a 2-column layout (12-col grid)
+const SECTION_IDS = [
+  'clinic-info',
+  'system-status',
+  'app-version',
+  'quick-links',
+  'icd10-codes',
+  'cpt-codes',
+  'audit-log',
+] as const;
+
+type SectionId = typeof SECTION_IDS[number];
+
+interface MutableLayoutItem {
+  i: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  minW?: number;
+  minH?: number;
+}
+
+function buildDefaultLayouts(): ResponsiveLayouts {
+  const lg: MutableLayoutItem[] = SECTION_IDS.map((id, i) => ({
+    i: id,
+    x: (i % 2) * 6,
+    y: Math.floor(i / 2) * 12,
+    w: 6,
+    h: 12,
+    minW: 3,
+    minH: 6,
+  }));
+  // Override full-width sections
+  const fullWidth: SectionId[] = ['icd10-codes', 'cpt-codes', 'audit-log'];
+  lg.forEach(item => {
+    if (fullWidth.includes(item.i as SectionId)) {
+      item.x = 0;
+      item.w = 12;
+      item.h = 18;
+    }
+  });
+  // Recalculate Y positions
+  let currentY = 0;
+  let pendingHalf: MutableLayoutItem | null = null;
+  const result: MutableLayoutItem[] = [];
+  for (const item of lg) {
+    if (item.w === 12) {
+      if (pendingHalf) {
+        pendingHalf.y = currentY;
+        result.push(pendingHalf);
+        currentY += pendingHalf.h;
+        pendingHalf = null;
+      }
+      item.y = currentY;
+      result.push(item);
+      currentY += item.h;
+    } else {
+      if (!pendingHalf) {
+        item.x = 0;
+        item.y = currentY;
+        pendingHalf = item;
+      } else {
+        item.x = 6;
+        item.y = currentY;
+        result.push(pendingHalf);
+        result.push(item);
+        currentY += Math.max(pendingHalf.h, item.h);
+        pendingHalf = null;
+      }
+    }
+  }
+  if (pendingHalf) {
+    result.push(pendingHalf);
+  }
+
+  let smY = 0;
+  const smResult: MutableLayoutItem[] = result.map(item => {
+    const r: MutableLayoutItem = { ...item, x: 0, w: 6, y: smY };
+    smY += item.h;
+    return r;
+  });
+
+  return { lg: result as unknown as Layout, sm: smResult as unknown as Layout };
+}
+
+const DEFAULT_SETTINGS_LAYOUTS = buildDefaultLayouts();
+
+function loadSettingsLayouts(): ResponsiveLayouts {
+  try {
+    const saved = localStorage.getItem(SETTINGS_LAYOUT_KEY);
+    if (saved) return JSON.parse(saved);
+  } catch {}
+  return DEFAULT_SETTINGS_LAYOUTS;
+}
 
 type AuditLogEntry = {
   id: string;
@@ -17,18 +119,18 @@ type AuditLogEntry = {
 function getActionColor(action: string): string {
   const upper = action.toUpperCase();
   if (upper.includes('CREATED') || upper.includes('REGISTER') || upper.includes('SIGN')) {
-    return '#16a34a'; // green
+    return '#16a34a';
   }
   if (upper.includes('VIEW') || upper.includes('READ') || upper.includes('ACCESS') || upper.includes('LOGIN') || upper.includes('LOOKUP')) {
-    return '#2563eb'; // blue
+    return '#2563eb';
   }
   if (upper.includes('UPDATED') || upper.includes('MODIFIED') || upper.includes('CHANGED')) {
-    return '#d97706'; // orange
+    return '#d97706';
   }
   if (upper.includes('DELETED') || upper.includes('REMOVED') || upper.includes('LOGOUT')) {
-    return '#dc2626'; // red
+    return '#dc2626';
   }
-  return '#64748b'; // gray default
+  return '#64748b';
 }
 
 function formatTimestamp(ts: string): string {
@@ -46,7 +148,7 @@ function formatTimestamp(ts: string): string {
   }
 }
 
-function AuditLogSection() {
+function AuditLogContent() {
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('');
@@ -75,7 +177,7 @@ function AuditLogSection() {
   const paginated = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
   return (
-    <div className="card" style={{ gridColumn: '1 / -1' }}>
+    <>
       <div className="card-title">Audit Log</div>
       <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
         HIPAA compliance audit trail — recent activity across the system.
@@ -180,14 +282,11 @@ function AuditLogSection() {
           </button>
         </div>
       )}
-    </div>
+    </>
   );
 }
 
-// ────────────────────────────────────────────────────────────
-//  ICD-10 Codes Management
-// ────────────────────────────────────────────────────────────
-function Icd10CodesSection() {
+function Icd10CodesContent() {
   const [codes, setCodes] = useState<{ id: string; code: string; description: string; category?: string; active: boolean }[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
@@ -227,7 +326,7 @@ function Icd10CodesSection() {
   }
 
   return (
-    <div className="card" style={{ gridColumn: '1 / -1' }}>
+    <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <div className="card-title" style={{ marginBottom: 0 }}>🏷️ ICD-10 Diagnosis Codes</div>
         <button onClick={() => setShowAdd(v => !v)}
@@ -292,14 +391,11 @@ function Icd10CodesSection() {
           </table>
         </div>
       )}
-    </div>
+    </>
   );
 }
 
-// ────────────────────────────────────────────────────────────
-//  CPT Codes Management
-// ────────────────────────────────────────────────────────────
-function CptCodesSection() {
+function CptCodesContent() {
   const [codes, setCodes] = useState<{ id: string; code: string; description: string; category?: string; defaultFee?: number | null; active: boolean }[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
@@ -350,7 +446,7 @@ function CptCodesSection() {
   }
 
   return (
-    <div className="card" style={{ gridColumn: '1 / -1' }}>
+    <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <div className="card-title" style={{ marginBottom: 0 }}>💊 CPT Procedure Codes</div>
         <button onClick={() => setShowAdd(v => !v)}
@@ -372,7 +468,6 @@ function CptCodesSection() {
             <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Category</label>
             <input className="form-input" value={addForm.category} onChange={e => setAddForm(f => ({ ...f, category: e.target.value }))} placeholder="e.g. Allergy Testing" style={{ width: 150 }} />
           </div>
-
           <div style={{ display: 'flex', gap: 8 }}>
             <button onClick={addCode} disabled={saving || !addForm.code.trim() || !addForm.description.trim()}
               style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: '#7c3aed', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
@@ -433,11 +528,33 @@ function CptCodesSection() {
           </table>
         </div>
       )}
-    </div>
+    </>
   );
 }
 
 export default function SettingsPage() {
+  const [editMode, setEditMode] = useState(false);
+  const [layouts, setLayouts] = useState<ResponsiveLayouts>(DEFAULT_SETTINGS_LAYOUTS);
+
+  useEffect(() => {
+    setLayouts(loadSettingsLayouts());
+  }, []);
+
+  function handleLayoutChange(_layout: Layout, allLayouts: ResponsiveLayouts): void {
+    setLayouts(allLayouts);
+    try { localStorage.setItem(SETTINGS_LAYOUT_KEY, JSON.stringify(allLayouts)); } catch {}
+  }
+
+  const tileStyle = (overrideColor?: string): React.CSSProperties => ({
+    height: '100%',
+    overflow: 'auto',
+    border: editMode ? `2px dashed ${overrideColor ?? '#f59e0b'}` : '1px solid #e2e8f0',
+    borderRadius: 12,
+    background: '#fff',
+    padding: 20,
+    boxSizing: 'border-box',
+  });
+
   return (
     <>
       <div className="page-header">
@@ -445,75 +562,129 @@ export default function SettingsPage() {
           <div className="page-title">Settings</div>
           <div className="page-subtitle">System configuration and administration</div>
         </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={() => setEditMode(v => !v)}
+            style={{ padding: '6px 14px', borderRadius: 8, border: `1px solid ${editMode ? '#f59e0b' : '#e2e8f0'}`, background: editMode ? '#fefce8' : '#fff', color: editMode ? '#b45309' : '#374151', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+            {editMode ? '✅ Done' : '⊞ Edit Layout'}
+          </button>
+        </div>
       </div>
 
       <div className="page-body">
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
-          <div className="card">
-            <div className="card-title">Clinic Information</div>
-            <div className="flex flex-col gap-3">
-              <div className="form-group">
-                <label className="form-label">Clinic Name</label>
-                <input type="text" className="form-input" defaultValue="Integrated Allergy Testing" />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Address</label>
-                <input type="text" className="form-input" placeholder="123 Medical Drive" />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Phone</label>
-                <input type="tel" className="form-input" placeholder="(555) 555-0100" />
-              </div>
-              <button className="btn" style={{ alignSelf: 'flex-start' }}>Save Changes</button>
-            </div>
+        {editMode && (
+          <div style={{ background: '#fefce8', border: '1px solid #fde68a', borderRadius: 8, padding: '10px 16px', marginBottom: 8, fontSize: 13, color: '#92400e', fontWeight: 600 }}>
+            ⊞ Drag tiles to move · Drag bottom-right corner to resize · Click <strong>&quot;✅ Done&quot;</strong> to save
           </div>
+        )}
 
-          <div className="card">
-            <div className="card-title">System Status</div>
-            <div className="flex flex-col gap-3">
-              {[
-                { label: 'API Server', status: 'Operational', badge: 'badge-teal' },
-                { label: 'Database', status: 'Operational', badge: 'badge-teal' },
-                { label: 'Allergen Data', status: 'Loaded', badge: 'badge-green' },
-                { label: 'Video Service', status: 'Operational', badge: 'badge-teal' },
-              ].map(s => (
-                <div key={s.label} className="flex justify-between items-center" style={{ padding: '8px 0', borderBottom: '1px solid #f1f5f9' }}>
-                  <span style={{ fontSize: 14 }}>{s.label}</span>
-                  <span className={`badge ${s.badge}`}>{s.status}</span>
+        <DashboardGrid
+          layouts={layouts}
+          editMode={editMode}
+          onLayoutChange={handleLayoutChange}
+          tiles={[
+            {
+              id: 'clinic-info',
+              content: (
+                <div style={tileStyle()}>
+                  <div className="card-title">Clinic Information</div>
+                  <div className="flex flex-col gap-3">
+                    <div className="form-group">
+                      <label className="form-label">Clinic Name</label>
+                      <input type="text" className="form-input" defaultValue="Integrated Allergy Testing" />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Address</label>
+                      <input type="text" className="form-input" placeholder="123 Medical Drive" />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Phone</label>
+                      <input type="tel" className="form-input" placeholder="(555) 555-0100" />
+                    </div>
+                    <button className="btn" style={{ alignSelf: 'flex-start' }}>Save Changes</button>
+                  </div>
                 </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="card">
-            <div className="card-title">Application Version</div>
-            <div className="flex flex-col gap-2">
-              {[
-                { label: 'Version', value: '3.1.0' },
-                { label: 'Environment', value: 'Production' },
-                { label: 'Last Updated', value: new Date().toLocaleDateString() },
-              ].map(r => (
-                <div key={r.label} className="flex justify-between items-center" style={{ padding: '6px 0', borderBottom: '1px solid #f1f5f9', fontSize: 14 }}>
-                  <span style={{ color: '#64748b', fontWeight: 600 }}>{r.label}</span>
-                  <span>{r.value}</span>
+              ),
+            },
+            {
+              id: 'system-status',
+              content: (
+                <div style={tileStyle()}>
+                  <div className="card-title">System Status</div>
+                  <div className="flex flex-col gap-3">
+                    {[
+                      { label: 'API Server', status: 'Operational', badge: 'badge-teal' },
+                      { label: 'Database', status: 'Operational', badge: 'badge-teal' },
+                      { label: 'Allergen Data', status: 'Loaded', badge: 'badge-green' },
+                      { label: 'Video Service', status: 'Operational', badge: 'badge-teal' },
+                    ].map(s => (
+                      <div key={s.label} className="flex justify-between items-center" style={{ padding: '8px 0', borderBottom: '1px solid #f1f5f9' }}>
+                        <span style={{ fontSize: 14 }}>{s.label}</span>
+                        <span className={`badge ${s.badge}`}>{s.status}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="card">
-            <div className="card-title">Quick Links</div>
-            <div className="flex flex-col gap-2">
-              <Link href="/patients/new" className="btn btn-secondary" style={{ justifyContent: 'flex-start' }}>👤 Register New Patient</Link>
-              <Link href="/testing" className="btn btn-secondary" style={{ justifyContent: 'flex-start' }}>🧪 Start Testing Session</Link>
-              <Link href="/videos" className="btn btn-secondary" style={{ justifyContent: 'flex-start' }}>🎬 Manage Videos</Link>
-            </div>
-          </div>
-
-          <Icd10CodesSection />
-          <CptCodesSection />
-          <AuditLogSection />
-        </div>
+              ),
+            },
+            {
+              id: 'app-version',
+              content: (
+                <div style={tileStyle()}>
+                  <div className="card-title">Application Version</div>
+                  <div className="flex flex-col gap-2">
+                    {[
+                      { label: 'Version', value: '3.1.0' },
+                      { label: 'Environment', value: 'Production' },
+                      { label: 'Last Updated', value: new Date().toLocaleDateString() },
+                    ].map(r => (
+                      <div key={r.label} className="flex justify-between items-center" style={{ padding: '6px 0', borderBottom: '1px solid #f1f5f9', fontSize: 14 }}>
+                        <span style={{ color: '#64748b', fontWeight: 600 }}>{r.label}</span>
+                        <span>{r.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ),
+            },
+            {
+              id: 'quick-links',
+              content: (
+                <div style={tileStyle()}>
+                  <div className="card-title">Quick Links</div>
+                  <div className="flex flex-col gap-2">
+                    <Link href="/patients/new" className="btn btn-secondary" style={{ justifyContent: 'flex-start' }}>👤 Register New Patient</Link>
+                    <Link href="/testing" className="btn btn-secondary" style={{ justifyContent: 'flex-start' }}>🧪 Start Testing Session</Link>
+                    <Link href="/videos" className="btn btn-secondary" style={{ justifyContent: 'flex-start' }}>🎬 Manage Videos</Link>
+                  </div>
+                </div>
+              ),
+            },
+            {
+              id: 'icd10-codes',
+              content: (
+                <div style={tileStyle('#0d9488')}>
+                  <Icd10CodesContent />
+                </div>
+              ),
+            },
+            {
+              id: 'cpt-codes',
+              content: (
+                <div style={tileStyle('#7c3aed')}>
+                  <CptCodesContent />
+                </div>
+              ),
+            },
+            {
+              id: 'audit-log',
+              content: (
+                <div style={tileStyle('#2563eb')}>
+                  <AuditLogContent />
+                </div>
+              ),
+            },
+          ]}
+        />
       </div>
     </>
   );
