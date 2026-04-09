@@ -2,20 +2,58 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
+import type { Layout } from 'react-grid-layout';
+import type { ResponsiveLayouts } from 'react-grid-layout';
 
-const LAYOUT_KEY = 'iat-dashboard-layout-v1';
+const DashboardGrid = dynamic(() => import('@/components/DashboardGrid'), { ssr: false });
+
+const LAYOUT_KEY = 'iat-dashboard-layout-v3';
+
+const DEFAULT_LAYOUTS: ResponsiveLayouts = {
+  lg: [
+    { i: 'kpi-patients',   x: 0,  y: 0,  w: 3, h: 4, minW: 2, minH: 3 },
+    { i: 'kpi-waiting',    x: 3,  y: 0,  w: 3, h: 4, minW: 2, minH: 3 },
+    { i: 'kpi-inservice',  x: 6,  y: 0,  w: 3, h: 4, minW: 2, minH: 3 },
+    { i: 'kpi-encounters', x: 9,  y: 0,  w: 3, h: 4, minW: 2, minH: 3 },
+    { i: 'waiting-room',   x: 0,  y: 4,  w: 8, h: 14, minW: 4, minH: 6 },
+    { i: 'appointments',   x: 8,  y: 4,  w: 4, h: 14, minW: 3, minH: 6 },
+    { i: 'quick-actions',  x: 0,  y: 18, w: 6, h: 10, minW: 3, minH: 5 },
+    { i: 'system-status',  x: 6,  y: 18, w: 6, h: 10, minW: 3, minH: 5 },
+  ],
+  sm: [
+    { i: 'kpi-patients',   x: 0, y: 0,  w: 3, h: 4 },
+    { i: 'kpi-waiting',    x: 3, y: 0,  w: 3, h: 4 },
+    { i: 'kpi-inservice',  x: 0, y: 4,  w: 3, h: 4 },
+    { i: 'kpi-encounters', x: 3, y: 4,  w: 3, h: 4 },
+    { i: 'waiting-room',   x: 0, y: 8,  w: 6, h: 12 },
+    { i: 'appointments',   x: 0, y: 20, w: 6, h: 10 },
+    { i: 'quick-actions',  x: 0, y: 30, w: 6, h: 10 },
+    { i: 'system-status',  x: 0, y: 40, w: 6, h: 10 },
+  ],
+};
+
+function loadLayouts(): ResponsiveLayouts {
+  try {
+    const saved = localStorage.getItem(LAYOUT_KEY);
+    if (saved) return JSON.parse(saved);
+  } catch {}
+  return DEFAULT_LAYOUTS;
+}
+
+// Keep old order-based layout for fallback
 const DEFAULT_ORDER = ['kpi', 'waiting', 'appointments', 'actions'];
 
 function loadOrder(): string[] {
   try {
-    const saved = localStorage.getItem(LAYOUT_KEY);
+    const saved = localStorage.getItem(LAYOUT_KEY + '-order');
     if (saved) return JSON.parse(saved);
   } catch {}
   return DEFAULT_ORDER;
 }
 
 function saveOrder(order: string[]) {
-  try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(order)); } catch {}
+  try { localStorage.setItem(LAYOUT_KEY + '-order', JSON.stringify(order)); } catch {}
 }
 
 interface TodayAppointment {
@@ -69,9 +107,15 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [waiting, setWaiting] = useState<WaitingEntry[]>([]);
   const [editMode, setEditMode] = useState(false);
+  const [gridLayouts, setGridLayouts] = useState<ResponsiveLayouts>(DEFAULT_LAYOUTS);
   const [sectionOrder, setSectionOrder] = useState<string[]>(DEFAULT_ORDER);
   const dragItem = useRef<string | null>(null);
   const dragOver = useRef<string | null>(null);
+
+  function handleGridLayoutChange(_layout: Layout[], allLayouts: ResponsiveLayouts) {
+    setGridLayouts(allLayouts);
+    try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(allLayouts)); } catch {}
+  }
   const [nurses, setNurses] = useState<Nurse[]>([]);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [quickLogEntry, setQuickLogEntry] = useState<WaitingEntry | null>(null);
@@ -136,6 +180,7 @@ export default function DashboardPage() {
     loadData();
     loadWaiting();
     setSectionOrder(loadOrder());
+    setGridLayouts(loadLayouts());
     // Auto-refresh waiting room every 10s
     const interval = setInterval(loadWaiting, 10000);
     return () => clearInterval(interval);
@@ -242,7 +287,7 @@ export default function DashboardPage() {
       <div className="page-body">
         {editMode && (
           <div style={{ background: '#fefce8', border: '1px solid #fde68a', borderRadius: 8, padding: '10px 16px', marginBottom: 16, fontSize: 13, color: '#92400e', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
-            ⊞ Drag sections to reorder. Click <strong>"✅ Done"</strong> when finished.
+            ⊞ Drag section headers to reorder. Full tile resize coming soon. Click <strong>"✅ Done"</strong> when finished.
           </div>
         )}
         {/* KPI Cards */}

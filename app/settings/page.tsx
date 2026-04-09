@@ -300,11 +300,13 @@ function Icd10CodesSection() {
 //  CPT Codes Management
 // ────────────────────────────────────────────────────────────
 function CptCodesSection() {
-  const [codes, setCodes] = useState<{ id: string; code: string; description: string; category?: string; defaultFee?: number; active: boolean }[]>([]);
+  const [codes, setCodes] = useState<{ id: string; code: string; description: string; category?: string; defaultFee?: number | null; active: boolean }[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
-  const [addForm, setAddForm] = useState({ code: '', description: '', category: '', defaultFee: '' });
+  const [addForm, setAddForm] = useState({ code: '', description: '', category: '' });
   const [saving, setSaving] = useState(false);
+  const [editingFeeId, setEditingFeeId] = useState<string | null>(null);
+  const [editingFeeVal, setEditingFeeVal] = useState('');
 
   function load() {
     fetch('/api/cpt-codes?all=true')
@@ -330,12 +332,21 @@ function CptCodesSection() {
     await fetch('/api/cpt-codes', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...addForm, defaultFee: addForm.defaultFee ? parseFloat(addForm.defaultFee) : undefined }),
+      body: JSON.stringify(addForm),
     }).catch(() => {});
     setSaving(false);
-    setAddForm({ code: '', description: '', category: '', defaultFee: '' });
+    setAddForm({ code: '', description: '', category: '' });
     setShowAdd(false);
     load();
+  }
+
+  async function saveFee(id: string) {
+    const fee = editingFeeVal ? parseFloat(editingFeeVal) : null;
+    await fetch(`/api/cpt-codes/${id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ defaultFee: fee }),
+    }).catch(() => {});
+    setEditingFeeId(null); setEditingFeeVal(''); load();
   }
 
   return (
@@ -361,10 +372,7 @@ function CptCodesSection() {
             <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Category</label>
             <input className="form-input" value={addForm.category} onChange={e => setAddForm(f => ({ ...f, category: e.target.value }))} placeholder="e.g. Allergy Testing" style={{ width: 150 }} />
           </div>
-          <div>
-            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Default Fee ($)</label>
-            <input className="form-input" type="number" step="0.01" value={addForm.defaultFee} onChange={e => setAddForm(f => ({ ...f, defaultFee: e.target.value }))} placeholder="0.00" style={{ width: 100 }} />
-          </div>
+
           <div style={{ display: 'flex', gap: 8 }}>
             <button onClick={addCode} disabled={saving || !addForm.code.trim() || !addForm.description.trim()}
               style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: '#7c3aed', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
@@ -384,7 +392,7 @@ function CptCodesSection() {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
               <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
-                {['Code', 'Description', 'Category', 'Default Fee', 'Active'].map(h => (
+                {['Code', 'Description', 'Category', 'Your Fee ($)', 'Active'].map(h => (
                   <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: '#475569' }}>{h}</th>
                 ))}
               </tr>
@@ -395,8 +403,22 @@ function CptCodesSection() {
                   <td style={{ padding: '8px 12px', fontWeight: 700, color: '#7c3aed', fontFamily: 'monospace' }}>{c.code}</td>
                   <td style={{ padding: '8px 12px', color: '#374151' }}>{c.description}</td>
                   <td style={{ padding: '8px 12px', color: '#64748b', fontSize: 12 }}>{c.category ?? '—'}</td>
-                  <td style={{ padding: '8px 12px', color: '#374151', fontFamily: 'monospace' }}>
-                    {c.defaultFee != null ? `$${Number(c.defaultFee).toFixed(2)}` : '—'}
+                  <td style={{ padding: '6px 12px' }}>
+                    {editingFeeId === c.id ? (
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        <input type="number" step="0.01" value={editingFeeVal} onChange={e => setEditingFeeVal(e.target.value)}
+                          placeholder="0.00" autoFocus
+                          style={{ width: 80, padding: '3px 8px', border: '1px solid #7c3aed', borderRadius: 6, fontSize: 13 }} />
+                        <button onClick={() => saveFee(c.id)} style={{ padding: '3px 10px', borderRadius: 6, border: 'none', background: '#7c3aed', color: '#fff', fontSize: 12, cursor: 'pointer', fontWeight: 700 }}>✓</button>
+                        <button onClick={() => { setEditingFeeId(null); setEditingFeeVal(''); }} style={{ padding: '3px 8px', borderRadius: 6, border: '1px solid #e2e8f0', background: '#fff', fontSize: 12, cursor: 'pointer' }}>✕</button>
+                      </div>
+                    ) : (
+                      <span onClick={() => { setEditingFeeId(c.id); setEditingFeeVal(c.defaultFee != null ? String(c.defaultFee) : ''); }}
+                        style={{ cursor: 'pointer', padding: '2px 8px', borderRadius: 6, border: '1px dashed #e2e8f0', fontSize: 13, color: c.defaultFee != null ? '#7c3aed' : '#94a3b8', fontFamily: 'monospace' }}
+                        title="Click to set fee">
+                        {c.defaultFee != null ? `$${Number(c.defaultFee).toFixed(2)}` : '+ Set fee'}
+                      </span>
+                    )}
                   </td>
                   <td style={{ padding: '8px 12px' }}>
                     <button onClick={() => toggleActive(c.id, c.active)}
