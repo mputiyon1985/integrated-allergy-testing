@@ -40,7 +40,7 @@ interface PanelState {
   rows: AllergenEntry[];
 }
 
-const LOCATIONS: Location[] = ['Back', 'LA', 'RA', 'LE', 'RE'];
+const LOCATIONS: Location[] = ['RA', 'LA', 'Back', 'LE', 'RE'];
 
 const CATEGORY_ORDER = [
   'Trees', 'Grasses', 'Weeds', 'Dust Mites', 'Insects', 'Animals', 'Molds', 'Other',
@@ -247,12 +247,14 @@ function TestPanel({
   state,
   onChange,
   locked,
+  columns = 1,
 }: {
   title: string;
   color: string;
   state: PanelState;
   onChange: (rows: AllergenEntry[]) => void;
   locked?: boolean;
+  columns?: number;
 }) {
   function updateRow(allergenId: string, field: keyof Omit<AllergenEntry, 'allergenId' | 'allergenName' | 'category'>, value: unknown) {
     onChange(state.rows.map(r => r.allergenId === allergenId ? { ...r, [field]: value } : r));
@@ -270,6 +272,48 @@ function TestPanel({
   // Compute sequential # across all rows
   let rowNum = 0;
 
+  // Flatten all rows with sequential numbers (for multi-column layout)
+  const allRows: { cat: string; row: AllergenEntry; num: number }[] = [];
+  let n = 0;
+  for (const cat of CATEGORY_ORDER) {
+    for (const row of grouped.get(cat) ?? []) {
+      n++;
+      allRows.push({ cat, row, num: n });
+    }
+  }
+  const perCol = Math.ceil(allRows.length / columns);
+
+  // Compact column header (used in multi-column mode)
+  const compactHdr = (
+    <div style={{ display: 'grid', gridTemplateColumns: '18px 1fr 40px 110px 34px 34px', gap: 2, padding: '3px 4px', background: '#f1f5f9', borderBottom: '1px solid #cbd5e1', position: 'sticky', top: 0 }}>
+      {['#', 'Allergen', 'Loc', 'Grade', 'Whl', 'Flr'].map(h => (
+        <div key={h} style={{ fontSize: 9, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' as const, whiteSpace: 'nowrap' as const, overflow: 'hidden' }}>{h}</div>
+      ))}
+    </div>
+  );
+
+  const renderCompactRow = (entry: { row: AllergenEntry; num: number }, localIdx: number) => {
+    const { row, num } = entry;
+    const positive = row.grade !== null && row.grade >= 2;
+    const bg = rowBg(row.grade, localIdx);
+    return (
+      <div key={row.allergenId} className={row.grade === null ? 'untested-row' : ''}
+        style={{ display: 'grid', gridTemplateColumns: '18px 1fr 40px 110px 34px 34px', gap: 2, padding: '2px 4px', background: bg, borderBottom: '1px solid #f1f5f9', alignItems: 'center', outline: positive ? '1px solid #fed7aa' : 'none' }}>
+        <div style={{ fontSize: 9, color: '#94a3b8', textAlign: 'center' as const, fontWeight: 600 }}>{num}</div>
+        <div style={{ fontSize: 10, fontWeight: positive ? 700 : 400, color: positive ? '#7c2d12' : '#1a2233', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{row.allergenName}</div>
+        <select value={row.location} onChange={e => updateRow(row.allergenId, 'location', e.target.value as Location)}
+          style={{ fontSize: 9, border: '1px solid #cbd5e1', borderRadius: 3, padding: '0 2px', background: '#fff', color: '#374151', width: '100%', height: 18, cursor: 'pointer' }}>
+          {LOCATIONS.map(l => <option key={l} value={l}>{l}</option>)}
+        </select>
+        <GradeCell grade={row.grade} onChange={g => updateRow(row.allergenId, 'grade', g)} locked={locked} />
+        <input type="number" min="0" max="99" step="0.1" value={row.wheal} onChange={e => updateRow(row.allergenId, 'wheal', e.target.value)} placeholder="mm"
+          style={{ width: '100%', height: 18, fontSize: 10, textAlign: 'center' as const, border: '1px solid #cbd5e1', borderRadius: 3, padding: '0 2px', background: '#fff' }} />
+        <input type="number" min="0" max="99" step="0.1" value={row.flare} onChange={e => updateRow(row.allergenId, 'flare', e.target.value)} placeholder="mm"
+          style={{ width: '100%', height: 18, fontSize: 10, textAlign: 'center' as const, border: '1px solid #cbd5e1', borderRadius: 3, padding: '0 2px', background: '#fff' }} />
+      </div>
+    );
+  };
+
   return (
     <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
       {/* Panel header */}
@@ -283,107 +327,124 @@ function TestPanel({
         {title}
       </div>
 
-      {/* Column headers */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: '24px 1fr 52px 142px 40px 40px',
-        gap: 2, padding: '4px 6px',
-        background: '#f1f5f9',
-        borderLeft: '1px solid #e2e8f0',
-        borderRight: '1px solid #e2e8f0',
-        borderBottom: '1px solid #cbd5e1',
-        position: 'sticky', top: 0, zIndex: 10,
-      }}>
-        <div style={colHdr}>#</div>
-        <div style={colHdr}>Allergen</div>
-        <div style={colHdr}>Loc</div>
-        <div style={{ ...colHdr, textAlign: 'center' }}>Grade (0–5)</div>
-        <div style={{ ...colHdr, textAlign: 'center' }}>Wheal</div>
-        <div style={{ ...colHdr, textAlign: 'center' }}>Flare</div>
-      </div>
+      {/* Column headers — only shown in single-column mode */}
+      {columns === 1 && (
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: '24px 1fr 52px 142px 40px 40px',
+          gap: 2, padding: '4px 6px',
+          background: '#f1f5f9',
+          borderLeft: '1px solid #e2e8f0',
+          borderRight: '1px solid #e2e8f0',
+          borderBottom: '1px solid #cbd5e1',
+          position: 'sticky', top: 0, zIndex: 10,
+        }}>
+          <div style={colHdr}>#</div>
+          <div style={colHdr}>Allergen</div>
+          <div style={colHdr}>Loc</div>
+          <div style={{ ...colHdr, textAlign: 'center' }}>Grade (0–5)</div>
+          <div style={{ ...colHdr, textAlign: 'center' }}>Wheal</div>
+          <div style={{ ...colHdr, textAlign: 'center' }}>Flare</div>
+        </div>
+      )}
 
       {/* Rows */}
-      <div style={{ flex: 1, border: '1px solid #e2e8f0', borderTop: 'none', borderRadius: '0 0 6px 6px', overflow: 'hidden' }}>
-        {Array.from(grouped.entries()).map(([cat, rows]) => {
-          if (rows.length === 0) return null;
-          return (
-            <div key={cat}>
-              {/* Category header */}
-              <div style={{
-                background: '#0d9488', color: '#fff',
-                padding: '3px 8px', fontSize: 11, fontWeight: 700,
-                letterSpacing: '0.05em', textTransform: 'uppercase',
-              }}>
-                {cat}
-              </div>
-              {rows.map((row, localIdx) => {
-                rowNum++;
-                const num = rowNum;
-                const positive = row.grade !== null && row.grade >= 2;
-                const bg = rowBg(row.grade, localIdx);
-                return (
-                  <div
-                    key={row.allergenId}
-                    className={row.grade === null ? 'untested-row' : ''}
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: '24px 1fr 52px 142px 40px 40px',
-                      gap: 2, padding: '3px 6px',
-                      background: bg,
-                      borderBottom: '1px solid #f1f5f9',
-                      alignItems: 'center',
-                      outline: positive ? '1px solid #fed7aa' : 'none',
-                    }}
-                  >
-                    {/* # */}
-                    <div style={{ fontSize: 10, color: '#94a3b8', textAlign: 'center', fontWeight: 600 }}>{num}</div>
-                    {/* Name */}
-                    <div style={{ fontSize: 12, fontWeight: positive ? 700 : 400, color: positive ? '#7c2d12' : '#1a2233', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} className="allergen-name">
-                      {row.allergenName}
-                      {row.category && (
-                        <span style={{ fontSize: 10, color: '#94a3b8', marginLeft: 3 }}>({row.category})</span>
-                      )}
-                    </div>
-                    {/* Location */}
-                    <select
-                      value={row.location}
-                      onChange={e => updateRow(row.allergenId, 'location', e.target.value as Location)}
+      <div style={{ flex: 1, border: '1px solid #e2e8f0', borderTop: 'none', borderRadius: '0 0 6px 6px', overflow: 'auto' }}>
+        {columns > 1 ? (
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${columns}, 1fr)`, height: '100%' }}>
+            {Array.from({ length: columns }, (_, colIdx) => {
+              const start = colIdx * perCol;
+              const colRows = allRows.slice(start, start + perCol);
+              return (
+                <div key={colIdx} style={{ borderRight: colIdx < columns - 1 ? '2px solid #cbd5e1' : 'none', display: 'flex', flexDirection: 'column' }}>
+                  {compactHdr}
+                  {colRows.map((entry, i) => renderCompactRow(entry, i))}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          Array.from(grouped.entries()).map(([cat, rows]) => {
+            if (rows.length === 0) return null;
+            return (
+              <div key={cat}>
+                {/* Category header */}
+                <div style={{
+                  background: '#0d9488', color: '#fff',
+                  padding: '3px 8px', fontSize: 11, fontWeight: 700,
+                  letterSpacing: '0.05em', textTransform: 'uppercase',
+                }}>
+                  {cat}
+                </div>
+                {rows.map((row, localIdx) => {
+                  rowNum++;
+                  const num = rowNum;
+                  const positive = row.grade !== null && row.grade >= 2;
+                  const bg = rowBg(row.grade, localIdx);
+                  return (
+                    <div
+                      key={row.allergenId}
+                      className={row.grade === null ? 'untested-row' : ''}
                       style={{
-                        fontSize: 11, border: '1px solid #cbd5e1', borderRadius: 3,
-                        padding: '1px 2px', background: '#fff', color: '#374151',
-                        width: '100%', height: 22, cursor: 'pointer',
+                        display: 'grid',
+                        gridTemplateColumns: '24px 1fr 52px 142px 40px 40px',
+                        gap: 2, padding: '3px 6px',
+                        background: bg,
+                        borderBottom: '1px solid #f1f5f9',
+                        alignItems: 'center',
+                        outline: positive ? '1px solid #fed7aa' : 'none',
                       }}
                     >
-                      {LOCATIONS.map(l => <option key={l} value={l}>{l}</option>)}
-                    </select>
-                    {/* Grade */}
-                    <GradeCell
-                      grade={row.grade}
-                      onChange={g => updateRow(row.allergenId, 'grade', g)}
-                      locked={locked}
-                    />
-                    {/* Wheal */}
-                    <input
-                      type="number" min="0" max="99" step="0.1"
-                      value={row.wheal}
-                      onChange={e => updateRow(row.allergenId, 'wheal', e.target.value)}
-                      placeholder="mm"
-                      style={numInput}
-                    />
-                    {/* Flare */}
-                    <input
-                      type="number" min="0" max="99" step="0.1"
-                      value={row.flare}
-                      onChange={e => updateRow(row.allergenId, 'flare', e.target.value)}
-                      placeholder="mm"
-                      style={numInput}
-                    />
-                  </div>
-                );
-              })}
-            </div>
-          );
-        })}
+                      {/* # */}
+                      <div style={{ fontSize: 10, color: '#94a3b8', textAlign: 'center', fontWeight: 600 }}>{num}</div>
+                      {/* Name */}
+                      <div style={{ fontSize: 12, fontWeight: positive ? 700 : 400, color: positive ? '#7c2d12' : '#1a2233', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} className="allergen-name">
+                        {row.allergenName}
+                        {row.category && (
+                          <span style={{ fontSize: 10, color: '#94a3b8', marginLeft: 3 }}>({row.category})</span>
+                        )}
+                      </div>
+                      {/* Location */}
+                      <select
+                        value={row.location}
+                        onChange={e => updateRow(row.allergenId, 'location', e.target.value as Location)}
+                        style={{
+                          fontSize: 11, border: '1px solid #cbd5e1', borderRadius: 3,
+                          padding: '1px 2px', background: '#fff', color: '#374151',
+                          width: '100%', height: 22, cursor: 'pointer',
+                        }}
+                      >
+                        {LOCATIONS.map(l => <option key={l} value={l}>{l}</option>)}
+                      </select>
+                      {/* Grade */}
+                      <GradeCell
+                        grade={row.grade}
+                        onChange={g => updateRow(row.allergenId, 'grade', g)}
+                        locked={locked}
+                      />
+                      {/* Wheal */}
+                      <input
+                        type="number" min="0" max="99" step="0.1"
+                        value={row.wheal}
+                        onChange={e => updateRow(row.allergenId, 'wheal', e.target.value)}
+                        placeholder="mm"
+                        style={numInput}
+                      />
+                      {/* Flare */}
+                      <input
+                        type="number" min="0" max="99" step="0.1"
+                        value={row.flare}
+                        onChange={e => updateRow(row.allergenId, 'flare', e.target.value)}
+                        placeholder="mm"
+                        style={numInput}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })
+        )}
       </div>
     </div>
   );
@@ -411,7 +472,7 @@ function buildRows(allergens: Allergen[]): AllergenEntry[] {
     grade: null,
     wheal: '',
     flare: '',
-    location: 'Back',
+    location: 'RA',
   }));
 }
 
@@ -490,7 +551,7 @@ function TestingPageInner() {
   // Clear all
   function clearAll() {
     const clear = (rows: AllergenEntry[]) => rows.map(r => ({
-      ...r, grade: null, wheal: '', flare: '', location: 'Back' as Location,
+      ...r, grade: null, wheal: '', flare: '', location: 'RA' as Location,
     }));
     setPrick(prev => ({ rows: clear(prev.rows) }));
     setIntradermal(prev => ({ rows: clear(prev.rows) }));

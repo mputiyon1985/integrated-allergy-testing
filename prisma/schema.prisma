@@ -149,6 +149,7 @@ model Patient {
   formActivity    FormActivity[]
   auditLogs       AuditLog[]
   consentRecords  ConsentRecord[]
+  maintenanceVials MaintenanceVial[]
 
   @@index([dob])
   @@index([deletedAt])
@@ -449,6 +450,49 @@ model AppointmentReason {
 }
 
 
+
+model MaintenanceVial {
+  id              String    @id @default(cuid())
+  patientId       String
+  vialMode        String    @default("single")
+  label           String    @default("Set A")
+  currentDose     Float     @default(0.4)
+  maxDose         Float     @default(0.5)
+  concentration   String    @default("1:1")
+  intervalWeeks   Int       @default(4)
+  lastShotDate    DateTime?
+  nextDueDate     DateTime?
+  expiresAt       DateTime?
+  active          Boolean   @default(true)
+  notes           String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  patient         Patient   @relation(fields: [patientId], references: [id])
+  shots           MaintenanceShot[]
+
+  @@index([patientId])
+}
+
+model MaintenanceShot {
+  id              String    @id @default(cuid())
+  vialId          String
+  patientId       String
+  doseGiven       Float     @default(0.4)
+  arm             String    @default("Left")
+  reaction        Int       @default(0)
+  reactionNotes   String?
+  givenBy         String?
+  givenAt         DateTime  @default(now())
+  waitMinutes     Int       @default(20)
+  createdAt       DateTime  @default(now())
+
+  vial            MaintenanceVial @relation(fields: [vialId], references: [id])
+
+  @@index([vialId])
+  @@index([patientId])
+  @@index([givenAt])
+}
 
 model ICD10Code {
   id          String   @id @default(cuid())
