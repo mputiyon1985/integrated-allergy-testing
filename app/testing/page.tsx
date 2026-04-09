@@ -285,7 +285,7 @@ function TestPanel({
 
   // Compact column header (used in multi-column mode)
   const compactHdr = (
-    <div style={{ display: 'grid', gridTemplateColumns: '18px 1fr 36px 132px 44px 44px', gap: 2, padding: '3px 4px', background: '#f1f5f9', borderBottom: '1px solid #cbd5e1', position: 'sticky', top: 0 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: '16px minmax(60px,1fr) 32px 120px 40px 40px', gap: 1, padding: '3px 4px', background: '#f1f5f9', borderBottom: '1px solid #cbd5e1', position: 'sticky', top: 0 }}>
       {['#', 'Allergen', 'Loc', 'Grade', 'Whl', 'Flr'].map(h => (
         <div key={h} style={{ fontSize: 9, fontWeight: 700, color: '#64748b', textTransform: 'uppercase' as const, whiteSpace: 'nowrap' as const, overflow: 'hidden' }}>{h}</div>
       ))}
@@ -298,7 +298,7 @@ function TestPanel({
     const bg = rowBg(row.grade, localIdx);
     return (
       <div key={row.allergenId} className={row.grade === null ? 'untested-row' : ''}
-        style={{ display: 'grid', gridTemplateColumns: '18px 1fr 36px 132px 44px 44px', gap: 2, padding: '2px 4px', background: bg, borderBottom: '1px solid #f1f5f9', alignItems: 'center', outline: positive ? '1px solid #fed7aa' : 'none' }}>
+        style={{ display: 'grid', gridTemplateColumns: '16px minmax(60px,1fr) 32px 120px 40px 40px', gap: 1, padding: '2px 4px', background: bg, borderBottom: '1px solid #f1f5f9', alignItems: 'center', outline: positive ? '1px solid #fed7aa' : 'none' }}>
         <div style={{ fontSize: 9, color: '#94a3b8', textAlign: 'center' as const, fontWeight: 600 }}>{num}</div>
         <div style={{ fontSize: 10, fontWeight: positive ? 700 : 400, color: positive ? '#7c2d12' : '#1a2233', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{row.allergenName}</div>
         <select value={row.location} onChange={e => updateRow(row.allergenId, 'location', e.target.value as Location)}
@@ -358,7 +358,20 @@ function TestPanel({
               return (
                 <div key={colIdx} style={{ borderRight: colIdx < columns - 1 ? '2px solid #cbd5e1' : 'none', display: 'flex', flexDirection: 'column' }}>
                   {compactHdr}
-                  {colRows.map((entry, i) => renderCompactRow(entry, i))}
+                  {colRows.map((entry, i) => {
+                    const prevCat = i > 0 ? colRows[i - 1].cat : null;
+                    const showCatHeader = entry.cat !== prevCat;
+                    return (
+                      <div key={entry.row.allergenId}>
+                        {showCatHeader && (
+                          <div style={{ background: '#1e293b', color: '#e2e8f0', padding: '2px 6px', fontSize: 9, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                            {entry.cat}
+                          </div>
+                        )}
+                        {renderCompactRow(entry, i)}
+                      </div>
+                    );
+                  })}
                 </div>
               );
             })}
