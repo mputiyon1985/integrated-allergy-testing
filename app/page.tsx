@@ -174,13 +174,14 @@ export default function DashboardPage() {
         const locId = getActiveLocation();
         const locParam = locId ? `&locationId=${locId}` : '';
         const todayStr = new Date().toISOString().split('T')[0]
-        const [patientsRes, , nursesRes, meRes, encounterCountRes, reasonsRes] = await Promise.allSettled([
+        const [patientsRes, , nursesRes, meRes, encounterCountRes, reasonsRes, apptsRes] = await Promise.allSettled([
           fetch(`/api/patients${locId ? `?locationId=${locId}` : ''}`),
           fetch('/api/doctors'),
           fetch('/api/nurses'),
           fetch('/api/auth/me'),
           fetch(`/api/encounters/count?date=${todayStr}${locParam}`),
           fetch('/api/appointment-reasons'),
+          fetch(`/api/iat-appointments?date=${todayStr}${locParam}`),
         ]);
         if (patientsRes.status === 'fulfilled' && patientsRes.value.ok) {
           const d = await patientsRes.value.json();
@@ -211,6 +212,12 @@ export default function DashboardPage() {
           reasons.forEach(r => { colorMap[r.name] = r.color; });
           setServiceColors(colorMap);
         }
+        if (apptsRes.status === 'fulfilled' && apptsRes.value.ok) {
+          const d = await apptsRes.value.json();
+          const arr: TodayAppointment[] = Array.isArray(d) ? d : [];
+          const todayDateStr = new Date().toDateString();
+          setTodayAppts(arr.filter(a => new Date(a.startTime).toDateString() === todayDateStr));
+        }
       } catch {}
       finally { setLoading(false); }
     }
@@ -228,26 +235,7 @@ export default function DashboardPage() {
     };
   }, [loadWaiting, getActiveLocation]);
 
-  // Load today's appointments (location-aware)
-  useEffect(() => {
-    const today = new Date().toISOString().slice(0, 10);
-    const locId = getActiveLocation();
-    const url = `/api/iat-appointments?date=${today}${locId ? `&locationId=${locId}` : ''}`;
-    fetch(url)
-      .then(async r => {
-        if (!r.ok) throw new Error(r.status === 401 ? 'session_expired' : `HTTP ${r.status}`);
-        return r.json();
-      })
-      .then(data => {
-        const arr: TodayAppointment[] = Array.isArray(data) ? data : [];
-        const todayStr = new Date().toDateString();
-        setTodayAppts(arr.filter(a => new Date(a.startTime).toDateString() === todayStr));
-      })
-      .catch(err => {
-        console.error('[Dashboard] appointments fetch error:', err.message);
-        setLoadError(err.message === 'session_expired' ? 'Session expired — please refresh and log in again' : `Failed to load appointments: ${err.message}`);
-      });
-  }, []);
+  // Appointments are now fetched in the main loadData() parallel block above.
 
   async function handleQuickAddAppt() {
     if (!newApptTitle.trim()) return;
@@ -591,7 +579,7 @@ export default function DashboardPage() {
                 <div className="kpi-card" style={{ height: '100%', border: editMode ? '2px dashed #f59e0b' : undefined }}>
                   <div className="kpi-icon">👥</div>
                   <div className="kpi-label">Total Patients</div>
-                  {loading ? <div className="spinner" /> : <div className="kpi-value">{patientCount ?? 0}</div>}
+                  {loading ? <div style={{width:40,height:24,borderRadius:6,background:'#e2e8f0',animation:'pulse 1.5s infinite'}} /> : <div className="kpi-value">{patientCount ?? 0}</div>}
                 </div>
               ),
             },
@@ -601,7 +589,7 @@ export default function DashboardPage() {
                 <div className="kpi-card" style={{ height: '100%', borderTop: '4px solid #f59e0b', border: editMode ? '2px dashed #f59e0b' : undefined }}>
                   <div className="kpi-icon">⏳</div>
                   <div className="kpi-label">Waiting</div>
-                  <div className="kpi-value" style={{ color: waitingCount > 0 ? '#b45309' : '#64748b' }}>{waitingCount}</div>
+                  {loading ? <div style={{width:40,height:24,borderRadius:6,background:'#e2e8f0',animation:'pulse 1.5s infinite'}} /> : <div className="kpi-value" style={{ color: waitingCount > 0 ? '#b45309' : '#64748b' }}>{waitingCount}</div>}
                 </div>
               ),
             },
@@ -611,7 +599,7 @@ export default function DashboardPage() {
                 <div className="kpi-card" style={{ height: '100%', borderTop: '4px solid #0d9488', border: editMode ? '2px dashed #f59e0b' : undefined }}>
                   <div className="kpi-icon">🩺</div>
                   <div className="kpi-label">In Service</div>
-                  <div className="kpi-value" style={{ color: inServiceCount > 0 ? '#0d9488' : '#64748b' }}>{inServiceCount}</div>
+                  {loading ? <div style={{width:40,height:24,borderRadius:6,background:'#e2e8f0',animation:'pulse 1.5s infinite'}} /> : <div className="kpi-value" style={{ color: inServiceCount > 0 ? '#0d9488' : '#64748b' }}>{inServiceCount}</div>}
                 </div>
               ),
             },
@@ -621,7 +609,7 @@ export default function DashboardPage() {
                 <div className="kpi-card" style={{ height: '100%', border: editMode ? '2px dashed #f59e0b' : undefined }}>
                   <div className="kpi-icon">🏥</div>
                   <div className="kpi-label">Today&apos;s Encounters</div>
-                  {loading ? <div className="spinner" /> : <div className="kpi-value">{encounterCount ?? 0}</div>}
+                  {loading ? <div style={{width:40,height:24,borderRadius:6,background:'#e2e8f0',animation:'pulse 1.5s infinite'}} /> : <div className="kpi-value">{encounterCount ?? 0}</div>}
                 </div>
               ),
             },

@@ -775,3 +775,5 @@ tbody tr:hover {
   gap: 12px;
   color: #64748b;
 }
+
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
