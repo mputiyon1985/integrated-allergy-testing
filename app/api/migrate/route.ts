@@ -63,16 +63,23 @@ export async function POST(req: NextRequest) {
     `
     results.push('BillingRule table: OK')
 
-    // Add severity/overrideRequiresAdmin columns if table pre-existed without them
+    // Add missing columns if table pre-existed without them
+    const billingRuleColumns = [
+      { col: 'severity',              sql: `ALTER TABLE "BillingRule" ADD COLUMN "severity" TEXT NOT NULL DEFAULT 'warning'` },
+      { col: 'overrideRequiresAdmin', sql: `ALTER TABLE "BillingRule" ADD COLUMN "overrideRequiresAdmin" INTEGER NOT NULL DEFAULT 0` },
+      { col: 'updatedAt',             sql: `ALTER TABLE "BillingRule" ADD COLUMN "updatedAt" TEXT DEFAULT '2026-01-01 00:00:00'` },
+    ]
+    for (const { col, sql } of billingRuleColumns) {
+      try {
+        await prisma.$executeRawUnsafe(sql)
+        results.push(`BillingRule.${col}: added`)
+      } catch { results.push(`BillingRule.${col}: already exists`) }
+    }
+    // Backfill updatedAt with createdAt for any rows that don't have it
     try {
-      await prisma.$executeRaw`ALTER TABLE "BillingRule" ADD COLUMN "severity" TEXT NOT NULL DEFAULT 'warning'`
-      results.push('BillingRule.severity column: added')
-    } catch { results.push('BillingRule.severity column: already exists') }
-
-    try {
-      await prisma.$executeRaw`ALTER TABLE "BillingRule" ADD COLUMN "overrideRequiresAdmin" INTEGER NOT NULL DEFAULT 0`
-      results.push('BillingRule.overrideRequiresAdmin column: added')
-    } catch { results.push('BillingRule.overrideRequiresAdmin column: already exists') }
+      await prisma.$executeRaw`UPDATE "BillingRule" SET "updatedAt" = "createdAt" WHERE "updatedAt" = '2026-01-01 00:00:00'`
+      results.push('BillingRule.updatedAt: backfilled')
+    } catch { results.push('BillingRule.updatedAt backfill: skipped') }
 
     // ── 3. Seed InsuranceCompanies ────────────────────────────────────────────
     const insurers = [
