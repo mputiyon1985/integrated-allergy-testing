@@ -430,7 +430,33 @@ function CalendarInner() {
                         onMouseEnter={e => (e.currentTarget.style.background = '#f0fdf4')}
                         onMouseLeave={e => (e.currentTarget.style.background = isToday ? '#fafffe' : 'white')}
                       >
-                        {slotAppts.map(appt => {
+                        {slotAppts.length > 1 ? (
+                          // Multi-book: side-by-side columns with connecting top bar
+                          <div style={{ position: 'relative' }}>
+                            {/* Connecting bar across top */}
+                            <div style={{
+                              height: 3, borderRadius: '3px 3px 0 0', marginBottom: 1,
+                              background: `linear-gradient(to right, ${slotAppts.map(a => getApptColors(a).bg).join(', ')})`,
+                            }} />
+                            <div style={{ display: 'flex', gap: 2 }}>
+                              {slotAppts.map((appt, idx) => {
+                                const colors = getApptColors(appt);
+                                const reason = getReasonForAppt(appt);
+                                const icon = reason ? getReasonIcon(reason.name) : '📅';
+                                return (
+                                  <div
+                                    key={appt.id}
+                                    onClick={e => { e.stopPropagation(); openViewModal(appt); }}
+                                    style={{ flex: 1, background: colors.bg, border: `1.5px solid ${colors.border}`, borderRadius: idx === 0 ? '0 0 0 6px' : idx === slotAppts.length - 1 ? '0 0 6px 0' : '0', padding: '3px 4px', cursor: 'pointer', fontSize: 10, minWidth: 0 }}
+                                  >
+                                    <div style={{ fontWeight: 700, color: colors.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{icon} {appt.patientName ?? appt.title}</div>
+                                    <div style={{ color: colors.text, fontSize: 9, opacity: 0.85, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{reason?.name ?? ''}</div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ) : slotAppts.map(appt => {
                           const colors = getApptColors(appt);
                           const reason = getReasonForAppt(appt);
                           const icon = reason ? getReasonIcon(reason.name) : '📅';
