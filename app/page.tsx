@@ -106,7 +106,10 @@ export default function DashboardPage() {
 
   function handleGridLayoutChange(_layout: Layout, allLayouts: ResponsiveLayouts) {
     setGridLayouts(allLayouts);
-    try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(allLayouts)); } catch {}
+    // Only persist when user is actively editing — prevent page load from stomping saved layout
+    if (editMode) {
+      try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(allLayouts)); } catch {}
+    }
   }
   const [nurses, setNurses] = useState<Nurse[]>([]);
   const [updatingId, setUpdatingId] = useState<string | null>(null);

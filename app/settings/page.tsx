@@ -1775,7 +1775,10 @@ export default function SettingsPage() {
 
   function handleLayoutChange(_layout: Layout, allLayouts: ResponsiveLayouts): void {
     setLayouts(allLayouts);
-    try { localStorage.setItem(SETTINGS_LAYOUT_KEY, JSON.stringify(allLayouts)); } catch {}
+    // Only persist when user is actively editing — prevent page load from stomping saved layout
+    if (editMode) {
+      try { localStorage.setItem(SETTINGS_LAYOUT_KEY, JSON.stringify(allLayouts)); } catch {}
+    }
   }
 
   const tileStyle = (overrideColor?: string): React.CSSProperties => ({
