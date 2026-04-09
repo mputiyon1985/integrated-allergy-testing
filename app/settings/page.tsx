@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import type { Layout, LayoutItem, ResponsiveLayouts } from 'react-grid-layout';
+import UsersManagement from '@/components/settings/UsersManagement';
 
 const DashboardGrid = dynamic(() => import('@/components/DashboardGrid'), { ssr: false });
 
@@ -1076,12 +1077,22 @@ function BillingRulesContent() {
   );
 }
 
+type CurrentUser = { id: string; role: string; email: string; name: string };
+type SettingsTab = 'dashboard' | 'users';
+
 export default function SettingsPage() {
   const [editMode, setEditMode] = useState(false);
   const [layouts, setLayouts] = useState<ResponsiveLayouts>(DEFAULT_SETTINGS_LAYOUTS);
+  const [activeTab, setActiveTab] = useState<SettingsTab>('dashboard');
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
 
   useEffect(() => {
     setLayouts(loadSettingsLayouts());
+    // Fetch current user for role-based UI
+    fetch('/api/auth/me')
+      .then(r => r.ok ? r.json() : null)
+      .then(u => { if (u) setCurrentUser(u); })
+      .catch(() => {});
   }, []);
 
   function handleLayoutChange(_layout: Layout, allLayouts: ResponsiveLayouts): void {
@@ -1099,6 +1110,22 @@ export default function SettingsPage() {
     boxSizing: 'border-box',
   });
 
+  const isAdmin = currentUser?.role === 'admin';
+
+  const TAB_STYLE = (active: boolean): React.CSSProperties => ({
+    padding: '8px 18px',
+    borderRadius: '8px 8px 0 0',
+    border: '1px solid #e2e8f0',
+    borderBottom: active ? '1px solid #fff' : '1px solid #e2e8f0',
+    background: active ? '#fff' : '#f8fafc',
+    color: active ? '#1e293b' : '#64748b',
+    fontWeight: active ? 700 : 500,
+    fontSize: 13,
+    cursor: 'pointer',
+    marginBottom: -1,
+    transition: 'all 0.15s',
+  });
+
   return (
     <>
       <div className="page-header">
@@ -1107,14 +1134,38 @@ export default function SettingsPage() {
           <div className="page-subtitle">System configuration and administration</div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={() => setEditMode(v => !v)}
-            style={{ padding: '6px 14px', borderRadius: 8, border: `1px solid ${editMode ? '#f59e0b' : '#e2e8f0'}`, background: editMode ? '#fefce8' : '#fff', color: editMode ? '#b45309' : '#374151', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
-            {editMode ? '✅ Done' : '⊞ Edit Layout'}
-          </button>
+          {activeTab === 'dashboard' && (
+            <button onClick={() => setEditMode(v => !v)}
+              style={{ padding: '6px 14px', borderRadius: 8, border: `1px solid ${editMode ? '#f59e0b' : '#e2e8f0'}`, background: editMode ? '#fefce8' : '#fff', color: editMode ? '#b45309' : '#374151', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+              {editMode ? '✅ Done' : '⊞ Edit Layout'}
+            </button>
+          )}
         </div>
       </div>
 
       <div className="page-body">
+        {/* Tab Navigation */}
+        <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid #e2e8f0', marginBottom: 20 }}>
+          <button style={TAB_STYLE(activeTab === 'dashboard')} onClick={() => setActiveTab('dashboard')}>
+            ⚙️ Dashboard
+          </button>
+          {isAdmin && (
+            <button style={TAB_STYLE(activeTab === 'users')} onClick={() => setActiveTab('users')}>
+              👥 Users
+            </button>
+          )}
+        </div>
+
+        {/* Users Tab */}
+        {activeTab === 'users' && currentUser && (
+          <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #e2e8f0', padding: 24 }}>
+            <UsersManagement currentUser={currentUser} />
+          </div>
+        )}
+
+        {/* Dashboard Tab */}
+        {activeTab === 'dashboard' && (
+          <>
         {editMode && (
           <div style={{ background: '#fefce8', border: '1px solid #fde68a', borderRadius: 8, padding: '10px 16px', marginBottom: 8, fontSize: 13, color: '#92400e', fontWeight: 600 }}>
             ⊞ Drag tiles to move · Drag bottom-right corner to resize · Click <strong>&quot;✅ Done&quot;</strong> to save
@@ -1199,6 +1250,8 @@ export default function SettingsPage() {
             },
           ]}
         />
+          </>
+        )}
       </div>
     </>
   );

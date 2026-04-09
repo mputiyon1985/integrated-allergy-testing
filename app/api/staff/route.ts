@@ -23,8 +23,8 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const body = await req.json() as { email?: string; name?: string; password?: string; role?: string }
-    const { email, name, password, role } = body
+    const body = await req.json() as { email?: string; name?: string; password?: string; role?: string; defaultLocationId?: string }
+    const { email, name, password, role, defaultLocationId } = body
 
     if (!email || !name || !password) {
       return NextResponse.json({ error: 'email, name, and password are required' }, { status: 400 })
@@ -44,8 +44,9 @@ export async function POST(req: NextRequest) {
         name,
         passwordHash,
         role: role === 'admin' ? 'admin' : 'staff',
+        ...(defaultLocationId ? { defaultLocationId } : {}),
       },
-      select: { id: true, email: true, name: true, role: true, createdAt: true },
+      select: { id: true, email: true, name: true, role: true, active: true, mfaEnabled: true, defaultLocationId: true, createdAt: true },
     })
 
     await prisma.auditLog.create({
@@ -75,10 +76,36 @@ export async function GET(req: NextRequest) {
 
   try {
     const users = await prisma.staffUser.findMany({
-      select: { id: true, email: true, name: true, role: true, active: true, createdAt: true },
-      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        active: true,
+        mfaEnabled: true,
+        defaultLocationId: true,
+        createdAt: true,
+      },
+      orderBy: { name: 'asc' },
     })
-    return NextResponse.json(users)
+
+    // Enrich with location names
+    const locationIds = [...new Set(users.map(u => u.defaultLocationId).filter(Boolean))] as string[]
+    let locationMap: Record<string, string> = {}
+    if (locationIds.length > 0) {
+      const locs = await prisma.location.findMany({
+        where: { id: { in: locationIds } },
+        select: { id: true, name: true },
+      })
+      locationMap = Object.fromEntries(locs.map(l => [l.id, l.name]))
+    }
+
+    const enriched = users.map(u => ({
+      ...u,
+      defaultLocationName: u.defaultLocationId ? (locationMap[u.defaultLocationId] ?? null) : null,
+    }))
+
+    return NextResponse.json({ staff: enriched })
   } catch (error) {
     console.error('GET /api/staff error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
