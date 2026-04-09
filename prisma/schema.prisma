@@ -278,6 +278,11 @@ model AuditLog {
   details   String?
   createdAt DateTime @default(now())
   patient   Patient? @relation(fields: [patientId], references: [id])
+
+  @@index([action])
+  @@index([entityId])
+  @@index([patientId])
+  @@index([createdAt])
 }
 
 model ConsentRecord {

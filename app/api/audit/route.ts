@@ -14,27 +14,38 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const patientId = searchParams.get('patientId')
+    const action = searchParams.get('action')
     const limitParam = searchParams.get('limit')
-    const limit = limitParam ? Math.min(parseInt(limitParam, 10) || 50, 500) : 50
+    const limit = limitParam ? Math.min(parseInt(limitParam, 10) || 50, 500) : 200
 
     const logs = await prisma.auditLog.findMany({
       where: {
         ...(patientId ? { patientId } : {}),
-      },
-      include: {
-        patient: {
-          select: {
-            id: true,
-            patientId: true,
-            name: true,
-          },
-        },
+        ...(action ? { action } : {}),
       },
       orderBy: { createdAt: 'desc' },
       take: limit,
     })
 
-    return NextResponse.json(logs, { headers: HIPAA_HEADERS })
+    // Enrich with patient name where available (non-fatal)
+    const patientIds = [...new Set(logs.filter(l => l.patientId).map(l => l.patientId!))]
+    let patientMap: Record<string, string> = {}
+    if (patientIds.length > 0) {
+      try {
+        const patients = await prisma.patient.findMany({
+          where: { id: { in: patientIds } },
+          select: { id: true, name: true, patientId: true },
+        })
+        patientMap = Object.fromEntries(patients.map(p => [p.id, `${p.name} (${p.patientId})`]))
+      } catch { /* non-fatal */ }
+    }
+
+    const enriched = logs.map(l => ({
+      ...l,
+      patientName: l.patientId ? patientMap[l.patientId] ?? null : null,
+    }))
+
+    return NextResponse.json(enriched, { headers: HIPAA_HEADERS })
   } catch (error) {
     console.error('GET /api/audit error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
