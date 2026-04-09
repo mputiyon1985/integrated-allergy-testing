@@ -163,8 +163,8 @@ export default function InsurancePage() {
       {/* Tab bar */}
       <div style={{ padding: '0 24px', borderBottom: '1px solid #e2e8f0', background: '#fff', display: 'flex', gap: 0, overflowX: 'auto' }}>
         {([
-          { key: 'rules',     label: '📋 Business Rules' },
           { key: 'companies', label: '🏢 Insurance Companies' },
+          { key: 'rules',     label: '📋 Business Rules' },
           { key: 'cpt',       label: '💊 CPT Codes' },
           { key: 'icd',       label: '🏷️ ICD-10 Codes' },
           { key: 'guide',     label: '📖 Reference Guide' },
