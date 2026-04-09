@@ -417,7 +417,7 @@ export default function PracticesTab() {
               <button className="modal-close" onClick={closeModal}>✕</button>
             </div>
             <form onSubmit={e => void handleSubmit(e)}>
-              <div className="modal-body">
+              <div className="modal-body" style={{ overflowY: 'auto', maxHeight: 'calc(90vh - 130px)' }}>
                 {formError && (
                   <div className="alert alert-error" style={{ marginBottom: 16 }}>⚠️ {formError}</div>
                 )}
