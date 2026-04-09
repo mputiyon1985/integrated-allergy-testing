@@ -498,6 +498,7 @@ function TestingPageInner() {
   const [allergens, setAllergens] = useState<Allergen[]>([]);
   const [prick, setPrick] = useState<PanelState>({ rows: [] });
   const [intradermal, setIntradermal] = useState<PanelState>({ rows: [] });
+  const [testTab, setTestTab] = useState<'prick' | 'intradermal'>('prick');
   const [loadingPatient, setLoadingPatient] = useState(false);
   const [loadingAllergens, setLoadingAllergens] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -895,7 +896,45 @@ ${(prickResults.length + idResults.length) === 0 ? '<p style="color:#94a3b8; tex
         </div>
       )}
 
-      {/* ── Two-panel table area ──────────────────────────────── */}
+      {/* ── Tab selector ──────────────────────────────────────── */}
+      <div style={{ display: 'flex', gap: 0, padding: '8px 12px 0', borderBottom: '2px solid #e2e8f0' }}>
+        <button
+          onClick={() => setTestTab('prick')}
+          style={{
+            padding: '8px 24px', fontSize: 13, fontWeight: 700, cursor: 'pointer', border: 'none',
+            borderRadius: '8px 8px 0 0', borderBottom: testTab === 'prick' ? '2px solid #0055A5' : 'none',
+            background: testTab === 'prick' ? '#fff' : '#f1f5f9',
+            color: testTab === 'prick' ? '#0055A5' : '#64748b',
+            marginBottom: testTab === 'prick' ? '-2px' : '0',
+          }}
+        >
+          🩹 Prick Test
+          {prick.rows.filter(r => r.grade !== null).length > 0 && (
+            <span style={{ marginLeft: 6, background: '#0055A5', color: '#fff', borderRadius: 999, fontSize: 10, padding: '1px 6px', fontWeight: 700 }}>
+              {prick.rows.filter(r => r.grade !== null).length}
+            </span>
+          )}
+        </button>
+        <button
+          onClick={() => setTestTab('intradermal')}
+          style={{
+            padding: '8px 24px', fontSize: 13, fontWeight: 700, cursor: 'pointer', border: 'none',
+            borderRadius: '8px 8px 0 0', borderBottom: testTab === 'intradermal' ? '2px solid #7c3aed' : 'none',
+            background: testTab === 'intradermal' ? '#fff' : '#f1f5f9',
+            color: testTab === 'intradermal' ? '#7c3aed' : '#64748b',
+            marginBottom: testTab === 'intradermal' ? '-2px' : '0',
+          }}
+        >
+          💉 Intradermal
+          {intradermal.rows.filter(r => r.grade !== null).length > 0 && (
+            <span style={{ marginLeft: 6, background: '#7c3aed', color: '#fff', borderRadius: 999, fontSize: 10, padding: '1px 6px', fontWeight: 700 }}>
+              {intradermal.rows.filter(r => r.grade !== null).length}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* ── Panel area ────────────────────────────────────────── */}
       {allergens.length === 0 ? (
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', flexDirection: 'column', gap: 12 }}>
           <div style={{ fontSize: 40 }}>🌿</div>
@@ -903,9 +942,8 @@ ${(prickResults.length + idResults.length) === 0 ? '<p style="color:#94a3b8; tex
           <div style={{ fontSize: 13 }}>Add allergens through the API to begin testing.</div>
         </div>
       ) : (
-        <div style={{ flex: 1, display: 'flex', gap: 0, padding: '16px 12px', overflow: 'auto' }}>
-          {/* Left: Prick */}
-          <div style={{ flex: 3, minWidth: 0, paddingRight: 8 }}>
+        <div style={{ flex: 1, display: 'flex', padding: '12px', overflow: 'auto' }}>
+          {testTab === 'prick' ? (
             <TestPanel
               title="Prick Test"
               color="#0055A5"
@@ -914,13 +952,7 @@ ${(prickResults.length + idResults.length) === 0 ? '<p style="color:#94a3b8; tex
               locked={!testedBy}
               columns={3}
             />
-          </div>
-
-          {/* Divider */}
-          <div style={{ width: 1, background: '#cbd5e1', flexShrink: 0, margin: '0 4px' }} />
-
-          {/* Right: Intradermal */}
-          <div style={{ flex: 1, minWidth: 0, paddingLeft: 8 }}>
+          ) : (
             <TestPanel
               title="Intradermal Test"
               color="#7c3aed"
@@ -929,7 +961,7 @@ ${(prickResults.length + idResults.length) === 0 ? '<p style="color:#94a3b8; tex
               locked={!testedBy}
               columns={1}
             />
-          </div>
+          )}
         </div>
       )}
 
