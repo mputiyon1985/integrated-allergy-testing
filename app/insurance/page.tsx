@@ -149,7 +149,7 @@ function CptBadge({ code }: { code?: string }) {
 // ── Main Page ────────────────────────────────────────────────────────────────
 
 export default function InsurancePage() {
-  const [activeTab, setActiveTab] = useState<'rules' | 'cpt' | 'icd' | 'companies' | 'guide'>('rules');
+  const [activeTab, setActiveTab] = useState<'rules' | 'cpt' | 'icd' | 'companies' | 'guide'>('companies');
 
   return (
     <div>
