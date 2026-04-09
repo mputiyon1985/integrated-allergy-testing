@@ -18,10 +18,19 @@ interface Practice {
 
 const ACTIVE_LOC_KEY = 'iat_active_location';
 
+const LOC_CACHE_KEY = 'iat_location_data';
+
 export function LocationSelector() {
-  const [practice, setPractice] = useState<Practice | null>(null);
-  const [locations, setLocations] = useState<LocationItem[]>([]);
-  const [activeId, setActiveId] = useState<string>('');
+  // Initialise from cache immediately — no flash
+  const [practice, setPractice] = useState<Practice | null>(() => {
+    try { const c = localStorage.getItem(LOC_CACHE_KEY); return c ? JSON.parse(c).practice ?? null : null; } catch { return null; }
+  });
+  const [locations, setLocations] = useState<LocationItem[]>(() => {
+    try { const c = localStorage.getItem(LOC_CACHE_KEY); return c ? JSON.parse(c).locations ?? [] : []; } catch { return []; }
+  });
+  const [activeId, setActiveId] = useState<string>(() => {
+    try { return localStorage.getItem(ACTIVE_LOC_KEY) ?? ''; } catch { return ''; }
+  });
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -36,11 +45,11 @@ export function LocationSelector() {
       };
       setPractice(data.practice);
       setLocations(data.locations ?? []);
+      // Cache for instant next load
+      try { localStorage.setItem(LOC_CACHE_KEY, JSON.stringify({ practice: data.practice, locations: data.locations })); } catch {}
 
       // Prefer localStorage override, else default from server
-      const stored = typeof window !== 'undefined'
-        ? localStorage.getItem(ACTIVE_LOC_KEY)
-        : null;
+      const stored = typeof window !== 'undefined' ? localStorage.getItem(ACTIVE_LOC_KEY) : null;
       const initial = stored ?? data.defaultLocationId;
       setActiveId(initial);
     } catch {}

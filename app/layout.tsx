@@ -26,11 +26,16 @@ const navItems = [
 ];
 
 function UserCard() {
-  const [user, setUser] = useState<{ name: string; email: string; role: string } | null>(null);
+  const [user, setUser] = useState<{ name: string; email: string; role: string } | null>(() => {
+    try { const c = localStorage.getItem('iat_user'); return c ? JSON.parse(c) : null; } catch { return null; }
+  });
 
   useEffect(() => {
     fetch('/api/auth/me').then(r => r.ok ? r.json() : null).then(d => {
-      if (d?.user) setUser(d.user);
+      if (d?.user) {
+        setUser(d.user);
+        try { localStorage.setItem('iat_user', JSON.stringify(d.user)); } catch {}
+      }
     }).catch(() => {});
   }, []);
 
@@ -48,8 +53,8 @@ function UserCard() {
         </div>
       </div>
       <button onClick={async () => {
+          try { localStorage.removeItem('iat_user'); localStorage.removeItem('iat_active_location'); } catch {}
           await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
-          // Also sign out of NextAuth (SSO sessions)
           window.location.href = '/api/auth/signout?callbackUrl=/login';
         }}
         style={{ marginTop: 8, width: '100%', padding: '4px 0', fontSize: 11, color: '#dc2626', background: 'transparent', border: '1px solid #fca5a5', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }}>
@@ -201,12 +206,19 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
 }
 
 function TopBar() {
-  const [userName, setUserName] = useState('');
+  const [userName, setUserName] = useState(() => {
+    try { const c = localStorage.getItem('iat_user'); return c ? (JSON.parse(c)?.name ?? '') : ''; } catch { return ''; }
+  });
 
   useEffect(() => {
     fetch('/api/auth/me')
       .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d?.user?.name) setUserName(d.user.name); })
+      .then(d => {
+        if (d?.user?.name) {
+          setUserName(d.user.name);
+          try { localStorage.setItem('iat_user', JSON.stringify(d.user)); } catch {}
+        }
+      })
       .catch(() => {});
   }, []);
 
