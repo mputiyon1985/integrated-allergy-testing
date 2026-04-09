@@ -200,13 +200,32 @@ export default function InsurancePage() {
 function CptCodesTab() {
   const [codes, setCodes] = useState<{ id: string; code: string; description: string; category?: string; nonFacilityFee?: number | null; facilityFee?: number | null; maximumAllowable?: number | null; active: boolean }[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
 
-  useEffect(() => {
-    fetch('/api/cpt-codes?all=true').then(r => r.json())
-      .then(d => { setCodes(d.codes ?? (Array.isArray(d) ? d : [])); setLoading(false); })
-      .catch(() => setLoading(false));
+  const load = useCallback(() => {
+    setLoading(true);
+    setLoadError(null);
+    fetch('/api/cpt-codes?all=true').then(async r => {
+      const data = await r.json();
+      if (r.status === 401) throw new Error('session_expired');
+      if (!r.ok) throw new Error(data?.error ?? `HTTP ${r.status}`);
+      return data;
+    })
+      .then(d => { setCodes(d.codes ?? (Array.isArray(d) ? d : [])); })
+      .catch((err: Error) => {
+        const msg = err?.message ?? 'unknown error';
+        if (msg === 'session_expired') {
+          setLoadError('Your session has expired. Please refresh the page and log in again.');
+        } else {
+          setLoadError(`Failed to load CPT codes: ${msg}`);
+        }
+        setCodes([]);
+      })
+      .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => { load(); }, [load]);
 
   const filtered = codes.filter(c =>
     !search || c.code.toLowerCase().includes(search.toLowerCase()) ||
@@ -221,6 +240,13 @@ function CptCodesTab() {
         <input className="form-input" placeholder="Search codes..." value={search} onChange={e => setSearch(e.target.value)}
           style={{ width: 250, fontSize: 13 }} />
       </div>
+      {loadError && (
+        <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '12px 16px', marginBottom: 16, color: '#b91c1c', fontSize: 13, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span>🔐</span>
+          <span>{loadError}</span>
+          <button onClick={load} style={{ marginLeft: 'auto', padding: '4px 12px', background: '#b91c1c', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 12 }}>Retry</button>
+        </div>
+      )}
       {loading ? <div className="loading-center"><div className="spinner" /></div> : (
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
@@ -260,13 +286,32 @@ function CptCodesTab() {
 function Icd10CodesTab() {
   const [codes, setCodes] = useState<{ id: string; code: string; description: string; category?: string; active: boolean }[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
 
-  useEffect(() => {
-    fetch('/api/icd10-codes?all=true').then(r => r.json())
-      .then(d => { setCodes(d.codes ?? (Array.isArray(d) ? d : [])); setLoading(false); })
-      .catch(() => setLoading(false));
+  const load = useCallback(() => {
+    setLoading(true);
+    setLoadError(null);
+    fetch('/api/icd10-codes?all=true').then(async r => {
+      const data = await r.json();
+      if (r.status === 401) throw new Error('session_expired');
+      if (!r.ok) throw new Error(data?.error ?? `HTTP ${r.status}`);
+      return data;
+    })
+      .then(d => { setCodes(d.codes ?? (Array.isArray(d) ? d : [])); })
+      .catch((err: Error) => {
+        const msg = err?.message ?? 'unknown error';
+        if (msg === 'session_expired') {
+          setLoadError('Your session has expired. Please refresh the page and log in again.');
+        } else {
+          setLoadError(`Failed to load ICD-10 codes: ${msg}`);
+        }
+        setCodes([]);
+      })
+      .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => { load(); }, [load]);
 
   const filtered = codes.filter(c =>
     !search || c.code.toLowerCase().includes(search.toLowerCase()) ||
@@ -284,6 +329,13 @@ function Icd10CodesTab() {
         <input className="form-input" placeholder="Search codes..." value={search} onChange={e => setSearch(e.target.value)}
           style={{ width: 250, fontSize: 13 }} />
       </div>
+      {loadError && (
+        <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '12px 16px', marginBottom: 16, color: '#b91c1c', fontSize: 13, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span>🔐</span>
+          <span>{loadError}</span>
+          <button onClick={load} style={{ marginLeft: 'auto', padding: '4px 12px', background: '#b91c1c', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 12 }}>Retry</button>
+        </div>
+      )}
       {loading ? <div className="loading-center"><div className="spinner" /></div> : (
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
