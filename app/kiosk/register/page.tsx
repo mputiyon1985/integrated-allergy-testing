@@ -222,20 +222,18 @@ function RegisterContent() {
               <div style={{ fontSize: 18, fontWeight: 700, color: '#0055A5', marginBottom: 20 }}>Insurance Information</div>
               <div style={{ marginBottom: 12 }}>
                 <label style={labelStyle}>Insurance Provider</label>
-                <input
-                  list="insurance-list"
-                  style={inputStyle}
+                <select
+                  style={{ ...inputStyle, cursor: 'pointer', color: insuranceProvider ? '#1a2233' : '#94a3b8' }}
                   value={insuranceProvider}
                   onChange={e => setInsuranceProvider(e.target.value)}
-                  placeholder="Type or select your insurance..."
-                  onFocus={e => e.target.style.borderColor = '#0d9488'}
-                  onBlur={e => e.target.style.borderColor = '#e2e8f0'}
-                />
-                <datalist id="insurance-list">
-                  {insuranceOptions.map(ins => <option key={ins.id} value={ins.name} />)}
-                  <option value="Other" />
-                  <option value="Self Pay" />
-                </datalist>
+                >
+                  <option value="" disabled>— Select your insurance —</option>
+                  {insuranceOptions.map(ins => (
+                    <option key={ins.id} value={ins.name}>{ins.name}</option>
+                  ))}
+                  <option value="Other">Other / Not Listed</option>
+                  <option value="Self Pay / No Insurance">Self Pay / No Insurance</option>
+                </select>
               </div>
               <div style={{ marginBottom: 20 }}>
                 <label style={labelStyle}>Member / Insurance ID</label>

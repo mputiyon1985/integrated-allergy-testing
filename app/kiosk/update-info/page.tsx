@@ -22,20 +22,16 @@ function InsuranceDropdown({ value, onChange, inputStyle }: { value: string; onC
       .then(d => setOptions((d.companies ?? []).filter((c: {active: boolean}) => c.active))).catch(() => {});
   }, []);
   return (
-    <>
-      <input
-        list="kiosk-insurance-list"
-        style={inputStyle}
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        placeholder="Type or select your insurance..."
-      />
-      <datalist id="kiosk-insurance-list">
-        {options.map(ins => <option key={ins.id} value={ins.name} />)}
-        <option value="Other" />
-        <option value="Self Pay" />
-      </datalist>
-    </>
+    <select
+      style={{ ...inputStyle, cursor: 'pointer', color: value ? '#1a2233' : '#94a3b8' }}
+      value={value}
+      onChange={e => onChange(e.target.value)}
+    >
+      <option value="" disabled>— Select your insurance —</option>
+      {options.map(ins => <option key={ins.id} value={ins.name}>{ins.name}</option>)}
+      <option value="Other">Other / Not Listed</option>
+      <option value="Self Pay / No Insurance">Self Pay / No Insurance</option>
+    </select>
   );
 }
 
