@@ -331,6 +331,7 @@ model StaffUser {
   passwordHash      String
   name              String
   role              String    @default("staff")
+  permissions       String?   // JSON: { "permission_key": true/false } overrides
   active            Boolean   @default(true)
   mfaEnabled        Boolean   @default(false)
   mfaSecret         String?
