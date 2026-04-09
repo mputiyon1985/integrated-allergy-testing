@@ -16,15 +16,26 @@ export async function GET(req: NextRequest) {
     const prickOnly = req.nextUrl.searchParams.get('prickOnly') === 'true';
     const intradermalOnly = req.nextUrl.searchParams.get('intradermalOnly') === 'true';
     const showDeleted = req.nextUrl.searchParams.get('showDeleted') === 'true';
-    const allergens = await prisma.allergen.findMany({
-      where: {
-        ...(showDeleted ? {} : { deletedAt: null }),
-        ...(testingOnly ? { showOnTestingScreen: true } : {}),
-        ...(prickOnly ? { showOnPrickTest: true } : {}),
-        ...(intradermalOnly ? { showOnIntradermalTest: true } : {}),
-      },
-      orderBy: [{ id: 'asc' }],
-    })
+
+    // Use raw SQL to avoid Prisma type mismatch on deletedAt (stored as INTEGER in Turso)
+    const conditions: string[] = [];
+    if (!showDeleted) conditions.push('deletedAt IS NULL');
+    if (testingOnly) conditions.push('showOnTestingScreen = 1');
+    if (prickOnly) conditions.push('showOnPrickTest = 1');
+    if (intradermalOnly) conditions.push('showOnIntradermalTest = 1');
+
+    const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    const sql = `SELECT id, name, type, manufacturer, lotNumber, stockConc, expiresAt, showOnTestingScreen, showOnPrickTest, showOnIntradermalTest, createdAt, deletedAt FROM Allergen ${where} ORDER BY id ASC`;
+
+    const result = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(sql);
+
+    // Normalize boolean fields (SQLite stores as 0/1)
+    const allergens = result.map(a => ({
+      ...a,
+      showOnTestingScreen: Boolean(a.showOnTestingScreen),
+      showOnPrickTest: Boolean(a.showOnPrickTest),
+      showOnIntradermalTest: Boolean(a.showOnIntradermalTest),
+    }));
 
     return NextResponse.json(allergens)
   } catch (error) {
