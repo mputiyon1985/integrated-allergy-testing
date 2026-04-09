@@ -582,7 +582,7 @@ function CptCodesContent() {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
               <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
-                {['Code', 'Description', 'Category', '2026 Medicare NF', '2026 Medicare FAC', 'Your Fee ($)', 'Actions'].map(h => (
+                {['Code', 'Description', 'Category', '2026 Medicare NF', '2026 Medicare FAC', 'Actions'].map(h => (
                   <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: '#475569' }}>{h}</th>
                 ))}
               </tr>
@@ -636,23 +636,7 @@ function CptCodesContent() {
                       <td style={{ padding: '8px 12px', fontFamily: 'monospace', fontSize: 12, color: c.facilityFee ? '#0369a1' : '#94a3b8', fontWeight: c.facilityFee ? 600 : 400 }}>
                         {c.facilityFee ? `$${Number(c.facilityFee).toFixed(2)}` : '—'}
                       </td>
-                      <td style={{ padding: '6px 12px' }}>
-                        {editingFeeId === c.id ? (
-                          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                            <input type="number" step="0.01" value={editingFeeVal} onChange={e => setEditingFeeVal(e.target.value)}
-                              placeholder="0.00" autoFocus
-                              style={{ width: 80, padding: '3px 8px', border: '1px solid #7c3aed', borderRadius: 6, fontSize: 13 }} />
-                            <button onClick={() => saveFee(c.id)} style={{ padding: '3px 10px', borderRadius: 6, border: 'none', background: '#7c3aed', color: '#fff', fontSize: 12, cursor: 'pointer', fontWeight: 700 }}>✓</button>
-                            <button onClick={() => { setEditingFeeId(null); setEditingFeeVal(''); }} style={{ padding: '3px 8px', borderRadius: 6, border: '1px solid #e2e8f0', background: '#fff', fontSize: 12, cursor: 'pointer' }}>✕</button>
-                          </div>
-                        ) : (
-                          <span onClick={() => { setEditingFeeId(c.id); setEditingFeeVal(c.defaultFee != null ? String(c.defaultFee) : ''); }}
-                            style={{ cursor: 'pointer', padding: '2px 8px', borderRadius: 6, border: '1px dashed #e2e8f0', fontSize: 13, color: c.defaultFee != null ? '#7c3aed' : '#94a3b8', fontFamily: 'monospace' }}
-                            title="Click to set fee">
-                            {c.defaultFee != null ? `$${Number(c.defaultFee).toFixed(2)}` : '+ Set fee'}
-                          </span>
-                        )}
-                      </td>
+                      {/* Your Fee ($) hidden from display but kept in DB */}
                       <td style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>
                         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                           <button onClick={() => startEditRow(c)}
