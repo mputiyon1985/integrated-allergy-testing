@@ -349,13 +349,13 @@ function BusinessRulesTab() {
 
   const load = useCallback(() => {
     setLoading(true);
-    Promise.all([
+    Promise.allSettled([
       fetch('/api/billing-rules?all=true').then(r => r.json()),
       fetch('/api/insurance-companies').then(r => r.json()),
     ]).then(([rd, cd]) => {
-      setRules(rd.rules ?? []);
-      setCompanies(cd.companies ?? []);
-    }).catch(() => {}).finally(() => setLoading(false));
+      if (rd.status === 'fulfilled') setRules(rd.value.rules ?? []);
+      if (cd.status === 'fulfilled') setCompanies(cd.value.companies ?? []);
+    }).finally(() => setLoading(false));
   }, []);
 
   useEffect(() => { load(); }, [load]);
