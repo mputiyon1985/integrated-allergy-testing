@@ -404,14 +404,16 @@ model ICD10Code {
 }
 
 model CPTCode {
-  id          String   @id @default(cuid())
-  code        String   @unique
-  description String
-  category    String?
-  defaultFee  Float?
-  active      Boolean  @default(true)
-  sortOrder   Int      @default(0)
-  createdAt   DateTime @default(now())
+  id              String   @id @default(cuid())
+  code            String   @unique
+  description     String
+  category        String?
+  defaultFee      Float?   // clinic's own fee (editable)
+  nonFacilityFee  Float?   // 2026 Medicare non-facility rate (read-only)
+  facilityFee     Float?   // 2026 Medicare facility rate (read-only)
+  active          Boolean  @default(true)
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
 }
 
 model EncounterActivityCode {

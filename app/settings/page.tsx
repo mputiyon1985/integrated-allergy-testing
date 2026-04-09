@@ -467,7 +467,7 @@ function Icd10CodesContent() {
 }
 
 function CptCodesContent() {
-  const [codes, setCodes] = useState<{ id: string; code: string; description: string; category?: string; defaultFee?: number | null; active: boolean }[]>([]);
+  const [codes, setCodes] = useState<{ id: string; code: string; description: string; category?: string; defaultFee?: number | null; nonFacilityFee?: number | null; facilityFee?: number | null; active: boolean }[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
   const [addForm, setAddForm] = useState({ code: '', description: '', category: '' });
@@ -582,7 +582,7 @@ function CptCodesContent() {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
               <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
-                {['Code', 'Description', 'Category', 'Your Fee ($)', 'Actions'].map(h => (
+                {['Code', 'Description', 'Category', '2026 Medicare NF', '2026 Medicare FAC', 'Your Fee ($)', 'Actions'].map(h => (
                   <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: '#475569' }}>{h}</th>
                 ))}
               </tr>
@@ -630,6 +630,12 @@ function CptCodesContent() {
                     <>
                       <td style={{ padding: '8px 12px', color: '#374151' }}>{c.description}</td>
                       <td style={{ padding: '8px 12px', color: '#64748b', fontSize: 12 }}>{c.category ?? '—'}</td>
+                      <td style={{ padding: '8px 12px', fontFamily: 'monospace', fontSize: 12, color: c.nonFacilityFee ? '#15803d' : '#94a3b8', fontWeight: c.nonFacilityFee ? 600 : 400 }}>
+                        {c.nonFacilityFee ? `$${Number(c.nonFacilityFee).toFixed(2)}` : '—'}
+                      </td>
+                      <td style={{ padding: '8px 12px', fontFamily: 'monospace', fontSize: 12, color: c.facilityFee ? '#0369a1' : '#94a3b8', fontWeight: c.facilityFee ? 600 : 400 }}>
+                        {c.facilityFee ? `$${Number(c.facilityFee).toFixed(2)}` : '—'}
+                      </td>
                       <td style={{ padding: '6px 12px' }}>
                         {editingFeeId === c.id ? (
                           <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
