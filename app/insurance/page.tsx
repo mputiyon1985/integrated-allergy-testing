@@ -392,7 +392,7 @@ function BusinessRulesTab() {
   const [activeOnly, setActiveOnly] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
   const [view, setView] = useState<'table' | 'cards'>('table');
-  const [expandedMsg, setExpandedMsg] = useState<string | null>(null);
+
 
   // Modal state
   const [modalOpen, setModalOpen] = useState(false);
@@ -608,15 +608,9 @@ function BusinessRulesTab() {
                         <div style={{ fontSize: 10, color: '#b91c1c', marginTop: 3 }}>🔐 Admin only</div>
                       )}
                     </td>
-                    <td style={{ padding: '10px 14px', maxWidth: 280 }}>
-                      <span
-                        title={rule.warningMessage}
-                        onClick={() => setExpandedMsg(expandedMsg === rule.id ? null : rule.id)}
-                        style={{ cursor: 'pointer', color: '#374151', fontSize: 12 }}
-                      >
-                        {expandedMsg === rule.id
-                          ? rule.warningMessage
-                          : rule.warningMessage.slice(0, 80) + (rule.warningMessage.length > 80 ? '…' : '')}
+                    <td style={{ padding: '10px 14px' }}>
+                      <span style={{ color: '#374151', fontSize: 12, lineHeight: 1.5 }}>
+                        {rule.warningMessage}
                       </span>
                     </td>
                     <td style={{ padding: '10px 14px' }}>
