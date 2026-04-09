@@ -130,6 +130,7 @@ export default function DashboardPage() {
   const [editApptNotes, setEditApptNotes] = useState('');
   const [editApptPatients, setEditApptPatients] = useState<{id: string; name: string}[]>([]);
   const [editApptReasons, setEditApptReasons] = useState<{id: string; name: string; color: string}[]>([]);
+  const [serviceColors, setServiceColors] = useState<Record<string, string>>({});
   const [savingAppt, setSavingAppt] = useState(false);
   const [deletingApptId, setDeletingApptId] = useState<string | null>(null);
   const [showAddApptModal, setShowAddApptModal] = useState(false);
@@ -176,12 +177,13 @@ export default function DashboardPage() {
         const locId = getActiveLocation();
         const locParam = locId ? `&locationId=${locId}` : '';
         const todayStr = new Date().toISOString().split('T')[0]
-        const [patientsRes, , nursesRes, meRes, encounterCountRes] = await Promise.allSettled([
+        const [patientsRes, , nursesRes, meRes, encounterCountRes, reasonsRes] = await Promise.allSettled([
           fetch(`/api/patients${locId ? `?locationId=${locId}` : ''}`),
           fetch('/api/doctors'),
           fetch('/api/nurses'),
           fetch('/api/auth/me'),
           fetch(`/api/encounters/count?date=${todayStr}${locParam}`),
+          fetch('/api/appointment-reasons'),
         ]);
         if (patientsRes.status === 'fulfilled' && patientsRes.value.ok) {
           const d = await patientsRes.value.json();
@@ -204,6 +206,13 @@ export default function DashboardPage() {
           setEncounterCount(d.count ?? 0);
         } else {
           setEncounterCount(0);
+        }
+        if (reasonsRes.status === 'fulfilled' && reasonsRes.value.ok) {
+          const d = await reasonsRes.value.json();
+          const reasons: {name: string; color: string}[] = d.reasons ?? [];
+          const colorMap: Record<string, string> = {};
+          reasons.forEach(r => { colorMap[r.name] = r.color; });
+          setServiceColors(colorMap);
         }
       } catch {}
       finally { setLoading(false); }
@@ -381,10 +390,22 @@ export default function DashboardPage() {
                   ) : (
                     <div
                       onClick={() => { setEditingNoteId(e.id); setEditingNoteText(e.notes ?? ''); }}
-                      style={{ fontSize: 11, color: e.notes ? '#374151' : '#cbd5e1', cursor: 'pointer', marginTop: 2, fontStyle: e.notes ? 'normal' : 'italic' }}
                       title="Click to add/edit reason for visit"
+                      style={{ marginTop: 3, cursor: 'pointer' }}
                     >
-                      {e.notes ?? '+ reason for visit'}
+                      {e.notes ? (
+                        <span style={{
+                          fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 10,
+                          background: serviceColors[e.notes] ? `${serviceColors[e.notes]}22` : '#f1f5f9',
+                          color: serviceColors[e.notes] ?? '#64748b',
+                          border: `1px solid ${serviceColors[e.notes] ?? '#e2e8f0'}`,
+                          whiteSpace: 'nowrap',
+                        }}>
+                          {e.notes}
+                        </span>
+                      ) : (
+                        <span style={{ fontSize: 11, color: '#cbd5e1', fontStyle: 'italic' }}>+ reason for visit</span>
+                      )}
                     </div>
                   )}
                 </td>
