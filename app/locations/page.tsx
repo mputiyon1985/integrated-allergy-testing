@@ -82,8 +82,28 @@ export default function LocationsPage() {
     setFormError('');
   }
 
+  function generateKey(name: string, existing: Location[]): string {
+    const base = name.trim().toUpperCase()
+      .replace(/[^A-Z0-9\s]/g, '')
+      .replace(/\s+/g, '-')
+      .substring(0, 12);
+    let key = base;
+    let n = 1;
+    while (existing.some(l => l.key === key && l.id !== editLocation?.id)) {
+      key = `${base}-${n++}`;
+    }
+    return key;
+  }
+
   function setField(field: string, value: string) {
-    setForm(prev => ({ ...prev, [field]: value }));
+    setForm(prev => {
+      const next = { ...prev, [field]: value };
+      // Auto-generate key from name when adding (not editing)
+      if (field === 'name' && !editLocation) {
+        next.key = generateKey(value, locations);
+      }
+      return next;
+    });
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -241,15 +261,17 @@ export default function LocationsPage() {
                     />
                   </div>
                   <div className="form-group">
-                    <label className="form-label">Key <span className="required">*</span></label>
+                    <label className="form-label">Key</label>
                     <input
                       type="text"
                       className="form-input"
-                      placeholder="e.g. IAT-001"
                       value={form.key}
-                      onChange={e => setField('key', e.target.value)}
-                      required
+                      readOnly
+                      disabled={!!editLocation}
+                      style={{ background: '#f8fafc', color: '#64748b', cursor: editLocation ? 'not-allowed' : 'default', fontFamily: 'monospace', fontSize: 13 }}
+                      title={editLocation ? 'Key cannot be changed after creation' : 'Auto-generated from name'}
                     />
+                    {!editLocation && <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 3 }}>Auto-generated from name · cannot be changed later</div>}
                   </div>
                 </div>
 
