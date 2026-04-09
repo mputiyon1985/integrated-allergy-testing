@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
         ...(showDeleted ? {} : { deletedAt: null }),
         ...(testingOnly ? { showOnTestingScreen: true } : {}),
       },
-      orderBy: [{ type: 'asc' }, { id: 'asc' }],
+      orderBy: [{ id: 'asc' }],
     })
 
     return NextResponse.json(allergens)
