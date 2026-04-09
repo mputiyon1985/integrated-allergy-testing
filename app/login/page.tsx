@@ -64,14 +64,16 @@ function LoginPageInner() {
         }
         return;
       }
-      if (data.requiresMfa) {
+      if (data.success) {
+        // MFA disabled — session issued directly
+        window.location.replace('/');
+      } else if (data.requiresMfa) {
         setTempToken(data.tempToken);
         setStep('mfa-verify');
       } else if (data.requiresMfaSetup) {
         setTempToken(data.tempToken);
         setStep('mfa-setup');
       } else {
-        // Shouldn't happen with full MFA enforcement, but handle gracefully
         window.location.replace('/');
       }
     } catch {

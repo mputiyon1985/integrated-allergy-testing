@@ -10,6 +10,7 @@ import bcrypt from 'bcryptjs'
 import { randomUUID } from 'crypto'
 import prisma from '@/lib/db'
 import { log } from '@/lib/audit'
+import { signSession } from '@/lib/auth/session'
 
 export const dynamic = 'force-dynamic'
 
@@ -36,6 +37,27 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 })
     }
 
+    // If MFA is explicitly disabled for this user — issue session directly
+    if (!user.mfaEnabled) {
+      await log({ action: 'LOGIN_SUCCESS', entity: 'StaffUser', entityId: user.id, details: `${user.name} (${user.email}) logged in (MFA disabled)` })
+      const token = await signSession({
+        userId: user.id,
+        email: user.email,
+        role: user.role,
+        name: user.name,
+        defaultLocationId: (user as Record<string, unknown>).defaultLocationId as string ?? 'loc-iat-001',
+      })
+      const response = NextResponse.json({ success: true, role: user.role, name: user.name })
+      response.cookies.set('iat_session', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 60 * 60 * 8,
+        path: '/',
+      })
+      return response
+    }
+
     // Issue temp token for MFA flow
     const tempToken = randomUUID()
     const tempTokenExpiry = new Date(Date.now() + 10 * 60 * 1000) // 10 min
@@ -45,12 +67,12 @@ export async function POST(req: NextRequest) {
       data: { tempToken, tempTokenExpiry },
     })
 
-    if (!user.mfaEnabled || !user.mfaSecret) {
-      // MFA not yet set up — send to setup flow
+    if (!user.mfaSecret) {
+      // MFA enabled but not yet configured — send to setup flow
       return NextResponse.json({ requiresMfaSetup: true, tempToken })
     }
 
-    // MFA enabled — require TOTP verification
+    // MFA enabled + configured — require TOTP verification
     return NextResponse.json({ requiresMfa: true, tempToken })
   } catch (error) {
     console.error('POST /api/auth/login error:', error)
