@@ -254,19 +254,21 @@ function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isAuthPage = pathname === '/login' || pathname?.startsWith('/login') || pathname === '/consent' || pathname?.startsWith('/consent') || pathname?.startsWith('/kiosk');
 
-  // Load user once at shell level — persists across all page navigations
+  // Load user ONCE at mount — persists across all page navigations (AppShell never unmounts)
   useEffect(() => {
     if (isAuthPage) return;
+    // Read cache immediately for instant display
     try { const c = localStorage.getItem('iat_user'); if (c) setUserName(JSON.parse(c)?.name ?? ''); } catch {}
+    // Refresh from API in background
     fetch('/api/auth/me').then(r => r.ok ? r.json() : null).then(d => {
-      // /api/auth/me returns { id, email, name, role } directly (not nested under .user)
       const u = d?.user ?? d;
       if (u?.name) {
         setUserName(u.name);
         try { localStorage.setItem('iat_user', JSON.stringify(u)); } catch {}
       }
     }).catch(() => {});
-  }, [isAuthPage]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty deps — run once on mount only
 
   // Close sidebar on route change
   useEffect(() => { Promise.resolve().then(() => setSidebarOpen(false)); }, [pathname]);
