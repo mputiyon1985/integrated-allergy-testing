@@ -365,27 +365,29 @@ export default function DashboardPage() {
                   </div>
                   {editingNoteId === e.id ? (
                     <div style={{ display: 'flex', gap: 4, marginTop: 3 }}>
-                      <input
+                      <select
                         autoFocus
                         value={editingNoteText}
-                        onChange={ev => setEditingNoteText(ev.target.value)}
-                        onKeyDown={async ev => {
-                          if (ev.key === 'Enter') {
-                            await fetch(`/api/waiting-room/${e.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ notes: editingNoteText }) });
-                            setEditingNoteId(null);
-                            loadWaiting();
-                          } else if (ev.key === 'Escape') {
-                            setEditingNoteId(null);
-                          }
+                        onChange={async ev => {
+                          const val = ev.target.value;
+                          setEditingNoteText(val);
+                          await fetch(`/api/waiting-room/${e.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ notes: val || null }) });
+                          setEditingNoteId(null);
+                          loadWaiting();
                         }}
-                        placeholder="Reason for visit…"
-                        style={{ fontSize: 11, padding: '2px 6px', border: '1px solid #0d9488', borderRadius: 5, width: 140, outline: 'none' }}
-                      />
-                      <button onClick={async () => {
-                        await fetch(`/api/waiting-room/${e.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ notes: editingNoteText }) });
-                        setEditingNoteId(null);
-                        loadWaiting();
-                      }} style={{ fontSize: 10, padding: '2px 6px', background: '#0d9488', color: '#fff', border: 'none', borderRadius: 5, cursor: 'pointer' }}>✓</button>
+                        onBlur={() => setEditingNoteId(null)}
+                        style={{ fontSize: 11, padding: '2px 6px', border: '1px solid #0d9488', borderRadius: 5, cursor: 'pointer', outline: 'none', background: '#fff' }}
+                      >
+                        <option value="">— clear reason —</option>
+                        {Object.keys(serviceColors).length > 0
+                          ? Object.keys(serviceColors).map(name => (
+                              <option key={name} value={name}>{name}</option>
+                            ))
+                          : ['Allergy Shot','Allergy Testing','New Patient Intake','Follow-Up','Consultation','Test Results Review','Immunotherapy Build-Up','Immunotherapy Maintenance'].map(name => (
+                              <option key={name} value={name}>{name}</option>
+                            ))
+                        }
+                      </select>
                     </div>
                   ) : (
                     <div
