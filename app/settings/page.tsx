@@ -230,7 +230,6 @@ function AuditLogContent() {
               <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
                 <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: '#475569', whiteSpace: 'nowrap' }}>Timestamp</th>
                 <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: '#475569' }}>Action</th>
-                <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: '#475569', whiteSpace: 'nowrap' }}>Performed By</th>
                 <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: '#475569' }}>Entity</th>
                 <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: '#475569' }}>Details</th>
                 <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: '#475569' }}>Patient</th>
@@ -255,16 +254,6 @@ function AuditLogContent() {
                     }}>
                       {log.action}
                     </span>
-                  </td>
-                  <td style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>
-                    {log.performedBy ? (
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                        <span style={{ width: 22, height: 22, borderRadius: '50%', background: '#0d9488', color: '#fff', fontSize: 10, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          {log.performedBy.charAt(0).toUpperCase()}
-                        </span>
-                        <span style={{ fontSize: 12, color: '#374151', fontWeight: 500 }}>{log.performedBy}</span>
-                      </span>
-                    ) : <span style={{ color: '#94a3b8', fontSize: 12 }}>System</span>}
                   </td>
                   <td style={{ padding: '8px 12px', color: '#475569' }}>{log.entity ?? '—'}</td>
                   <td style={{ padding: '8px 12px', color: '#334155', maxWidth: 320 }}>
