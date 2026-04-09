@@ -446,15 +446,18 @@ function TestingPageInner() {
       .catch(() => {});
   }, []);
 
-  // Load allergens
+  // Load allergens — Prick and Intradermal use separate panel lists
   useEffect(() => {
-    fetch('/api/allergens?testingScreen=true')
-      .then(r => r.ok ? r.json() : [])
-      .then((data: Allergen[] | { allergens?: Allergen[] }) => {
-        const list: Allergen[] = Array.isArray(data) ? data : (data.allergens ?? []);
-        setAllergens(list);
-        setPrick({ rows: buildRows(list) });
-        setIntradermal({ rows: buildRows(list) });
+    Promise.all([
+      fetch('/api/allergens?prickOnly=true').then(r => r.ok ? r.json() : []),
+      fetch('/api/allergens?intradermalOnly=true').then(r => r.ok ? r.json() : []),
+    ])
+      .then(([prickData, intradermalData]) => {
+        const prickList: Allergen[] = Array.isArray(prickData) ? prickData : (prickData.allergens ?? []);
+        const intradermalList: Allergen[] = Array.isArray(intradermalData) ? intradermalData : (intradermalData.allergens ?? []);
+        setAllergens(prickList); // keep for reference/PDF
+        setPrick({ rows: buildRows(prickList) });
+        setIntradermal({ rows: buildRows(intradermalList) });
       })
       .catch(() => {})
       .finally(() => setLoadingAllergens(false));
