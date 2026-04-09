@@ -391,6 +391,9 @@ model Encounter {
   followUpDays        Int?
   status              String    @default("open")
   createdBy           String?
+  waitMinutes         Int?      // Minutes from check-in to nurse calling patient
+  inServiceMinutes    Int?      // Minutes from nurse call to encounter complete
+  waitingRoomId       String?   // Link back to WaitingRoom entry
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
   deletedAt           DateTime?

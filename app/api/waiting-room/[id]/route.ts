@@ -33,6 +33,32 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     if (body.status === 'complete') data.completedAt = new Date()
 
     const entry = await prisma.waitingRoom.update({ where: { id }, data })
+
+    // When completing, calculate timing and store on any linked encounter
+    if (body.status === 'complete') {
+      try {
+        const wr = await prisma.waitingRoom.findUnique({ where: { id } })
+        if (wr?.patientId && wr.checkedInAt) {
+          const calledAt = wr.calledAt ?? new Date()
+          const completedAt = new Date()
+          const waitMins = Math.round((calledAt.getTime() - new Date(wr.checkedInAt).getTime()) / 60000)
+          const inServiceMins = Math.round((completedAt.getTime() - calledAt.getTime()) / 60000)
+
+          // Find the most recent open encounter for this patient
+          const encounter = await prisma.encounter.findFirst({
+            where: { patientId: wr.patientId, deletedAt: null, status: { not: 'closed' } },
+            orderBy: { createdAt: 'desc' },
+          })
+          if (encounter) {
+            await prisma.encounter.update({
+              where: { id: encounter.id },
+              data: { waitMinutes: waitMins > 0 ? waitMins : 0, inServiceMinutes: inServiceMins > 0 ? inServiceMins : 0, waitingRoomId: id },
+            })
+          }
+        }
+      } catch { /* non-fatal */ }
+    }
+
     return NextResponse.json({ entry }, { headers: HIPAA_HEADERS })
   } catch (err) {
     console.error('PUT /api/waiting-room/[id] error:', err)

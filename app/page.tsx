@@ -315,6 +315,13 @@ export default function DashboardPage() {
     return `${mins} mins`;
   }
 
+  function inServiceTime(calledAt: string) {
+    const mins = Math.floor((Date.now() - new Date(calledAt).getTime()) / 60000);
+    if (mins < 1) return '< 1 min';
+    if (mins === 1) return '1 min';
+    return `${mins} mins`;
+  }
+
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
   const waitingCount = waiting.filter(e => e.status === 'waiting').length;
   const inServiceCount = waiting.filter(e => e.status === 'in-service').length;
@@ -413,7 +420,16 @@ export default function DashboardPage() {
                     </div>
                   )}
                 </td>
-                <td style={{ padding: '5px 10px', color: '#64748b', fontSize: 12 }}>{waitTime(e.checkedInAt)}</td>
+                <td style={{ padding: '5px 10px', fontSize: 12 }}>
+                  {e.status === 'in-service' && e.calledAt ? (
+                    <div>
+                      <div style={{ color: '#0d9488', fontWeight: 700 }}>🩺 {inServiceTime(e.calledAt)}</div>
+                      <div style={{ color: '#94a3b8', fontSize: 10 }}>wait: {waitTime(e.checkedInAt)}</div>
+                    </div>
+                  ) : (
+                    <span style={{ color: '#64748b' }}>{waitTime(e.checkedInAt)}</span>
+                  )}
+                </td>
                 <td style={{ padding: '5px 10px' }}>
                   {e.videoAckBy ? (
                     <div style={{ fontSize: 11, color: '#15803d', fontWeight: 700 }}>✅ {e.videosWatched ?? 0}</div>
