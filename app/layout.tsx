@@ -259,9 +259,11 @@ function AppShell({ children }: { children: React.ReactNode }) {
     if (isAuthPage) return;
     try { const c = localStorage.getItem('iat_user'); if (c) setUserName(JSON.parse(c)?.name ?? ''); } catch {}
     fetch('/api/auth/me').then(r => r.ok ? r.json() : null).then(d => {
-      if (d?.user?.name) {
-        setUserName(d.user.name);
-        try { localStorage.setItem('iat_user', JSON.stringify(d.user)); } catch {}
+      // /api/auth/me returns { id, email, name, role } directly (not nested under .user)
+      const u = d?.user ?? d;
+      if (u?.name) {
+        setUserName(u.name);
+        try { localStorage.setItem('iat_user', JSON.stringify(u)); } catch {}
       }
     }).catch(() => {});
   }, [isAuthPage]);
