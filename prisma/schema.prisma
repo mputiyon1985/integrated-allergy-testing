@@ -175,8 +175,10 @@ model Allergen {
   lotNumber            String?
   stockConc            String?
   expiresAt            DateTime?
-  showOnTestingScreen  Boolean   @default(false)
-  createdAt            DateTime  @default(now())
+  showOnTestingScreen   Boolean   @default(false)
+  showOnPrickTest       Boolean   @default(false)
+  showOnIntradermalTest Boolean   @default(false)
+  createdAt             DateTime  @default(now())
   deletedAt            DateTime?
 
   testResults  AllergyTestResult[]

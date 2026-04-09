@@ -6,12 +6,14 @@ export const dynamic = 'force-dynamic'
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
-    const body = await req.json() as { showOnTestingScreen?: boolean; name?: string; type?: string; deletedAt?: string | null }
+    const body = await req.json() as { showOnTestingScreen?: boolean; showOnPrickTest?: boolean; showOnIntradermalTest?: boolean; name?: string; type?: string; deletedAt?: string | null }
 
     const updated = await prisma.allergen.update({
       where: { id },
       data: {
         ...(body.showOnTestingScreen !== undefined && { showOnTestingScreen: body.showOnTestingScreen }),
+        ...(body.showOnPrickTest !== undefined && { showOnPrickTest: body.showOnPrickTest }),
+        ...(body.showOnIntradermalTest !== undefined && { showOnIntradermalTest: body.showOnIntradermalTest }),
         ...(body.name !== undefined && { name: body.name }),
         ...(body.type !== undefined && { type: body.type }),
         // null = restore, string = soft-delete, undefined = no change

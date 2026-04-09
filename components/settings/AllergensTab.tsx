@@ -15,6 +15,8 @@ interface Allergen {
   stockConc?: string | null;
   expiresAt?: string | null;
   showOnTestingScreen: boolean;
+  showOnPrickTest: boolean;
+  showOnIntradermalTest: boolean;
   createdAt: string;
   deletedAt?: string | null;
 }
@@ -99,6 +101,8 @@ interface EditModalProps {
 function EditModal({ allergen, onClose, onSaved }: EditModalProps) {
   const [name, setName] = useState(allergen.name);
   const [type, setType] = useState<AllergenType>(allergen.type ?? 'other');
+  const [showOnPrickTest, setShowOnPrickTest] = useState(allergen.showOnPrickTest);
+  const [showOnIntradermalTest, setShowOnIntradermalTest] = useState(allergen.showOnIntradermalTest);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -109,7 +113,7 @@ function EditModal({ allergen, onClose, onSaved }: EditModalProps) {
     const res = await fetch(`/api/allergens/${allergen.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: name.trim(), type }),
+      body: JSON.stringify({ name: name.trim(), type, showOnPrickTest, showOnIntradermalTest }),
     }).catch(() => null);
     setSaving(false);
     if (!res?.ok) { setError('Failed to save. Please try again.'); return; }
@@ -142,6 +146,17 @@ function EditModal({ allergen, onClose, onSaved }: EditModalProps) {
               {ALL_TYPES.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
             </select>
           </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#374151', textTransform: 'uppercase' }}>Test Panels</label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none' }}>
+              <ToggleSwitch checked={showOnPrickTest} onChange={() => setShowOnPrickTest(v => !v)} />
+              <span style={{ fontSize: 13, color: '#374151' }}>💉 Include in Prick Test panel</span>
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none' }}>
+              <ToggleSwitch checked={showOnIntradermalTest} onChange={() => setShowOnIntradermalTest(v => !v)} />
+              <span style={{ fontSize: 13, color: '#374151' }}>🩺 Include in Intradermal panel</span>
+            </label>
+          </div>
         </div>
         <div style={{ display: 'flex', gap: 10, marginTop: 24, justifyContent: 'flex-end' }}>
           <button onClick={onClose} style={{ padding: '9px 18px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', color: '#374151', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
@@ -163,6 +178,8 @@ interface AddModalProps {
 function AddModal({ onClose, onSaved }: AddModalProps) {
   const [name, setName] = useState('');
   const [type, setType] = useState<AllergenType>('other');
+  const [showOnPrickTest, setShowOnPrickTest] = useState(false);
+  const [showOnIntradermalTest, setShowOnIntradermalTest] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -173,7 +190,7 @@ function AddModal({ onClose, onSaved }: AddModalProps) {
     const res = await fetch('/api/allergens', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: name.trim(), type }),
+      body: JSON.stringify({ name: name.trim(), type, showOnPrickTest, showOnIntradermalTest }),
     }).catch(() => null);
     setSaving(false);
     if (!res?.ok) { setError('Failed to add allergen. Please try again.'); return; }
@@ -206,6 +223,17 @@ function AddModal({ onClose, onSaved }: AddModalProps) {
             <select className="form-input" value={type} onChange={e => setType(e.target.value)} style={{ width: '100%' }}>
               {ALL_TYPES.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
             </select>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#374151', textTransform: 'uppercase' }}>Test Panels</label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none' }}>
+              <ToggleSwitch checked={showOnPrickTest} onChange={() => setShowOnPrickTest(v => !v)} />
+              <span style={{ fontSize: 13, color: '#374151' }}>💉 Include in Prick Test panel</span>
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none' }}>
+              <ToggleSwitch checked={showOnIntradermalTest} onChange={() => setShowOnIntradermalTest(v => !v)} />
+              <span style={{ fontSize: 13, color: '#374151' }}>🩺 Include in Intradermal panel</span>
+            </label>
           </div>
         </div>
         <div style={{ display: 'flex', gap: 10, marginTop: 24, justifyContent: 'flex-end' }}>
@@ -262,6 +290,28 @@ export default function AllergensTab() {
     load();
   }
 
+  async function togglePrick(allergen: Allergen) {
+    setTogglingId(allergen.id);
+    await fetch(`/api/allergens/${allergen.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ showOnPrickTest: !allergen.showOnPrickTest }),
+    }).catch(() => {});
+    setTogglingId(null);
+    load();
+  }
+
+  async function toggleIntradermal(allergen: Allergen) {
+    setTogglingId(allergen.id);
+    await fetch(`/api/allergens/${allergen.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ showOnIntradermalTest: !allergen.showOnIntradermalTest }),
+    }).catch(() => {});
+    setTogglingId(null);
+    load();
+  }
+
   async function softDelete(allergen: Allergen) {
     if (!confirm(`Remove "${allergen.name}" from the allergen catalog? You can restore it later.`)) return;
     await fetch(`/api/allergens/${allergen.id}`, {
@@ -293,6 +343,8 @@ export default function AllergensTab() {
   // Stats
   const totalActive = allergens.filter(a => !a.deletedAt).length;
   const totalPanel = allergens.filter(a => !a.deletedAt && a.showOnTestingScreen).length;
+  const totalPrick = allergens.filter(a => !a.deletedAt && a.showOnPrickTest).length;
+  const totalIntradermal = allergens.filter(a => !a.deletedAt && a.showOnIntradermalTest).length;
 
   return (
     <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #e2e8f0', padding: 24 }}>
@@ -312,12 +364,18 @@ export default function AllergensTab() {
       </div>
 
       {/* Stats bar */}
-      <div style={{ display: 'flex', gap: 16, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+      <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
         <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 700, color: '#15803d' }}>
-          ✅ {totalPanel} <span style={{ fontWeight: 400, color: '#374151' }}>of</span> {totalActive} on testing panel
+          ✅ {totalPanel} <span style={{ fontWeight: 400, color: '#374151' }}>on panel</span>
+        </div>
+        <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 700, color: '#1d4ed8' }}>
+          💉 {totalPrick} <span style={{ fontWeight: 400, color: '#374151' }}>on Prick panel</span>
+        </div>
+        <div style={{ background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 700, color: '#7c3aed' }}>
+          🩺 {totalIntradermal} <span style={{ fontWeight: 400, color: '#374151' }}>on Intradermal panel</span>
         </div>
         <div style={{ fontSize: 13, color: '#64748b' }}>
-          {totalActive} total allergens
+          📋 {totalActive} total allergens
         </div>
       </div>
 
@@ -368,6 +426,8 @@ export default function AllergensTab() {
             <thead>
               <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
                 <th style={{ padding: '10px 12px', textAlign: 'center', fontWeight: 600, color: '#475569', width: 80 }}>On Panel</th>
+                <th style={{ padding: '10px 12px', textAlign: 'center', fontWeight: 600, color: '#1d4ed8', width: 80 }}>💉 Prick</th>
+                <th style={{ padding: '10px 12px', textAlign: 'center', fontWeight: 600, color: '#7c3aed', width: 100 }}>🩺 Intradermal</th>
                 <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, color: '#475569' }}>Name</th>
                 <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, color: '#475569', width: 130 }}>Type</th>
                 <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, color: '#475569', width: 130 }}>Actions</th>
@@ -399,6 +459,32 @@ export default function AllergensTab() {
                         <ToggleSwitch
                           checked={allergen.showOnTestingScreen}
                           onChange={() => togglePanel(allergen)}
+                          disabled={togglingId === allergen.id}
+                        />
+                      )}
+                    </td>
+
+                    {/* Prick toggle */}
+                    <td style={{ padding: '10px 12px', textAlign: 'center' }}>
+                      {isDeleted ? (
+                        <span style={{ fontSize: 11, color: '#94a3b8' }}>—</span>
+                      ) : (
+                        <ToggleSwitch
+                          checked={allergen.showOnPrickTest}
+                          onChange={() => togglePrick(allergen)}
+                          disabled={togglingId === allergen.id}
+                        />
+                      )}
+                    </td>
+
+                    {/* Intradermal toggle */}
+                    <td style={{ padding: '10px 12px', textAlign: 'center' }}>
+                      {isDeleted ? (
+                        <span style={{ fontSize: 11, color: '#94a3b8' }}>—</span>
+                      ) : (
+                        <ToggleSwitch
+                          checked={allergen.showOnIntradermalTest}
+                          onChange={() => toggleIntradermal(allergen)}
                           disabled={togglingId === allergen.id}
                         />
                       )}
