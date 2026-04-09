@@ -953,14 +953,18 @@ ${(prickResults.length + idResults.length) === 0 ? '<p style="color:#94a3b8; tex
               columns={3}
             />
           ) : (
-            <TestPanel
-              title="Intradermal Test"
-              color="#7c3aed"
-              state={intradermal}
-              onChange={rows => setIntradermal({ rows })}
-              locked={!testedBy}
-              columns={1}
-            />
+            <div style={{ display: 'flex', gap: 0, width: '100%' }}>
+              <div style={{ width: '33.33%', minWidth: 0 }}>
+                <TestPanel
+                  title="Intradermal Test"
+                  color="#7c3aed"
+                  state={intradermal}
+                  onChange={rows => setIntradermal({ rows })}
+                  locked={!testedBy}
+                  columns={1}
+                />
+              </div>
+            </div>
           )}
         </div>
       )}
