@@ -449,7 +449,7 @@ function TestingPageInner() {
   // Load allergens — Prick and Intradermal use separate panel lists
   useEffect(() => {
     Promise.all([
-      fetch('/api/allergens?prickOnly=true').then(r => r.ok ? r.json() : []),
+      fetch('/api/allergens?testingScreen=true').then(r => r.ok ? r.json() : []),
       fetch('/api/allergens?intradermalOnly=true').then(r => r.ok ? r.json() : []),
     ])
       .then(([prickData, intradermalData]) => {
