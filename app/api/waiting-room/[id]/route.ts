@@ -16,7 +16,7 @@ const VALID_STATUSES = ['waiting', 'in-service', 'complete', 'cancelled']
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
-    const body = await req.json() as { status?: string; nurseName?: string; nurseId?: string; videoAckBy?: string }
+    const body = await req.json() as { status?: string; nurseName?: string; nurseId?: string; videoAckBy?: string; notes?: string | null }
     
     // Validate status if provided
     if (body.status !== undefined && !VALID_STATUSES.includes(body.status)) {
@@ -28,6 +28,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     if (body.nurseName) data.nurseName = String(body.nurseName).slice(0, 200)
     if (body.nurseId) data.nurseId = body.nurseId
     if (body.videoAckBy) { data.videoAckBy = body.videoAckBy; data.videoAckAt = new Date() }
+    if (body.notes !== undefined) data.notes = body.notes
     if (body.status === 'in-service') data.calledAt = new Date()
     if (body.status === 'complete') data.completedAt = new Date()
 

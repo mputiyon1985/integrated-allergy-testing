@@ -371,11 +371,13 @@ export default function DashboardPage() {
                         onChange={async ev => {
                           const val = ev.target.value;
                           setEditingNoteText(val);
-                          await fetch(`/api/waiting-room/${e.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ notes: val || null }) });
+                          try {
+                            await fetch(`/api/waiting-room/${e.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ notes: val || null }) });
+                          } catch {}
                           setEditingNoteId(null);
                           loadWaiting();
                         }}
-                        onBlur={() => setEditingNoteId(null)}
+                        onKeyDown={ev => { if (ev.key === 'Escape') setEditingNoteId(null); }}
                         style={{ fontSize: 11, padding: '2px 6px', border: '1px solid #0d9488', borderRadius: 5, cursor: 'pointer', outline: 'none', background: '#fff' }}
                       >
                         <option value="">— clear reason —</option>
