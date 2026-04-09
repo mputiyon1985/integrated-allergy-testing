@@ -153,8 +153,10 @@ export default function DashboardPage() {
   useEffect(() => {
     async function loadData() {
       try {
-        const [patientsRes, , nursesRes, meRes] = await Promise.allSettled([
+        const todayStr = new Date().toISOString().split('T')[0]
+        const [patientsRes, , nursesRes, meRes, encounterCountRes] = await Promise.allSettled([
           fetch('/api/patients'), fetch('/api/doctors'), fetch('/api/nurses'), fetch('/api/auth/me'),
+          fetch(`/api/encounters/count?date=${todayStr}`),
         ]);
         if (patientsRes.status === 'fulfilled' && patientsRes.value.ok) {
           const d = await patientsRes.value.json();
@@ -171,12 +173,13 @@ export default function DashboardPage() {
           const d = await meRes.value.json();
           setUserName(d?.user?.name ?? d?.name ?? '');
         }
-        fetch('/api/encounters?limit=100').then(async r => {
-          if (!r.ok) throw new Error(r.status === 401 ? 'session_expired' : `HTTP ${r.status}`);
-          return r.json();
-        }).then(d => { const today = new Date().toDateString(); setEncounterCount((d.encounters ?? []).filter((e: {encounterDate: string}) => new Date(e.encounterDate).toDateString() === today).length) }).catch(err => {
-          console.error('[Dashboard] encounters fetch error:', err.message);
-        })
+        // Use fast count endpoint — no need to fetch 100 encounters client-side
+        if (encounterCountRes.status === 'fulfilled' && encounterCountRes.value.ok) {
+          const d = await encounterCountRes.value.json();
+          setEncounterCount(d.count ?? 0);
+        } else {
+          setEncounterCount(0);
+        }
       } catch {}
       finally { setLoading(false); }
     }
