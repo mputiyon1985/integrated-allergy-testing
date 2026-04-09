@@ -506,23 +506,23 @@ export default function DashboardPage() {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {todayAppts.map(appt => {
-            const c = APPT_TYPE_COLORS[appt.type] ?? APPT_TYPE_COLORS['allergy-test'];
+            const color = serviceColors[appt.reasonName ?? ''] ?? serviceColors[appt.type] ?? '#64748b';
             return (
               <div key={appt.id}
                 onClick={() => setSelectedAppt(appt)}
-                style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', background: c.bg, borderRadius: 10, border: `1.5px solid ${c.text}20`, cursor: 'pointer', transition: 'box-shadow 0.15s' }}
+                style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', background: '#fff', borderRadius: 10, borderLeft: `4px solid ${color}`, border: `1.5px solid ${color}20`, cursor: 'pointer', transition: 'box-shadow 0.15s' }}
                 onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.12)')}
                 onMouseLeave={e => (e.currentTarget.style.boxShadow = 'none')}
               >
-                <div style={{ fontWeight: 700, fontSize: 13, color: c.text, minWidth: 56 }}>
+                <div style={{ fontWeight: 700, fontSize: 13, color, minWidth: 56 }}>
                   {formatApptTime(appt.startTime)}
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 700, fontSize: 14, color: '#111827' }}>{appt.title}</div>
                   {appt.patientName && <div style={{ fontSize: 12, color: '#64748b' }}>{appt.patientName}</div>}
                 </div>
-                <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 10px', borderRadius: 999, background: '#fff', color: c.text, border: `1px solid ${c.text}` }}>
-                  {appt.status}
+                <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 10px', borderRadius: 999, background: color, color: '#fff', border: `1px solid ${color}` }}>
+                  {appt.reasonName ?? appt.type}
                 </span>
               </div>
             );

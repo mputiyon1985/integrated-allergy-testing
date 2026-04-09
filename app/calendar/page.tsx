@@ -316,12 +316,12 @@ function CalendarInner() {
     const reason = getReasonForAppt(appt);
     if (reason) {
       return {
-        bg: hexToRgba(reason.color, 0.12),
+        bg: reason.color,
         border: reason.color,
-        text: reason.color,
+        text: '#ffffff',
       };
     }
-    return { bg: '#e8f9f7', border: '#0d9488', text: '#0d9488' };
+    return { bg: '#0d9488', border: '#0d9488', text: '#ffffff' };
   }
 
   // Week view rendering
@@ -441,8 +441,8 @@ function CalendarInner() {
                               style={{ background: colors.bg, border: `1.5px solid ${colors.border}`, borderRadius: 6, padding: '3px 6px', marginBottom: 3, cursor: 'pointer', fontSize: 11 }}
                             >
                               <div style={{ fontWeight: 700, color: colors.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{icon} {appt.title}</div>
-                              {appt.patientName && <div style={{ color: '#374151', fontSize: 10, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{appt.patientName}</div>}
-                              <div style={{ color: '#6b7280', fontSize: 10 }}>{formatTime(appt.startTime)}–{formatTime(appt.endTime)}</div>
+                              {appt.patientName && <div style={{ color: colors.text, fontSize: 10, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', opacity: 0.85 }}>{appt.patientName}</div>}
+                              <div style={{ color: colors.text, fontSize: 10, opacity: 0.75 }}>{formatTime(appt.startTime)}–{formatTime(appt.endTime)}</div>
                             </div>
                           );
                         })}
