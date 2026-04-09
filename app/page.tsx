@@ -341,38 +341,36 @@ export default function DashboardPage() {
             </tr>
           </thead>
           <tbody>
-            {waiting.map(e => (
-              <tr key={e.id} style={{ borderBottom: '1px solid #f1f5f9', background: e.status === 'in-service' ? '#e8f9f7' : 'white' }}>
+            {waiting.map(e => {
+              const isNew = (Date.now() - new Date(e.checkedInAt).getTime()) < 5 * 60 * 1000;
+              const rowBg = e.status === 'in-service' ? '#e8f9f7' : isNew ? '#fffbeb' : 'white';
+              const rowBorder = isNew && e.status === 'waiting' ? '2px solid #f59e0b' : '1px solid #f1f5f9';
+              return (
+              <tr key={e.id} style={{ borderBottom: rowBorder, background: rowBg }}>
                 <td style={{ padding: '5px 10px' }}>
-                  <div style={{ fontWeight: 700 }}>{e.patientName}</div>
+                  <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5 }}>
+                    {isNew && e.status === 'waiting' && <span style={{ fontSize: 9, background: '#f59e0b', color: '#fff', borderRadius: 4, padding: '1px 5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>NEW</span>}
+                    {e.patientName}
+                  </div>
                   {e.notes && <div style={{ fontSize: 11, color: '#64748b' }}>{e.notes}</div>}
                 </td>
                 <td style={{ padding: '5px 10px', color: '#64748b', fontSize: 12 }}>{waitTime(e.checkedInAt)}</td>
                 <td style={{ padding: '5px 10px' }}>
                   {e.videoAckBy ? (
-                    <div>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: '#15803d' }}>✅ {e.videosWatched ?? 0} watched</div>
-                      <div style={{ fontSize: 11, color: '#64748b' }}>Ack: {e.videoAckBy}</div>
-                    </div>
+                    <div style={{ fontSize: 11, color: '#15803d', fontWeight: 700 }}>✅ {e.videosWatched ?? 0}</div>
+                  ) : (e.videosWatched ?? 0) > 0 ? (
+                    <button
+                      onClick={async () => {
+                        const ackBy = e.nurseName ?? 'Staff';
+                        await fetch(`/api/waiting-room/${e.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ videoAckBy: ackBy }) });
+                        loadWaiting();
+                      }}
+                      style={{ fontSize: 11, padding: '2px 7px', borderRadius: 6, border: '1px solid #fde68a', background: '#fefce8', cursor: 'pointer', color: '#92400e', fontWeight: 700, whiteSpace: 'nowrap' }}
+                    >
+                      📺 {e.videosWatched} ✓
+                    </button>
                   ) : (
-                    <div>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: (e.videosWatched ?? 0) > 0 ? '#b45309' : '#94a3b8', marginBottom: 2 }}>
-                        {(e.videosWatched ?? 0) > 0 ? `📺 ${e.videosWatched} video${(e.videosWatched ?? 0) !== 1 ? 's' : ''} watched` : '—'}
-                      </div>
-                      {(e.videosWatched ?? 0) > 0 && (
-                        <select
-                          defaultValue=""
-                          onChange={ev => ev.target.value && (async () => {
-                            await fetch(`/api/waiting-room/${e.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ videoAckBy: ev.target.value }) });
-                            loadWaiting();
-                          })()}
-                          style={{ fontSize: 11, padding: '2px 6px', borderRadius: 6, border: '1px solid #fde68a', background: '#fefce8', cursor: 'pointer', color: '#92400e' }}
-                        >
-                          <option value="">✓ Acknowledge</option>
-                          {nurses.map(n => <option key={n.id} value={n.name}>{n.name}</option>)}
-                        </select>
-                      )}
-                    </div>
+                    <span style={{ color: '#d1d5db', fontSize: 11 }}>—</span>
                   )}
                 </td>
                 <td style={{ padding: '5px 10px' }}>
@@ -412,7 +410,8 @@ export default function DashboardPage() {
                   )}
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       )}
