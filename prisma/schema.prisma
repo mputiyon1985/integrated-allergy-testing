@@ -428,3 +428,46 @@ model EncounterActivityCode {
 
   @@index([activityId])
 }
+
+model InsuranceCompany {
+  id         String   @id @default(cuid())
+  name       String
+  type       String   @default("commercial") // medicare | medicaid | bcbs | commercial | tricare | aetna | united | cigna
+  payerId    String?
+  phone      String?
+  fax        String?
+  website    String?
+  planTypes  String?  // comma-separated list
+  notes      String?
+  active     Boolean  @default(true)
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([type])
+  @@index([active])
+}
+
+model BillingRule {
+  id                    String   @id @default(cuid())
+  name                  String
+  description           String?
+  insuranceType         String   // all | medicare | medicaid | bcbs | commercial | tricare | aetna | united | cigna
+  ruleType              String   // same_day_conflict | requires_modifier | max_units | lifetime_limit | dx_required | prior_auth | specialist_required | supervision | documentation | unbundling | in_person_required
+  cptCode               String?
+  relatedCptCode        String?
+  maxUnits              Int?
+  requiresModifier      String?
+  requiresDxMatch       Boolean  @default(false)
+  warningMessage        String
+  severity              String   @default("warning") // warning | hard_block | info
+  overrideRequiresAdmin Boolean  @default(false)
+  active                Boolean  @default(true)
+  sortOrder             Int      @default(0)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([insuranceType])
+  @@index([active])
+  @@index([severity])
+}

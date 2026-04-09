@@ -17,6 +17,7 @@ const SECTION_IDS = [
   'quick-links',
   'icd10-codes',
   'cpt-codes',
+  'billing-rules',
   'audit-log',
 ] as const;
 
@@ -43,7 +44,7 @@ function buildDefaultLayouts(): ResponsiveLayouts {
     minH: 6,
   }));
   // Override full-width sections
-  const fullWidth: SectionId[] = ['icd10-codes', 'cpt-codes', 'audit-log'];
+  const fullWidth: SectionId[] = ['icd10-codes', 'cpt-codes', 'billing-rules', 'audit-log'];
   lg.forEach(item => {
     if (fullWidth.includes(item.i as SectionId)) {
       item.x = 0;
@@ -662,6 +663,331 @@ function CptCodesContent() {
                     </>
                   )}
                 </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </>
+  );
+}
+
+type BillingRuleRow = {
+  id: string;
+  name: string;
+  description: string;
+  insuranceType: string;
+  ruleType: string;
+  cptCode?: string | null;
+  relatedCptCode?: string | null;
+  maxUnits?: number | null;
+  requiresModifier?: string | null;
+  requiresDxMatch: boolean;
+  warningMessage: string;
+  active: boolean;
+  sortOrder: number;
+};
+
+const INSURANCE_BADGE_COLORS: Record<string, { bg: string; color: string }> = {
+  medicare:   { bg: '#dbeafe', color: '#1d4ed8' },
+  medicaid:   { bg: '#dcfce7', color: '#15803d' },
+  all:        { bg: '#f1f5f9', color: '#475569' },
+  bcbs:       { bg: '#e0e7ff', color: '#4338ca' },
+  commercial: { bg: '#f3e8ff', color: '#7c3aed' },
+  tricare:    { bg: '#ffedd5', color: '#c2410c' },
+  aetna:      { bg: '#fce7f3', color: '#be185d' },
+  united:     { bg: '#fef3c7', color: '#b45309' },
+  cigna:      { bg: '#d1fae5', color: '#065f46' },
+};
+
+function InsuranceBadge({ type }: { type: string }) {
+  const style = INSURANCE_BADGE_COLORS[type.toLowerCase()] ?? INSURANCE_BADGE_COLORS.all;
+  return (
+    <span style={{
+      display: 'inline-block',
+      padding: '2px 8px',
+      borderRadius: 999,
+      fontSize: 11,
+      fontWeight: 700,
+      background: style.bg,
+      color: style.color,
+      textTransform: 'uppercase',
+      letterSpacing: '0.04em',
+    }}>
+      {type}
+    </span>
+  );
+}
+
+const EMPTY_RULE_FORM = {
+  name: '',
+  description: '',
+  insuranceType: 'all',
+  ruleType: 'documentation',
+  cptCode: '',
+  relatedCptCode: '',
+  maxUnits: '',
+  requiresModifier: '',
+  requiresDxMatch: false,
+  warningMessage: '',
+  sortOrder: '0',
+};
+
+function BillingRulesContent() {
+  const [rules, setRules] = useState<BillingRuleRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showAdd, setShowAdd] = useState(false);
+  const [addForm, setAddForm] = useState(EMPTY_RULE_FORM);
+  const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState(EMPTY_RULE_FORM);
+
+  function load() {
+    fetch('/api/billing-rules?all=true')
+      .then(r => r.json())
+      .then(d => { setRules(d.rules ?? []); setLoading(false); })
+      .catch(() => setLoading(false));
+  }
+
+  useEffect(() => { load(); }, []);
+
+  async function toggleActive(id: string, active: boolean) {
+    await fetch(`/api/billing-rules/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ active: !active }),
+    }).catch(() => {});
+    load();
+  }
+
+  async function addRule() {
+    if (!addForm.name.trim() || !addForm.warningMessage.trim() || !addForm.ruleType.trim()) return;
+    setSaving(true);
+    await fetch('/api/billing-rules', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...addForm,
+        maxUnits: addForm.maxUnits ? parseInt(addForm.maxUnits) : null,
+        sortOrder: addForm.sortOrder ? parseInt(addForm.sortOrder) : 0,
+        cptCode: addForm.cptCode || null,
+        relatedCptCode: addForm.relatedCptCode || null,
+        requiresModifier: addForm.requiresModifier || null,
+      }),
+    }).catch(() => {});
+    setSaving(false);
+    setAddForm(EMPTY_RULE_FORM);
+    setShowAdd(false);
+    load();
+  }
+
+  function startEdit(r: BillingRuleRow) {
+    setEditingId(r.id);
+    setEditForm({
+      name: r.name,
+      description: r.description,
+      insuranceType: r.insuranceType,
+      ruleType: r.ruleType,
+      cptCode: r.cptCode ?? '',
+      relatedCptCode: r.relatedCptCode ?? '',
+      maxUnits: r.maxUnits != null ? String(r.maxUnits) : '',
+      requiresModifier: r.requiresModifier ?? '',
+      requiresDxMatch: r.requiresDxMatch,
+      warningMessage: r.warningMessage,
+      sortOrder: String(r.sortOrder),
+    });
+  }
+
+  async function saveEdit(id: string) {
+    await fetch(`/api/billing-rules/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...editForm,
+        maxUnits: editForm.maxUnits ? parseInt(editForm.maxUnits) : null,
+        sortOrder: editForm.sortOrder ? parseInt(editForm.sortOrder) : 0,
+        cptCode: editForm.cptCode || null,
+        relatedCptCode: editForm.relatedCptCode || null,
+        requiresModifier: editForm.requiresModifier || null,
+      }),
+    }).catch(() => {});
+    setEditingId(null);
+    load();
+  }
+
+  async function deleteRule(id: string, name: string) {
+    if (!confirm(`Deactivate rule "${name}"?`)) return;
+    await fetch(`/api/billing-rules/${id}`, { method: 'DELETE' }).catch(() => {});
+    load();
+  }
+
+  const RULE_TYPES = [
+    'same_day_conflict', 'requires_modifier', 'max_units', 'lifetime_limit',
+    'dx_required', 'prior_auth', 'specialist_required', 'supervision',
+    'documentation', 'unbundling', 'in_person_required',
+  ];
+
+  const INSURANCE_TYPES = ['all', 'medicare', 'medicaid', 'bcbs', 'commercial', 'tricare', 'aetna', 'united', 'cigna'];
+
+  function RuleForm({ form, onChange, onSave, onCancel, saveLabel }: {
+    form: typeof EMPTY_RULE_FORM;
+    onChange: (f: typeof EMPTY_RULE_FORM) => void;
+    onSave: () => void;
+    onCancel: () => void;
+    saveLabel: string;
+  }) {
+    return (
+      <div style={{ background: '#fefce8', borderRadius: 10, padding: 16, marginBottom: 16, border: '1px solid #fde68a' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
+          <div>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Rule Name *</label>
+            <input className="form-input" value={form.name} onChange={e => onChange({ ...form, name: e.target.value })} placeholder="e.g. 95004 + 95024 Same Day" />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Insurance Type *</label>
+            <select className="form-input" value={form.insuranceType} onChange={e => onChange({ ...form, insuranceType: e.target.value })}>
+              {INSURANCE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Rule Type *</label>
+            <select className="form-input" value={form.ruleType} onChange={e => onChange({ ...form, ruleType: e.target.value })}>
+              {RULE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>CPT Code</label>
+            <input className="form-input" value={form.cptCode} onChange={e => onChange({ ...form, cptCode: e.target.value })} placeholder="e.g. 95004" />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Related CPT Code</label>
+            <input className="form-input" value={form.relatedCptCode} onChange={e => onChange({ ...form, relatedCptCode: e.target.value })} placeholder="e.g. 95024" />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Requires Modifier</label>
+            <input className="form-input" value={form.requiresModifier} onChange={e => onChange({ ...form, requiresModifier: e.target.value })} placeholder="e.g. 25" />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Max Units</label>
+            <input className="form-input" type="number" value={form.maxUnits} onChange={e => onChange({ ...form, maxUnits: e.target.value })} placeholder="e.g. 10" />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Sort Order</label>
+            <input className="form-input" type="number" value={form.sortOrder} onChange={e => onChange({ ...form, sortOrder: e.target.value })} />
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingTop: 20 }}>
+            <input type="checkbox" id="requiresDx" checked={form.requiresDxMatch} onChange={e => onChange({ ...form, requiresDxMatch: e.target.checked })} />
+            <label htmlFor="requiresDx" style={{ fontSize: 13, fontWeight: 600, color: '#374151' }}>Requires Dx Match</label>
+          </div>
+        </div>
+        <div style={{ marginBottom: 12 }}>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Description</label>
+          <input className="form-input" value={form.description} onChange={e => onChange({ ...form, description: e.target.value })} placeholder="Short internal description" />
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Warning Message * (shown to staff)</label>
+          <textarea className="form-input" rows={3} value={form.warningMessage} onChange={e => onChange({ ...form, warningMessage: e.target.value })} placeholder="Enter the warning message staff will see…" style={{ resize: 'vertical' }} />
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={onSave} disabled={saving || !form.name.trim() || !form.warningMessage.trim()}
+            style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: '#f59e0b', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+            {saving ? '⏳' : `💾 ${saveLabel}`}
+          </button>
+          <button onClick={onCancel}
+            style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', cursor: 'pointer', fontSize: 13 }}>
+            Cancel
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <div className="card-title" style={{ marginBottom: 0 }}>⚕️ Billing Rules</div>
+        <button onClick={() => { setShowAdd(v => !v); setEditingId(null); }}
+          style={{ padding: '7px 16px', borderRadius: 8, border: 'none', background: '#f59e0b', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+          + Add Rule
+        </button>
+      </div>
+      <p style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
+        Per-encounter billing compliance rules. Soft warnings only — staff are alerted but can proceed.
+      </p>
+
+      {showAdd && (
+        <RuleForm
+          form={addForm}
+          onChange={setAddForm}
+          onSave={addRule}
+          onCancel={() => setShowAdd(false)}
+          saveLabel="Save Rule"
+        />
+      )}
+
+      {loading ? (
+        <div style={{ padding: '16px 0', textAlign: 'center', color: '#94a3b8' }}>Loading…</div>
+      ) : rules.length === 0 ? (
+        <div style={{ padding: '24px 0', textAlign: 'center', color: '#94a3b8', fontSize: 14 }}>
+          No billing rules configured yet. Click &quot;+ Add Rule&quot; to add one.
+        </div>
+      ) : (
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <thead>
+              <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+                {['Rule Name', 'Insurance Type', 'CPT Code', 'Rule Type', 'Active', 'Actions'].map(h => (
+                  <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600, color: '#475569', whiteSpace: 'nowrap' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rules.map((r, i) => (
+                <>
+                  <tr key={r.id} style={{ borderBottom: editingId === r.id ? 'none' : '1px solid #f1f5f9', background: i % 2 === 0 ? '#fff' : '#f8fafc' }}>
+                    <td style={{ padding: '8px 12px', fontWeight: 600, color: '#334155', maxWidth: 240 }}>
+                      <span title={r.description}>{r.name}</span>
+                    </td>
+                    <td style={{ padding: '8px 12px' }}>
+                      <InsuranceBadge type={r.insuranceType} />
+                    </td>
+                    <td style={{ padding: '8px 12px', fontFamily: 'monospace', color: '#7c3aed', fontWeight: 700 }}>
+                      {r.cptCode ?? '—'}
+                      {r.relatedCptCode && <span style={{ color: '#94a3b8', fontWeight: 400 }}> + {r.relatedCptCode}</span>}
+                    </td>
+                    <td style={{ padding: '8px 12px', color: '#64748b', fontSize: 12 }}>{r.ruleType}</td>
+                    <td style={{ padding: '8px 12px' }}>
+                      <button onClick={() => toggleActive(r.id, r.active)}
+                        style={{ padding: '3px 12px', borderRadius: 999, border: 'none', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                          background: r.active ? '#dcfce7' : '#f3f4f6', color: r.active ? '#15803d' : '#64748b' }}>
+                        {r.active ? '✅ Active' : '⬜ Inactive'}
+                      </button>
+                    </td>
+                    <td style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button onClick={() => { startEdit(r); setShowAdd(false); }}
+                          style={{ padding: '3px 10px', borderRadius: 6, border: '1px solid #e2e8f0', background: '#fff', fontSize: 12, cursor: 'pointer' }}
+                          title="Edit">✏️</button>
+                        <button onClick={() => deleteRule(r.id, r.name)}
+                          style={{ padding: '3px 10px', borderRadius: 6, border: '1px solid #fecaca', background: '#fff7f7', fontSize: 12, cursor: 'pointer' }}
+                          title="Deactivate">🗑️</button>
+                      </div>
+                    </td>
+                  </tr>
+                  {editingId === r.id && (
+                    <tr key={`${r.id}-edit`} style={{ background: '#fefce8' }}>
+                      <td colSpan={6} style={{ padding: '0 12px 12px 12px' }}>
+                        <RuleForm
+                          form={editForm}
+                          onChange={setEditForm}
+                          onSave={() => saveEdit(r.id)}
+                          onCancel={() => setEditingId(null)}
+                          saveLabel="Update Rule"
+                        />
+                      </td>
+                    </tr>
+                  )}
+                </>
               ))}
             </tbody>
           </table>
