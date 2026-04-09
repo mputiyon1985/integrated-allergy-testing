@@ -7,17 +7,15 @@ import { LocationSelector } from '@/components/LocationSelector';
 import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
 
-const navItems = [
+type NavItem = { href: string; label: string; icon: string; children?: NavItem[] };
+
+const navItems: NavItem[] = [
   { href: '/', label: 'Dashboard', icon: '🏠' },
   { href: '/patients', label: 'Patients', icon: '👥' },
   { href: '/testing', label: 'Testing', icon: '🧪' },
   { href: '/calendar', label: 'Calendar', icon: '📅' },
   { href: '/insurance', label: 'Insurance Hub', icon: '🏥' },
 
-  { href: '/practices', label: 'Practice', icon: '🏢', children: [
-    { href: '/practices', label: 'Practices', icon: '🏢' },
-    { href: '/locations', label: 'Locations', icon: '📍' },
-  ]},
   { href: '/kiosk', label: 'Kiosk', icon: '📲' },
 ];
 

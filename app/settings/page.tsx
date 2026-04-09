@@ -11,6 +11,8 @@ const DoctorsTab = dynamic(() => import('@/components/settings/DoctorsTab'), { s
 const NursesTab = dynamic(() => import('@/components/settings/NursesTab'), { ssr: false });
 const VideosTab = dynamic(() => import('@/components/settings/VideosTab'), { ssr: false });
 const AllergensTab = dynamic(() => import('@/components/settings/AllergensTab'), { ssr: false });
+const PracticesTab = dynamic(() => import('@/components/settings/PracticesTab'), { ssr: false });
+const LocationsTab = dynamic(() => import('@/components/settings/LocationsTab'), { ssr: false });
 
 const SETTINGS_LAYOUT_KEY = 'iat-settings-layout-v1';
 
@@ -1367,7 +1369,7 @@ function ServicesManagement() {
 }
 
 type CurrentUser = { id: string; role: string; email: string; name: string };
-type SettingsTab = 'dashboard' | 'users' | 'audit' | 'services' | 'doctors' | 'nurses' | 'videos' | 'allergens';
+type SettingsTab = 'dashboard' | 'users' | 'audit' | 'services' | 'doctors' | 'nurses' | 'videos' | 'allergens' | 'practices' | 'locations';
 
 export default function SettingsPage() {
   const [editMode, setEditMode] = useState(false);
@@ -1446,6 +1448,12 @@ export default function SettingsPage() {
               👥 Users
             </button>
           )}
+          <button style={TAB_STYLE(activeTab === 'practices')} onClick={() => setActiveTab('practices')}>
+            🏢 Practices
+          </button>
+          <button style={TAB_STYLE(activeTab === 'locations')} onClick={() => setActiveTab('locations')}>
+            📍 Locations
+          </button>
           <button style={TAB_STYLE(activeTab === 'doctors')} onClick={() => setActiveTab('doctors')}>
             👨‍⚕️ Doctors
           </button>
@@ -1486,6 +1494,12 @@ export default function SettingsPage() {
             <ServicesManagement />
           </div>
         )}
+
+        {/* Practices Tab */}
+        {activeTab === 'practices' && <PracticesTab />}
+
+        {/* Locations Tab */}
+        {activeTab === 'locations' && <LocationsTab />}
 
         {/* Doctors Tab */}
         {activeTab === 'doctors' && <DoctorsTab />}

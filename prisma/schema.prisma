@@ -502,6 +502,17 @@ model InsuranceCompany {
   @@index([active])
 }
 
+model PracticeInsurance {
+  id          String   @id @default(cuid())
+  practiceId  String
+  insuranceId String
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  @@unique([practiceId, insuranceId])
+  @@index([practiceId])
+}
+
 model BillingRule {
   id                    String   @id @default(cuid())
   name                  String

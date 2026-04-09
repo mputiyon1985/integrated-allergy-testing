@@ -6,6 +6,23 @@ export async function GET(req: NextRequest) {
   try {
     const all = req.nextUrl.searchParams.get('all') === 'true'
     const type = req.nextUrl.searchParams.get('type') ?? ''
+    const practiceId = req.nextUrl.searchParams.get('practiceId') ?? ''
+
+    // If practiceId provided, filter to only payers accepted by that practice
+    if (practiceId) {
+      const rows = await prisma.$queryRaw<
+        { id: string; name: string; type: string; payerId: string | null; phone: string | null; fax: string | null; website: string | null; planTypes: string | null; notes: string | null; active: number; sortOrder: number }[]
+      >`
+        SELECT ic.*
+        FROM InsuranceCompany ic
+        JOIN PracticeInsurance pi ON pi.insuranceId = ic.id AND pi.practiceId = ${practiceId}
+        WHERE ic.active = 1
+        ORDER BY pi.sortOrder ASC, ic.name ASC
+      `
+      // Apply optional type filter in JS
+      const companies = type ? rows.filter(r => r.type === type) : rows
+      return NextResponse.json({ companies })
+    }
 
     const where: Record<string, unknown> = {
       ...(all ? {} : { active: true }),
