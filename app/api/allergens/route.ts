@@ -13,9 +13,10 @@ export const dynamic = 'force-dynamic'
 export async function GET(req: NextRequest) {
   try {
     const testingOnly = req.nextUrl.searchParams.get('testingScreen') === 'true';
+    const showDeleted = req.nextUrl.searchParams.get('showDeleted') === 'true';
     const allergens = await prisma.allergen.findMany({
       where: {
-        deletedAt: null,
+        ...(showDeleted ? {} : { deletedAt: null }),
         ...(testingOnly ? { showOnTestingScreen: true } : {}),
       },
       orderBy: [{ type: 'asc' }, { id: 'asc' }],

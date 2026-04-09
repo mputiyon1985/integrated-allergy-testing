@@ -10,6 +10,7 @@ const DashboardGrid = dynamic(() => import('@/components/DashboardGrid'), { ssr:
 const DoctorsTab = dynamic(() => import('@/components/settings/DoctorsTab'), { ssr: false });
 const NursesTab = dynamic(() => import('@/components/settings/NursesTab'), { ssr: false });
 const VideosTab = dynamic(() => import('@/components/settings/VideosTab'), { ssr: false });
+const AllergensTab = dynamic(() => import('@/components/settings/AllergensTab'), { ssr: false });
 
 const SETTINGS_LAYOUT_KEY = 'iat-settings-layout-v1';
 
@@ -1366,7 +1367,7 @@ function ServicesManagement() {
 }
 
 type CurrentUser = { id: string; role: string; email: string; name: string };
-type SettingsTab = 'dashboard' | 'users' | 'audit' | 'services' | 'doctors' | 'nurses' | 'videos';
+type SettingsTab = 'dashboard' | 'users' | 'audit' | 'services' | 'doctors' | 'nurses' | 'videos' | 'allergens';
 
 export default function SettingsPage() {
   const [editMode, setEditMode] = useState(false);
@@ -1457,6 +1458,9 @@ export default function SettingsPage() {
           <button style={TAB_STYLE(activeTab === 'videos')} onClick={() => setActiveTab('videos')}>
             🎬 Videos
           </button>
+          <button style={TAB_STYLE(activeTab === 'allergens')} onClick={() => setActiveTab('allergens')}>
+            🧪 Allergens
+          </button>
           <button style={TAB_STYLE(activeTab === 'audit')} onClick={() => setActiveTab('audit')}>
             📋 Audit Log
           </button>
@@ -1491,6 +1495,9 @@ export default function SettingsPage() {
 
         {/* Videos Tab */}
         {activeTab === 'videos' && <VideosTab />}
+
+        {/* Allergens Tab */}
+        {activeTab === 'allergens' && <AllergensTab />}
 
         {/* Dashboard Tab */}
         {activeTab === 'dashboard' && (

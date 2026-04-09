@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic'
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
-    const body = await req.json() as { showOnTestingScreen?: boolean; name?: string; type?: string }
+    const body = await req.json() as { showOnTestingScreen?: boolean; name?: string; type?: string; deletedAt?: string | null }
 
     const updated = await prisma.allergen.update({
       where: { id },
@@ -14,6 +14,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         ...(body.showOnTestingScreen !== undefined && { showOnTestingScreen: body.showOnTestingScreen }),
         ...(body.name !== undefined && { name: body.name }),
         ...(body.type !== undefined && { type: body.type }),
+        // null = restore, string = soft-delete, undefined = no change
+        ...('deletedAt' in body && { deletedAt: body.deletedAt ? new Date(body.deletedAt) : null }),
       },
     })
 
