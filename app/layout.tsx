@@ -20,7 +20,6 @@ const navItems: NavItem[] = [
 ];
 
 const bottomNavItems = [
-  { href: '/admin/users', label: 'Users', icon: '🛡️' },
   { href: '/settings', label: 'Settings', icon: '⚙️' },
 ];
 
