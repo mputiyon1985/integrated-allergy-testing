@@ -71,12 +71,13 @@ export function LocationSelector() {
       if (locId) {
         setActiveId(locId);
         setOpen(false);
-        load(); // re-fetch to get updated practice name
+        // Update localStorage so top bar reads the correct location
+        try { localStorage.setItem('iat_active_location', locId); } catch {}
       }
     }
     window.addEventListener('locationchange', handleLocationChange);
     return () => window.removeEventListener('locationchange', handleLocationChange);
-  }, [load]);
+  }, []);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -110,7 +111,7 @@ export function LocationSelector() {
 
   if (!activeLoc) return null;
 
-  const practiceName = practice?.name ?? '';
+  const practiceName = practice?.shortName ?? practice?.name ?? '';
   const locationName = activeLoc.name;
 
   return (
