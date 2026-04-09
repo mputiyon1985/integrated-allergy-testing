@@ -25,31 +25,25 @@ const navItems = [
   { href: '/settings', label: 'Settings', icon: '⚙️' },
 ];
 
-function UserCard() {
+function UserCard({ userName }: { userName: string }) {
   const [user, setUser] = useState<{ name: string; email: string; role: string } | null>(null);
 
   useEffect(() => {
-    // Load from cache instantly, then refresh from API
     try { const c = localStorage.getItem('iat_user'); if (c) setUser(JSON.parse(c)); } catch {}
-    fetch('/api/auth/me').then(r => r.ok ? r.json() : null).then(d => {
-      if (d?.user) {
-        setUser(d.user);
-        try { localStorage.setItem('iat_user', JSON.stringify(d.user)); } catch {}
-      }
-    }).catch(() => {});
-  }, []);
+  }, [userName]); // re-read cache when userName updates
 
-  if (!user) return null;
+  if (!user && !userName) return null;
+  const displayName = user?.name ?? userName;
 
   return (
     <div style={{ margin: '0 8px 8px', padding: '10px 12px', background: 'linear-gradient(135deg, #e8f9f7, #d0f4ef)', border: '1.5px solid #2ec4b6', borderRadius: 12 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#2ec4b6', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 14 }}>
-          {user.name.charAt(0).toUpperCase()}
+          {displayName.charAt(0).toUpperCase()}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 700, fontSize: 13, color: '#0d9488', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user.name}</div>
-          <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'capitalize' }}>{user.role}</div>
+          <div style={{ fontWeight: 700, fontSize: 13, color: '#0d9488', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName}</div>
+          <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'capitalize' }}>{user?.role ?? ''}</div>
         </div>
       </div>
       <button onClick={async () => {
@@ -64,7 +58,7 @@ function UserCard() {
   );
 }
 
-function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
+function Sidebar({ open, onClose, userName }: { open: boolean; onClose: () => void; userName: string }) {
   const pathname = usePathname();
 
   return (
@@ -172,7 +166,7 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
           })}
         </div>
 
-        <UserCard />
+        <UserCard userName={userName} />
 
         {/* Sign Out — above the footer line */}
         <div style={{ padding: '0 12px 10px' }}>
@@ -205,22 +199,7 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
   );
 }
 
-function TopBar() {
-  const [userName, setUserName] = useState('');
-
-  useEffect(() => {
-    // Load from cache instantly, then refresh from API
-    try { const c = localStorage.getItem('iat_user'); if (c) setUserName(JSON.parse(c)?.name ?? ''); } catch {}
-    fetch('/api/auth/me')
-      .then(r => r.ok ? r.json() : null)
-      .then(d => {
-        if (d?.user?.name) {
-          setUserName(d.user.name);
-          try { localStorage.setItem('iat_user', JSON.stringify(d.user)); } catch {}
-        }
-      })
-      .catch(() => {});
-  }, []);
+function TopBar({ userName }: { userName: string }) {
 
   return (
     <div style={{
@@ -269,13 +248,26 @@ function TopBar() {
 
 function AppShell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [userName, setUserName] = useState('');
   const pathname = usePathname();
   const isAuthPage = pathname === '/login' || pathname?.startsWith('/login') || pathname === '/consent' || pathname?.startsWith('/consent') || pathname?.startsWith('/kiosk');
 
-  // Close sidebar on route change — deferred to avoid synchronous setState-in-effect
+  // Load user once at shell level — persists across all page navigations
+  useEffect(() => {
+    if (isAuthPage) return;
+    try { const c = localStorage.getItem('iat_user'); if (c) setUserName(JSON.parse(c)?.name ?? ''); } catch {}
+    fetch('/api/auth/me').then(r => r.ok ? r.json() : null).then(d => {
+      if (d?.user?.name) {
+        setUserName(d.user.name);
+        try { localStorage.setItem('iat_user', JSON.stringify(d.user)); } catch {}
+      }
+    }).catch(() => {});
+  }, [isAuthPage]);
+
+  // Close sidebar on route change
   useEffect(() => { Promise.resolve().then(() => setSidebarOpen(false)); }, [pathname]);
 
-  // Auto-refresh JWT every 6 hours (expires at 8h) — silent token rotation
+  // Auto-refresh JWT every 6 hours
   useEffect(() => {
     if (isAuthPage) return;
     const interval = setInterval(() => {
@@ -291,9 +283,9 @@ function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="app-shell">
       <button className="sidebar-toggle" onClick={() => setSidebarOpen((v) => !v)} aria-label="Toggle navigation">☰</button>
-      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} userName={userName} />
       <div className="main-content">
-        <TopBar />
+        <TopBar userName={userName} />
         {children}
       </div>
     </div>
