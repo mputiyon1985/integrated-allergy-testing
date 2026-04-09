@@ -333,6 +333,7 @@ function BusinessRulesTab() {
   const [rules, setRules] = useState<BillingRule[]>([]);
   const [companies, setCompanies] = useState<InsuranceCompany[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [filterType, setFilterType] = useState('');
   const [filterSeverity, setFilterSeverity] = useState('');
   const [search, setSearch] = useState('');
@@ -349,11 +350,28 @@ function BusinessRulesTab() {
 
   const load = useCallback(() => {
     setLoading(true);
+    setLoadError(null);
     Promise.allSettled([
-      fetch('/api/billing-rules?all=true').then(r => r.json()),
-      fetch('/api/insurance-companies').then(r => r.json()),
+      fetch('/api/billing-rules?all=true').then(async r => {
+        if (r.status === 401) throw new Error('session_expired');
+        if (!r.ok) throw new Error(`billing-rules: ${r.status}`);
+        return r.json();
+      }),
+      fetch('/api/insurance-companies').then(async r => {
+        if (!r.ok && r.status !== 401) throw new Error(`insurance-companies: ${r.status}`);
+        return r.ok ? r.json() : { companies: [] };
+      }),
     ]).then(([rd, cd]) => {
-      if (rd.status === 'fulfilled') setRules(rd.value.rules ?? []);
+      if (rd.status === 'rejected') {
+        if ((rd.reason as Error)?.message === 'session_expired') {
+          setLoadError('Your session has expired. Please refresh the page and log in again.');
+        } else {
+          setLoadError(`Failed to load billing rules: ${(rd.reason as Error)?.message ?? 'unknown error'}`);
+        }
+        setRules([]);
+      } else {
+        setRules(rd.value.rules ?? []);
+      }
       if (cd.status === 'fulfilled') setCompanies(cd.value.companies ?? []);
     }).finally(() => setLoading(false));
   }, []);
@@ -486,6 +504,14 @@ function BusinessRulesTab() {
           }}>{t.label}</button>
         ))}
       </div>
+
+      {loadError && (
+        <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '12px 16px', marginBottom: 16, color: '#b91c1c', fontSize: 13, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span>🔐</span>
+          <span>{loadError}</span>
+          <button onClick={load} style={{ marginLeft: 'auto', padding: '4px 12px', background: '#b91c1c', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: 12 }}>Retry</button>
+        </div>
+      )}
 
       {loading ? (
         <div className="loading-center"><div className="spinner" /></div>

@@ -19,7 +19,11 @@ let _secretBytes: Uint8Array | null = null;
 
 async function getSecretBytes(): Promise<Uint8Array> {
   if (_secretBytes) return _secretBytes;
+  // Key Vault first (prod w/ Azure), then JWT_SECRET env var, then dev fallback.
+  // middleware.ts uses JWT_SECRET directly (Edge runtime can't call Azure SDK) —
+  // ensure JWT_SECRET is set on Vercel to match Key Vault secret when Key Vault is configured.
   const secret = await getSecret('iat-jwt-secret', 'JWT_SECRET')
+    ?? process.env.JWT_SECRET
     ?? 'iat-dev-secret-change-in-production-32c';
   _secretBytes = new TextEncoder().encode(secret);
   return _secretBytes;
