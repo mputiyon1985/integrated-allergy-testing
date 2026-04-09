@@ -1141,6 +1141,14 @@ export default function SettingsPage() {
               ),
             },
             {
+              id: 'billing-rules',
+              content: (
+                <div style={tileStyle('#f59e0b')}>
+                  <BillingRulesContent />
+                </div>
+              ),
+            },
+            {
               id: 'audit-log',
               content: (
                 <div style={tileStyle('#2563eb')}>
