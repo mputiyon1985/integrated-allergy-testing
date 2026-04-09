@@ -15,8 +15,6 @@ const SECTION_IDS = [
   'system-status',
   'app-version',
   'quick-links',
-  'icd10-codes',
-  'cpt-codes',
   'billing-rules',
   'audit-log',
 ] as const;
@@ -44,7 +42,7 @@ function buildDefaultLayouts(): ResponsiveLayouts {
     minH: 6,
   }));
   // Override full-width sections
-  const fullWidth: SectionId[] = ['icd10-codes', 'cpt-codes', 'billing-rules', 'audit-log'];
+  const fullWidth: SectionId[] = ['billing-rules', 'audit-log'];
   lg.forEach(item => {
     if (fullWidth.includes(item.i as SectionId)) {
       item.x = 0;
@@ -1124,22 +1122,7 @@ export default function SettingsPage() {
                 </div>
               ),
             },
-            {
-              id: 'icd10-codes',
-              content: (
-                <div style={tileStyle('#0d9488')}>
-                  <Icd10CodesContent />
-                </div>
-              ),
-            },
-            {
-              id: 'cpt-codes',
-              content: (
-                <div style={tileStyle('#7c3aed')}>
-                  <CptCodesContent />
-                </div>
-              ),
-            },
+            // ICD-10 and CPT codes moved to Insurance Hub (/insurance)
             {
               id: 'billing-rules',
               content: (
