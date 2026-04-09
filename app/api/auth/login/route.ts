@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { randomUUID } from 'crypto'
 import prisma from '@/lib/db'
+import { log } from '@/lib/audit'
 
 export const dynamic = 'force-dynamic'
 
@@ -31,6 +32,7 @@ export async function POST(req: NextRequest) {
     // Verify password
     const valid = await bcrypt.compare(password, user.passwordHash)
     if (!valid) {
+      await log({ action: 'LOGIN_FAILED', entity: 'StaffUser', entityId: user.id, details: `Failed password attempt for ${email}` })
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 })
     }
 

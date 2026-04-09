@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import speakeasy from 'speakeasy'
 import prisma from '@/lib/db'
 import { signSession } from '@/lib/auth/session'
+import { log } from '@/lib/audit'
 
 export const dynamic = 'force-dynamic'
 
@@ -45,6 +46,7 @@ export async function POST(req: NextRequest) {
     })
 
     if (!valid) {
+      await log({ action: 'LOGIN_FAILED', entity: 'StaffUser', entityId: user.id, details: `MFA verification failed for ${user.email}` })
       return NextResponse.json({ error: 'Invalid code' }, { status: 400 })
     }
 
@@ -64,6 +66,8 @@ export async function POST(req: NextRequest) {
       role: user.role,
       name: user.name,
     })
+
+    await log({ action: 'LOGIN_SUCCESS', entity: 'StaffUser', entityId: user.id, details: `${user.name} (${user.email}) logged in via MFA` })
 
     const response = NextResponse.json({ success: true, role: user.role, name: user.name })
     response.cookies.set('iat_session', token, {

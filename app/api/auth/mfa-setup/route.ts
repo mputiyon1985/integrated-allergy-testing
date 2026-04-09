@@ -12,6 +12,7 @@ import speakeasy from 'speakeasy'
 import QRCode from 'qrcode'
 import prisma from '@/lib/db'
 import { signSession } from '@/lib/auth/session'
+import { log } from '@/lib/audit'
 
 export const dynamic = 'force-dynamic'
 
@@ -94,6 +95,8 @@ export async function POST(req: NextRequest) {
       role: user.role,
       name: user.name,
     })
+
+    await log({ action: 'LOGIN_SUCCESS', entity: 'StaffUser', entityId: user.id, details: `${user.name} (${user.email}) completed MFA setup and logged in` })
 
     const response = NextResponse.json({ success: true, role: user.role, name: user.name })
     response.cookies.set('iat_session', token, {
