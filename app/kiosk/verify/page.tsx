@@ -80,7 +80,7 @@ function VerifyContent() {
             nextStep = 'consent';
           } else {
             // Need to watch videos first
-            nextStep = 'videos';
+            nextStep = 'services';
           }
 
           // Store next step so update-info knows where to continue
@@ -100,7 +100,7 @@ function VerifyContent() {
             router.push(`/kiosk/${nextStep}`);
           }
         } catch {
-          router.push('/kiosk/videos');
+          router.push('/kiosk/services');
         }
       } else {
         // Name doesn't match — automatically take them to new patient registration

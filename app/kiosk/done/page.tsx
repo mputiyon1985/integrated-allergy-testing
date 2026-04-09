@@ -20,6 +20,7 @@ const KIOSK_KEYS = [
   'kiosk_videos_watched',
   'kiosk_watched_for_patient',
   'kiosk_next_step',
+  'kiosk_service_reason',
 ] as const
 
 /** Parse patient name and ID from sessionStorage. */
@@ -48,14 +49,16 @@ export default function DonePage() {
     // Defer state update to next tick to avoid cascading-render lint warning
     Promise.resolve().then(() => setPatientName(name))
 
-    // Auto-add to waiting room with video count
+    // Auto-add to waiting room with video count and service reason
     if (patientId && name) {
       const watchedRaw = sessionStorage.getItem('kiosk_videos_watched') || '0';
       const videosWatched = parseInt(watchedRaw, 10) || 0;
+      const serviceReason = sessionStorage.getItem('kiosk_service_reason');
+      const reasonName = serviceReason ? (() => { try { return JSON.parse(serviceReason).name; } catch { return null; } })() : null;
       fetch('/api/waiting-room', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ patientId, patientName: name, videosWatched }),
+        body: JSON.stringify({ patientId, patientName: name, videosWatched, notes: reasonName }),
       }).catch(() => {})
     }
   }, [])
