@@ -19,6 +19,9 @@ const navItems = [
     { href: '/locations', label: 'Locations', icon: '📍' },
   ]},
   { href: '/kiosk', label: 'Kiosk', icon: '📲' },
+];
+
+const bottomNavItems = [
   { href: '/settings', label: 'Settings', icon: '⚙️' },
 ];
 
@@ -164,6 +167,24 @@ function Sidebar({ open, onClose, userName }: { open: boolean; onClose: () => vo
         </div>
 
         <UserCard userName={userName} />
+
+        {/* Settings at bottom — above copyright */}
+        <div style={{ padding: '4px 8px' }}>
+          {bottomNavItems.map(item => {
+            const isActive = pathname.startsWith(item.href);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`nav-link ${isActive ? 'active' : ''}`}
+                onClick={onClose}
+              >
+                <span className="nav-icon">{item.icon}</span>
+                {item.label}
+              </Link>
+            );
+          })}
+        </div>
 
         <div className="sidebar-footer">
           © 2026 Integrated Allergy Testing
