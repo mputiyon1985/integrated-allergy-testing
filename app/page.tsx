@@ -112,7 +112,7 @@ export default function DashboardPage() {
   const dragItem = useRef<string | null>(null);
   const dragOver = useRef<string | null>(null);
 
-  function handleGridLayoutChange(_layout: Layout[], allLayouts: ResponsiveLayouts) {
+  function handleGridLayoutChange(_layout: Layout, allLayouts: ResponsiveLayouts) {
     setGridLayouts(allLayouts);
     try { localStorage.setItem(LAYOUT_KEY, JSON.stringify(allLayouts)); } catch {}
   }
@@ -286,38 +286,58 @@ export default function DashboardPage() {
 
       <div className="page-body">
         {editMode && (
-          <div style={{ background: '#fefce8', border: '1px solid #fde68a', borderRadius: 8, padding: '10px 16px', marginBottom: 16, fontSize: 13, color: '#92400e', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
-            ⊞ Drag section headers to reorder. Full tile resize coming soon. Click <strong>"✅ Done"</strong> when finished.
+          <div style={{ background: '#fefce8', border: '1px solid #fde68a', borderRadius: 8, padding: '10px 16px', marginBottom: 8, fontSize: 13, color: '#92400e', fontWeight: 600 }}>
+            ⊞ Drag tiles to move · Drag bottom-right corner to resize · Click <strong>"✅ Done"</strong> to save
           </div>
         )}
-        {/* KPI Cards */}
-        <div className="kpi-grid">
-          <div className="kpi-card">
-            <div className="kpi-icon">👥</div>
-            <div className="kpi-label">Total Patients</div>
-            {loading ? <div className="spinner" /> : <div className="kpi-value">{patientCount ?? 0}</div>}
-          </div>
-          <div className="kpi-card" style={{ borderTop: `4px solid #f59e0b` }}>
-            <div className="kpi-icon">⏳</div>
-            <div className="kpi-label">Waiting</div>
-            <div className="kpi-value" style={{ color: waitingCount > 0 ? '#b45309' : '#64748b' }}>{waitingCount}</div>
-          </div>
-          <div className="kpi-card" style={{ borderTop: `4px solid #0d9488` }}>
-            <div className="kpi-icon">🩺</div>
-            <div className="kpi-label">In Service</div>
-            <div className="kpi-value" style={{ color: inServiceCount > 0 ? '#0d9488' : '#64748b' }}>{inServiceCount}</div>
-          </div>
-          <div className="kpi-card">
-            <div className="kpi-icon">👩‍⚕️</div>
-            <div className="kpi-label">Nurses</div>
-            {loading ? <div className="spinner" /> : <div className="kpi-value">{nurseCount ?? 0}</div>}
-          </div>
-          <div className="kpi-card">
-            <div className="kpi-icon">🏥</div>
-            <div className="kpi-label">Today&apos;s Encounters</div>
-            <div className="kpi-value">{encounterCount ?? 0}</div>
-          </div>
-        </div>
+        <DashboardGrid
+          layouts={gridLayouts}
+          editMode={editMode}
+          onLayoutChange={handleGridLayoutChange}
+          tiles={[
+            {
+              id: 'kpi-patients',
+              content: (
+                <div className="kpi-card" style={{ height: '100%', border: editMode ? '2px dashed #f59e0b' : undefined }}>
+                  <div className="kpi-icon">👥</div>
+                  <div className="kpi-label">Total Patients</div>
+                  {loading ? <div className="spinner" /> : <div className="kpi-value">{patientCount ?? 0}</div>}
+                </div>
+              ),
+            },
+            {
+              id: 'kpi-waiting',
+              content: (
+                <div className="kpi-card" style={{ height: '100%', borderTop: '4px solid #f59e0b', border: editMode ? '2px dashed #f59e0b' : undefined }}>
+                  <div className="kpi-icon">⏳</div>
+                  <div className="kpi-label">Waiting</div>
+                  <div className="kpi-value" style={{ color: waitingCount > 0 ? '#b45309' : '#64748b' }}>{waitingCount}</div>
+                </div>
+              ),
+            },
+            {
+              id: 'kpi-inservice',
+              content: (
+                <div className="kpi-card" style={{ height: '100%', borderTop: '4px solid #0d9488', border: editMode ? '2px dashed #f59e0b' : undefined }}>
+                  <div className="kpi-icon">🩺</div>
+                  <div className="kpi-label">In Service</div>
+                  <div className="kpi-value" style={{ color: inServiceCount > 0 ? '#0d9488' : '#64748b' }}>{inServiceCount}</div>
+                </div>
+              ),
+            },
+            {
+              id: 'kpi-encounters',
+              content: (
+                <div className="kpi-card" style={{ height: '100%', border: editMode ? '2px dashed #f59e0b' : undefined }}>
+                  <div className="kpi-icon">🏥</div>
+                  <div className="kpi-label">Today&apos;s Encounters</div>
+                  {loading ? <div className="spinner" /> : <div className="kpi-value">{encounterCount ?? 0}</div>}
+                </div>
+              ),
+            },
+          ]}
+        />
+        {/* Waiting Room Board */}
 
         {/* Waiting Room Board */}
         <div className="card" style={{ marginBottom: 24 }}>
