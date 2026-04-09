@@ -70,7 +70,7 @@ function Sidebar({ open, onClose, userName }: { open: boolean; onClose: () => vo
             alt="Integrated Allergy Testing"
             style={{ height: 55, width: 'auto', display: 'block' }}
           />
-          <div style={{ color: '#9ca3af', fontSize: 10, marginTop: 4 }}>Testing Suite v3.1.0</div>
+          <div style={{ color: '#9ca3af', fontSize: 10, marginTop: 4 }}>Testing Suite v3.4.2</div>
         </div>
 
         <div className="sidebar-nav">
