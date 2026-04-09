@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 interface Practice {
   id: string;
   name: string;
+  key: string | null;
   shortName: string | null;
   npi: string | null;
   taxId: string | null;
@@ -28,6 +29,7 @@ interface Location {
 
 const EMPTY_FORM = {
   name: '',
+  key: '',
   shortName: '',
   npi: '',
   taxId: '',
@@ -91,6 +93,7 @@ export default function PracticesPage() {
     setEditPractice(p);
     setForm({
       name: p.name ?? '',
+      key: p.key ?? '',
       shortName: p.shortName ?? '',
       npi: p.npi ?? '',
       taxId: p.taxId ?? '',
@@ -109,8 +112,30 @@ export default function PracticesPage() {
     setFormError('');
   }
 
+  function generatePracticeKey(name: string, existing: Practice[]): string {
+    const initials = name.trim().toUpperCase()
+      .replace(/[^A-Z0-9\s]/g, '')
+      .split(/\s+/).filter(Boolean)
+      .map(w => w[0]).join('').substring(0, 6) || 'PRC';
+    // No number suffix — just initials (e.g. IAT, MAP, NVAA)
+    // If duplicate, append number
+    let key = initials;
+    let n = 1;
+    while (existing.some(p => p.key === key && p.id !== editPractice?.id)) {
+      key = `${initials}-${n++}`;
+    }
+    return key;
+  }
+
   function setField(field: keyof FormData, value: string) {
-    setForm(prev => ({ ...prev, [field]: value }));
+    setForm(prev => {
+      const next = { ...prev, [field]: value };
+      // Auto-generate key from name when adding (not editing)
+      if (field === 'name' && !editPractice) {
+        next.key = generatePracticeKey(value, practices);
+      }
+      return next;
+    });
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -127,6 +152,7 @@ export default function PracticesPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: form.name.trim(),
+          key: form.key.trim() || undefined,
           shortName: form.shortName.trim() || null,
           npi: form.npi.trim() || null,
           taxId: form.taxId.trim() || null,
@@ -315,6 +341,19 @@ export default function PracticesPage() {
                 </div>
 
                 <div className="form-row form-row-2">
+                  <div className="form-group">
+                    <label className="form-label">Practice Key</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={form.key}
+                      readOnly
+                      disabled={!!editPractice}
+                      style={{ background: '#f8fafc', color: '#64748b', cursor: editPractice ? 'not-allowed' : 'default', fontFamily: 'monospace', fontSize: 13 }}
+                      title={editPractice ? 'Key cannot be changed after creation' : 'Auto-generated from name initials'}
+                    />
+                    {!editPractice && <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 3 }}>Auto-generated from initials (e.g. IAT, MAP)</div>}
+                  </div>
                   <div className="form-group">
                     <label className="form-label">Short Name / Abbreviation</label>
                     <input

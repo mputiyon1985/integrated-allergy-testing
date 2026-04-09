@@ -13,6 +13,7 @@ export const dynamic = 'force-dynamic'
 
 const createSchema = z.object({
   name: z.string().min(1).max(200),
+  key: z.string().max(20).optional(),
   shortName: z.string().max(20).optional(),
   phone: z.string().max(30).optional(),
   fax: z.string().max(30).optional(),
