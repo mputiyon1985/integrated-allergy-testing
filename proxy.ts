@@ -11,7 +11,7 @@ function getSecret(): Uint8Array {
     process.env.JWT_SECRET ?? 'iat-dev-secret-change-in-production-32c'
   )
 }
-const PUBLIC_PATHS = ['/login', '/api/auth', '/consent', '/api/consent', '/api/health', '/kiosk', '/kiosk/update-info', '/kiosk/services', '/api/kiosk', '/api/appointment-reasons', '/_next', '/favicon']
+const PUBLIC_PATHS = ['/login', '/api/auth', '/consent', '/api/consent', '/api/health', '/kiosk', '/kiosk/update-info', '/kiosk/services', '/api/kiosk', '/api/appointment-reasons', '/api/insurance-companies', '/_next', '/favicon']
 // Note: /api/seed and /api/allergens/seed are intentionally excluded from PUBLIC_PATHS in production.
 // Waiting room GET (staff) is auth-protected; only POST is kiosk-facing and handled via /api/waiting-room POST with DB validation.
 

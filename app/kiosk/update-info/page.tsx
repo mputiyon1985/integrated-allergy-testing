@@ -15,6 +15,22 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
+function InsuranceDropdown({ value, onChange, inputStyle }: { value: string; onChange: (v: string) => void; inputStyle: React.CSSProperties }) {
+  const [options, setOptions] = useState<{id: string; name: string}[]>([]);
+  useEffect(() => {
+    fetch('/api/insurance-companies?all=true').then(r => r.ok ? r.json() : { companies: [] })
+      .then(d => setOptions((d.companies ?? []).filter((c: {active: boolean}) => c.active))).catch(() => {});
+  }, []);
+  return (
+    <select style={{ ...inputStyle, cursor: 'pointer' }} value={value} onChange={e => onChange(e.target.value)}>
+      <option value="">— Select insurance provider —</option>
+      {options.map(ins => <option key={ins.id} value={ins.name}>{ins.name}</option>)}
+      <option value="Other">Other / Not Listed</option>
+      <option value="Self Pay">Self Pay / No Insurance</option>
+    </select>
+  );
+}
+
 interface PatientData {
   id: string;
   firstName: string;
@@ -332,15 +348,7 @@ export default function UpdateInfoPage() {
         {needInsurance && (
           <div>
             <label style={labelStyle}>🏥 Insurance Provider</label>
-            <input
-              type="text"
-              value={insuranceProvider}
-              onChange={e => setInsuranceProvider(e.target.value)}
-              placeholder="BlueCross BlueShield"
-              style={inputStyle}
-              onFocus={e => (e.target.style.borderColor = '#0d9488')}
-              onBlur={e => (e.target.style.borderColor = '#cbd5e1')}
-            />
+            <InsuranceDropdown value={insuranceProvider} onChange={setInsuranceProvider} inputStyle={inputStyle} />
             <label style={labelStyle}>Member ID / Policy Number</label>
             <input
               type="text"

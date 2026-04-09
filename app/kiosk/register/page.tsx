@@ -4,7 +4,7 @@
  */
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 function formatDob(dob: string): string {
@@ -51,6 +51,14 @@ function RegisterContent() {
   // Step 4: Insurance
   const [insuranceProvider, setInsuranceProvider] = useState('');
   const [insuranceId, setInsuranceId] = useState('');
+  const [insuranceOptions, setInsuranceOptions] = useState<{id: string; name: string}[]>([]);
+
+  useEffect(() => {
+    fetch('/api/insurance-companies?all=true')
+      .then(r => r.ok ? r.json() : { companies: [] })
+      .then(d => setInsuranceOptions((d.companies ?? []).filter((c: {active: boolean}) => c.active)))
+      .catch(() => {});
+  }, []);
 
   async function handleRegister() {
     setLoading(true); setError('');
@@ -214,10 +222,14 @@ function RegisterContent() {
               <div style={{ fontSize: 18, fontWeight: 700, color: '#0055A5', marginBottom: 20 }}>Insurance Information</div>
               <div style={{ marginBottom: 12 }}>
                 <label style={labelStyle}>Insurance Provider</label>
-                <input style={inputStyle} value={insuranceProvider} onChange={e => setInsuranceProvider(e.target.value)}
-                  placeholder="e.g. BlueCross BlueShield"
-                  onFocus={e => e.target.style.borderColor = '#0d9488'}
-                  onBlur={e => e.target.style.borderColor = '#e2e8f0'} />
+                <select style={{ ...inputStyle, cursor: 'pointer' }} value={insuranceProvider} onChange={e => setInsuranceProvider(e.target.value)}>
+                  <option value="">— Select insurance provider —</option>
+                  {insuranceOptions.map(ins => (
+                    <option key={ins.id} value={ins.name}>{ins.name}</option>
+                  ))}
+                  <option value="Other">Other / Not Listed</option>
+                  <option value="Self Pay">Self Pay / No Insurance</option>
+                </select>
               </div>
               <div style={{ marginBottom: 20 }}>
                 <label style={labelStyle}>Member / Insurance ID</label>
