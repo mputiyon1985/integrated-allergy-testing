@@ -305,19 +305,19 @@ export default function DashboardPage() {
           <thead>
             <tr style={{ background: '#f8fafc' }}>
               {['Patient', 'Wait Time', 'Videos', 'Status', 'Nurse', 'Actions'].map(h => (
-                <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontSize: 12, fontWeight: 700, color: '#374151', textTransform: 'uppercase', borderBottom: '2px solid #e2e8f0' }}>{h}</th>
+                <th key={h} style={{ padding: '5px 10px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#374151', textTransform: 'uppercase', borderBottom: '2px solid #e2e8f0' }}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {waiting.map(e => (
               <tr key={e.id} style={{ borderBottom: '1px solid #f1f5f9', background: e.status === 'in-service' ? '#e8f9f7' : 'white' }}>
-                <td style={{ padding: '12px 14px' }}>
+                <td style={{ padding: '5px 10px' }}>
                   <div style={{ fontWeight: 700 }}>{e.patientName}</div>
-                  {e.notes && <div style={{ fontSize: 12, color: '#64748b' }}>{e.notes}</div>}
+                  {e.notes && <div style={{ fontSize: 11, color: '#64748b' }}>{e.notes}</div>}
                 </td>
-                <td style={{ padding: '12px 14px', color: '#64748b', fontSize: 13 }}>{waitTime(e.checkedInAt)}</td>
-                <td style={{ padding: '12px 14px' }}>
+                <td style={{ padding: '5px 10px', color: '#64748b', fontSize: 12 }}>{waitTime(e.checkedInAt)}</td>
+                <td style={{ padding: '5px 10px' }}>
                   {e.videoAckBy ? (
                     <div>
                       <div style={{ fontSize: 12, fontWeight: 700, color: '#15803d' }}>✅ {e.videosWatched ?? 0} watched</div>
@@ -325,7 +325,7 @@ export default function DashboardPage() {
                     </div>
                   ) : (
                     <div>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: (e.videosWatched ?? 0) > 0 ? '#b45309' : '#94a3b8', marginBottom: 4 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: (e.videosWatched ?? 0) > 0 ? '#b45309' : '#94a3b8', marginBottom: 2 }}>
                         {(e.videosWatched ?? 0) > 0 ? `📺 ${e.videosWatched} video${(e.videosWatched ?? 0) !== 1 ? 's' : ''} watched` : '—'}
                       </div>
                       {(e.videosWatched ?? 0) > 0 && (
@@ -344,20 +344,20 @@ export default function DashboardPage() {
                     </div>
                   )}
                 </td>
-                <td style={{ padding: '12px 14px' }}>
+                <td style={{ padding: '5px 10px' }}>
                   <span style={{
-                    fontWeight: 700, fontSize: 12, padding: '3px 10px', borderRadius: 999,
+                    fontWeight: 700, fontSize: 11, padding: '2px 8px', borderRadius: 999,
                     background: e.status === 'waiting' ? '#fef9c3' : '#d1fae5',
                     color: e.status === 'waiting' ? '#b45309' : '#065f46',
                   }}>
                     {e.status === 'waiting' ? '⏳ Waiting' : '🩺 In Service'}
                   </span>
                 </td>
-                <td style={{ padding: '12px 14px', color: '#64748b', fontSize: 13 }}>
+                <td style={{ padding: '5px 10px', color: '#64748b', fontSize: 12 }}>
                   {e.status === 'waiting' ? (
                     <select onChange={ev => ev.target.value && updateStatus(e.id, 'in-service', ev.target.value)}
                       defaultValue=""
-                      style={{ fontSize: 13, padding: '4px 8px', borderRadius: 6, border: '1px solid #e2e8f0', cursor: 'pointer' }}>
+                      style={{ fontSize: 12, padding: '2px 6px', borderRadius: 6, border: '1px solid #e2e8f0', cursor: 'pointer' }}>
                       <option value="">— Call Patient —</option>
                       {nurses.map(n => <option key={n.id} value={n.name}>{n.title ? `${n.title} ${n.name}` : n.name}</option>)}
                     </select>
@@ -365,16 +365,16 @@ export default function DashboardPage() {
                     <span style={{ fontWeight: 600, color: '#0d9488' }}>{e.nurseName ?? '—'}</span>
                   )}
                 </td>
-                <td style={{ padding: '12px 14px' }}>
+                <td style={{ padding: '5px 10px' }}>
                   {e.status === 'in-service' && (
-                    <div style={{ display: 'flex', gap: 6 }}>
+                    <div style={{ display: 'flex', gap: 4 }}>
                       <button onClick={() => { setQuickLogEntry(e); setQuickLogForm({ activityType: 'note', notes: '' }); }}
-                        style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid #0d9488', background: '#fff', color: '#0d9488', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                        style={{ padding: '3px 8px', borderRadius: 6, border: '1px solid #0d9488', background: '#fff', color: '#0d9488', fontSize: 11, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
                         + Log
                       </button>
                       <button onClick={() => updateStatus(e.id, 'complete')}
                         disabled={updatingId === e.id}
-                        style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: '#0055A5', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                        style={{ padding: '3px 10px', borderRadius: 6, border: 'none', background: '#0055A5', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
                         {updatingId === e.id ? '⏳' : '✅ Complete'}
                       </button>
                     </div>
