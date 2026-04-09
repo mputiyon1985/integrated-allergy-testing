@@ -1,0 +1,55 @@
+/**
+ * @file /api/staff/[id]/reset-password — Admin password reset
+ * @description Allows an admin to reset a staff user's password. Hashes server-side.
+ * @security Requires authenticated session with admin role
+ */
+import { NextRequest, NextResponse } from 'next/server'
+import bcrypt from 'bcryptjs'
+import prisma from '@/lib/db'
+import { verifySession } from '@/lib/auth/session'
+
+export const dynamic = 'force-dynamic'
+
+export async function POST(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await verifySession(req)
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (session.role !== 'admin') return NextResponse.json({ error: 'Forbidden: admin only' }, { status: 403 })
+
+  const { id } = await params
+
+  try {
+    const body = await req.json() as { password?: string }
+    const { password } = body
+
+    if (!password || password.length < 8) {
+      return NextResponse.json({ error: 'Password must be at least 8 characters' }, { status: 400 })
+    }
+
+    const existing = await prisma.staffUser.findUnique({ where: { id } })
+    if (!existing) return NextResponse.json({ error: 'User not found' }, { status: 404 })
+
+    const passwordHash = await bcrypt.hash(password, 12)
+
+    await prisma.staffUser.update({
+      where: { id },
+      data: { passwordHash },
+    })
+
+    await prisma.auditLog.create({
+      data: {
+        action: 'STAFF_PASSWORD_RESET',
+        entity: 'StaffUser',
+        entityId: id,
+        details: `Password reset by admin ${session.email as string}`,
+      },
+    })
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('POST /api/staff/[id]/reset-password error:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+}
