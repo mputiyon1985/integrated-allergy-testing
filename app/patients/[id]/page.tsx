@@ -103,6 +103,7 @@ export default function PatientDetailPage() {
   const [editingRows, setEditingRows] = useState<Record<string, { reaction: number; wheal: string; flare: string; notes: string }>>({});
   const [savingRows, setSavingRows] = useState<Record<string, boolean>>({});
   const [icd10Codes, setIcd10Codes] = useState<{ id: string; code: string; description: string }[]>([]);
+  const [insurerOptions, setInsurerOptions] = useState<{ id: string; name: string; type: string }[]>([]);
   const locationsFetchedRef = useRef(false);
 
   const load = useCallback(() => {
@@ -121,6 +122,7 @@ export default function PatientDetailPage() {
     if (editing && !locationsFetchedRef.current) {
       locationsFetchedRef.current = true;
       fetch('/api/icd10-codes').then(r => r.ok ? r.json() : { codes: [] }).then(d => setIcd10Codes(d.codes ?? [])).catch(() => {});
+      fetch('/api/insurance-companies').then(r => r.ok ? r.json() : { companies: [] }).then(d => setInsurerOptions((d as { companies?: { id: string; name: string; type: string }[] }).companies ?? [])).catch(() => {});
       Promise.allSettled([
         fetch('/api/locations').then(r => r.ok ? r.json() : []),
         fetch('/api/doctors').then(r => r.ok ? r.json() : []),
@@ -694,7 +696,17 @@ ${sectionsHtml}
                 <Field label="State" field="state" />
                 <Field label="ZIP" field="zip" />
                 <div style={{ gridColumn: '1/-1', fontWeight: 700, fontSize: 12, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em', paddingTop: 8, borderTop: '1px solid #e2e8f0' }}>Insurance</div>
-                <Field label="Insurance Provider" field="insuranceProvider" />
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Insurance Provider</label>
+                  <select className="form-input" value={editForm.insuranceProvider ?? ''} onChange={e => setEditForm(f => ({ ...f, insuranceProvider: e.target.value }))}>
+                    <option value="">— Select Insurance —</option>
+                    {insurerOptions.map(ins => (
+                      <option key={ins.id} value={ins.name}>{ins.name}</option>
+                    ))}
+                    <option value="Self-Pay">Self-Pay / Uninsured</option>
+                    <option value="Other">Other (specify in notes)</option>
+                  </select>
+                </div>
                 <Field label="Member ID" field="insuranceId" />
                 <Field label="Group #" field="insuranceGroup" />
                 <div style={{ gridColumn: '1/-1', fontWeight: 700, fontSize: 12, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em', paddingTop: 8, borderTop: '1px solid #e2e8f0' }}>Emergency Contact</div>

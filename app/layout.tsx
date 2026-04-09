@@ -11,6 +11,7 @@ const navItems = [
   { href: '/patients', label: 'Patients', icon: '👥' },
   { href: '/testing', label: 'Testing', icon: '🧪' },
   { href: '/calendar', label: 'Calendar', icon: '📅' },
+  { href: '/insurance', label: 'Insurance', icon: '🏥' },
 
   { href: '/doctors', label: 'Doctors', icon: '👨‍⚕️' },
   { href: '/nurses', label: 'Nurses', icon: '👩‍⚕️' },

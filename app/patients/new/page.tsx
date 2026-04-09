@@ -6,11 +6,13 @@ import Link from 'next/link';
 
 interface Doctor { id: string; name: string; }
 interface Location { id: string; name: string; }
+interface InsuranceCompany { id: string; name: string; type: string; }
 
 export default function NewPatientPage() {
   const router = useRouter();
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
+  const [insurers, setInsurers] = useState<InsuranceCompany[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -40,6 +42,10 @@ export default function NewPatientPage() {
     fetch('/api/doctors')
       .then(r => r.ok ? r.json() : [])
       .then((d: Doctor[] | { doctors?: Doctor[] }) => setDoctors(Array.isArray(d) ? d : (d.doctors ?? [])))
+      .catch(() => {});
+    fetch('/api/insurance-companies')
+      .then(r => r.ok ? r.json() : { companies: [] })
+      .then((d: { companies?: InsuranceCompany[] }) => setInsurers(d.companies ?? []))
       .catch(() => {});
     fetch('/api/locations')
       .then(r => r.ok ? r.json() : [])
@@ -249,8 +255,14 @@ export default function NewPatientPage() {
             <div className="form-row form-row-2">
               <div className="form-group">
                 <label className="form-label">Insurance Provider</label>
-                <input type="text" className="form-input" placeholder="e.g. BlueCross BlueShield"
-                  value={form.insuranceProvider} onChange={e => setField('insuranceProvider', e.target.value)} style={{ fontSize: 16 }} />
+                <select className="form-input" value={form.insuranceProvider} onChange={e => setField('insuranceProvider', e.target.value)} style={{ fontSize: 16 }}>
+                  <option value="">— Select Insurance —</option>
+                  {insurers.map(ins => (
+                    <option key={ins.id} value={ins.name}>{ins.name}</option>
+                  ))}
+                  <option value="Self-Pay">Self-Pay / Uninsured</option>
+                  <option value="Other">Other (specify in notes)</option>
+                </select>
               </div>
               <div className="form-group">
                 <label className="form-label">Insurance ID / Member ID</label>

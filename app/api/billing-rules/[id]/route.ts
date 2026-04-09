@@ -9,20 +9,11 @@ export async function PUT(
   try {
     const { id } = await params
     const body = await req.json()
-
     const {
-      name,
-      description,
-      insuranceType,
-      ruleType,
-      cptCode,
-      relatedCptCode,
-      maxUnits,
-      requiresModifier,
-      requiresDxMatch,
-      warningMessage,
-      active,
-      sortOrder,
+      name, description, insuranceType, ruleType,
+      cptCode, relatedCptCode, maxUnits, requiresModifier,
+      requiresDxMatch, warningMessage, severity, overrideRequiresAdmin,
+      active, sortOrder,
     } = body
 
     const updated = await prisma.billingRule.update({
@@ -38,6 +29,8 @@ export async function PUT(
         ...(requiresModifier !== undefined && { requiresModifier }),
         ...(requiresDxMatch !== undefined && { requiresDxMatch }),
         ...(warningMessage !== undefined && { warningMessage }),
+        ...(severity !== undefined && { severity }),
+        ...(overrideRequiresAdmin !== undefined && { overrideRequiresAdmin }),
         ...(active !== undefined && { active }),
         ...(sortOrder !== undefined && { sortOrder }),
       },
@@ -57,7 +50,6 @@ export async function DELETE(
   try {
     const { id } = await params
 
-    // Soft delete — set active = false
     const updated = await prisma.billingRule.update({
       where: { id },
       data: { active: false },

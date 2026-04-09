@@ -7,14 +7,16 @@ interface EvaluateBody {
   insuranceType: string
   cptCodes: string[]
   icd10Code?: string
-  encounterDate: string
+  encounterDate?: string
 }
 
-interface BillingWarning {
+interface RuleResult {
   ruleId: string
   ruleName: string
   message: string
-  severity: 'warning'
+  severity: 'warning' | 'hard_block' | 'info'
+  overrideRequiresAdmin: boolean
+  ruleType: string
 }
 
 export async function POST(req: NextRequest) {
@@ -33,14 +35,13 @@ export async function POST(req: NextRequest) {
     const rules = await prisma.billingRule.findMany({
       where: {
         active: true,
-        insuranceType: {
-          in: [insuranceType.toLowerCase(), 'all'],
-        },
+        insuranceType: { in: [insuranceType.toLowerCase(), 'all'] },
       },
       orderBy: { sortOrder: 'asc' },
     })
 
-    const warnings: BillingWarning[] = []
+    const warnings: RuleResult[] = []
+    const hardBlocks: RuleResult[] = []
 
     for (const rule of rules) {
       if (!rule.cptCode) continue
@@ -52,15 +53,27 @@ export async function POST(req: NextRequest) {
       // If rule requires dx match, skip if no icd10Code provided
       if (rule.requiresDxMatch && !icd10Code) continue
 
-      warnings.push({
+      const result: RuleResult = {
         ruleId: rule.id,
         ruleName: rule.name,
         message: rule.warningMessage,
-        severity: 'warning',
-      })
+        severity: (rule.severity ?? 'warning') as 'warning' | 'hard_block' | 'info',
+        overrideRequiresAdmin: rule.overrideRequiresAdmin ?? false,
+        ruleType: rule.ruleType,
+      }
+
+      if (rule.severity === 'hard_block') {
+        hardBlocks.push(result)
+      } else {
+        warnings.push(result)
+      }
     }
 
-    return NextResponse.json({ warnings })
+    // canProceed: false if any hard_block exists (admin can override if overrideRequiresAdmin=false,
+    // but only the billing system decides — we just report the state)
+    const canProceed = hardBlocks.length === 0
+
+    return NextResponse.json({ warnings, hardBlocks, canProceed })
   } catch (err) {
     console.error('[BillingRules] evaluate error:', err)
     return NextResponse.json({ error: 'Failed to evaluate billing rules' }, { status: 500 })

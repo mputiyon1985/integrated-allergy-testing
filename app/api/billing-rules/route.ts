@@ -6,13 +6,12 @@ export async function GET(req: NextRequest) {
   try {
     const insuranceType = req.nextUrl.searchParams.get('insuranceType') ?? ''
     const all = req.nextUrl.searchParams.get('all') === 'true'
+    const severity = req.nextUrl.searchParams.get('severity') ?? ''
 
     const where: Record<string, unknown> = {
       ...(all ? {} : { active: true }),
-    }
-
-    if (insuranceType) {
-      where.insuranceType = insuranceType
+      ...(insuranceType ? { insuranceType } : {}),
+      ...(severity ? { severity } : {}),
     }
 
     const rules = await prisma.billingRule.findMany({
@@ -31,18 +30,10 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
     const {
-      name,
-      description,
-      insuranceType,
-      ruleType,
-      cptCode,
-      relatedCptCode,
-      maxUnits,
-      requiresModifier,
-      requiresDxMatch,
-      warningMessage,
-      active,
-      sortOrder,
+      name, description, insuranceType, ruleType,
+      cptCode, relatedCptCode, maxUnits, requiresModifier,
+      requiresDxMatch, warningMessage, severity, overrideRequiresAdmin,
+      active, sortOrder,
     } = body
 
     if (!name || !ruleType || !warningMessage) {
@@ -64,6 +55,8 @@ export async function POST(req: NextRequest) {
         requiresModifier: requiresModifier ?? null,
         requiresDxMatch: requiresDxMatch ?? false,
         warningMessage,
+        severity: severity ?? 'warning',
+        overrideRequiresAdmin: overrideRequiresAdmin ?? false,
         active: active ?? true,
         sortOrder: sortOrder ?? 0,
       },
