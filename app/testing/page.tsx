@@ -174,6 +174,17 @@ function buildRows(allergens: Allergen[]): AllergenEntry[] {
   }));
 }
 
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 641);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+  return isMobile;
+}
+
 function TestingPageInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -184,6 +195,7 @@ function TestingPageInner() {
   const [prick, setPrick] = useState<PanelState>({ rows: [] });
   const [intradermal, setIntradermal] = useState<PanelState>({ rows: [] });
   const [testTab, setTestTab] = useState<'prick' | 'intradermal'>('prick');
+  const isMobile = useIsMobile();
   const [loadingPatient, setLoadingPatient] = useState(false);
   const [loadingAllergens, setLoadingAllergens] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -649,11 +661,13 @@ ${(prickResults.length + idResults.length) === 0 ? '<p style="color:#94a3b8; tex
               state={prick}
               onChange={rows => setPrick({ rows })}
               locked={!testedBy}
-              columns={3}
+              columns={isMobile ? 1 : 3}
             />
           ) : (
             <div style={{ display: 'flex', gap: 0, width: '100%' }}>
-              <div style={{ width: '33.33%', minWidth: 0 }}>
+              <div style={{ width: 'min(33.33%, 100%)', minWidth: 0, maxWidth: '100%' }}
+                   className="intradermal-panel-wrapper">
+                <style>{`@media(max-width:640px){.intradermal-panel-wrapper{width:100%!important}}`}</style>
                 <TestPanel
                   title="Intradermal Test"
                   color="#7c3aed"

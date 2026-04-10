@@ -842,3 +842,84 @@ tbody tr:hover {
   background: #fff;
   z-index: 10;
 }
+
+/* ============================================================
+   Mobile Testing Page Fixes
+   ============================================================ */
+
+@media (max-width: 640px) {
+  /* Testing grid — compact on mobile */
+  .testing-compact-grid {
+    grid-template-columns: 14px minmax(50px, 1fr) 32px 108px 36px 36px !important;
+    gap: 1px !important;
+    font-size: 10px !important;
+  }
+
+  /* Grade buttons — smaller on mobile */
+  .grade-btn-mobile {
+    width: 16px !important;
+    height: 16px !important;
+    font-size: 8px !important;
+  }
+
+  /* Page header on mobile */
+  .page-header {
+    padding: 12px 12px 12px 60px !important;
+  }
+
+  .page-body {
+    padding: 8px !important;
+  }
+
+  /* Tables — horizontal scroll on mobile */
+  .table-scroll-mobile {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Buttons — full width on mobile */
+  .btn-mobile-full {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Sidebar location selector */
+  .sidebar-location-mobile {
+    font-size: 11px !important;
+  }
+}
+
+/* ============================================================
+   Mobile Dashboard Fixes  
+   ============================================================ */
+
+@media (max-width: 640px) {
+  /* Stats cards — 2 columns on mobile */
+  .stats-grid-mobile {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
+
+  /* Card padding on mobile */
+  .card-mobile-compact {
+    padding: 12px !important;
+  }
+
+  /* Hide non-essential columns on mobile */
+  .hide-mobile {
+    display: none !important;
+  }
+
+  /* Full-width modals on mobile */
+  .modal-mobile {
+    max-width: 100% !important;
+    margin: 0 !important;
+    border-radius: 12px 12px 0 0 !important;
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    max-height: 90vh !important;
+    overflow-y: auto !important;
+  }
+}
