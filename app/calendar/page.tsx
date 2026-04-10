@@ -155,7 +155,11 @@ function CalendarInner() {
       const refDate = view === 'month'
         ? new Date(weekStart.getFullYear(), weekStart.getMonth(), 1)
         : weekStart;
-      const res = await fetch(`/api/iat-appointments?date=${isoDate(refDate)}&range=${view}`);
+      // Filter by active location from sidebar selector
+      let locId = '';
+      try { locId = localStorage.getItem('iat_active_location') ?? ''; } catch {}
+      const locParam = locId ? `&locationId=${locId}` : '';
+      const res = await fetch(`/api/iat-appointments?date=${isoDate(refDate)}&range=${view}${locParam}`);
       if (res.ok) {
         const data = await res.json();
         setAppointments(Array.isArray(data) ? data : []);
@@ -166,6 +170,13 @@ function CalendarInner() {
 
   useEffect(() => {
     loadAppointments();
+  }, [loadAppointments]);
+
+  // Reload when location changes in sidebar
+  useEffect(() => {
+    const handler = () => loadAppointments();
+    window.addEventListener('locationchange', handler);
+    return () => window.removeEventListener('locationchange', handler);
   }, [loadAppointments]);
 
   useEffect(() => {
