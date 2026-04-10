@@ -13,6 +13,7 @@ type NavItem = { href: string; label: string; icon: string; children?: NavItem[]
 const navItems: NavItem[] = [
   { href: '/', label: 'Dashboard', icon: '🏠' },
   { href: '/patients', label: 'Patients', icon: '👥' },
+  { href: '/encounters', label: 'Encounters', icon: '📋' },
   { href: '/testing', label: 'Testing', icon: '🧪' },
   { href: '/calendar', label: 'Calendar', icon: '📅' },
   { href: '/insurance', label: 'Insurance Hub', icon: '🏥' },

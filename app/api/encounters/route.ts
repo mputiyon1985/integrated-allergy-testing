@@ -9,29 +9,38 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const patientId = searchParams.get('patientId')
   const locationId = searchParams.get('locationId')
-  const limit = Math.min(parseInt(searchParams.get('limit') || '50'), 200)
+  const status = searchParams.get('status')
+  const dateFrom = searchParams.get('from')
+  const dateTo = searchParams.get('to')
+  const doctorName = searchParams.get('doctorName')
+  const nurseName = searchParams.get('nurseName')
+  const search = searchParams.get('search')
+  const limit = Math.min(parseInt(searchParams.get('limit') || '100'), 500)
+
   try {
-    const status = searchParams.get('status')
-    let sql = `SELECT id, patientId, encounterDate, doctorId, doctorName, nurseId, nurseName,
-                      chiefComplaint, status, waitMinutes, inServiceMinutes, locationId,
-                      signedBy, signedAt, billedAt, cptSummary, diagnosisCode, createdAt
-               FROM Encounter
-               WHERE deletedAt IS NULL`
+    let sql = `SELECT e.id, e.patientId, e.encounterDate, e.doctorName, e.nurseName,
+                      e.chiefComplaint, e.status, e.locationId, e.diagnosisCode,
+                      e.signedBy, e.signedAt, e.billedAt, e.createdAt,
+                      p.name as patientName, p.insuranceProvider
+               FROM Encounter e
+               LEFT JOIN Patient p ON e.patientId = p.id
+               WHERE e.deletedAt IS NULL`
     const values: unknown[] = []
 
-    if (patientId) {
-      sql += ' AND patientId=?'
-      values.push(patientId)
+    if (patientId) { sql += ' AND e.patientId=?'; values.push(patientId) }
+    if (locationId) { sql += ' AND e.locationId=?'; values.push(locationId) }
+    if (status) { sql += ' AND e.status=?'; values.push(status) }
+    if (doctorName) { sql += ' AND e.doctorName=?'; values.push(doctorName) }
+    if (nurseName) { sql += ' AND e.nurseName=?'; values.push(nurseName) }
+    if (dateFrom) { sql += ' AND date(e.encounterDate) >= ?'; values.push(dateFrom) }
+    if (dateTo) { sql += ' AND date(e.encounterDate) <= ?'; values.push(dateTo) }
+    if (search) {
+      sql += ' AND (p.name LIKE ? OR e.chiefComplaint LIKE ? OR e.diagnosisCode LIKE ? OR e.doctorName LIKE ? OR e.nurseName LIKE ?)'
+      const s = `%${search}%`
+      values.push(s, s, s, s, s)
     }
-    if (locationId) {
-      sql += ' AND locationId=?'
-      values.push(locationId)
-    }
-    if (status) {
-      sql += ' AND status=?'
-      values.push(status)
-    }
-    sql += ' ORDER BY encounterDate DESC'
+
+    sql += ' ORDER BY e.encounterDate DESC'
     sql += ` LIMIT ${limit}`
 
     const encounters = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(sql, ...values)
