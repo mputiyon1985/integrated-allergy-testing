@@ -34,43 +34,30 @@ export async function GET(request: NextRequest) {
     const locationId = searchParams.get('locationId')
     const practiceId = searchParams.get('practiceId')
 
-    // Build location filter: specific location > all locations in practice > all
-    let locationFilter = {}
+    // Build raw SQL query — Prisma ORM crashes on DateTime fields in Turso
+    let sql = `SELECT id, patientId, name, dob, status, doctorId, clinicLocation, physician,
+                      phone, email, insuranceProvider, insuranceId, insuranceGroup,
+                      emergencyName, emergencyPhone, emergencyRelation, locationId, createdAt
+               FROM Patient WHERE deletedAt IS NULL`
+    const values: unknown[] = []
+
     if (locationId) {
-      locationFilter = { locationId }
+      sql += ' AND locationId = ?'
+      values.push(locationId)
     } else if (practiceId) {
-      // Get all location IDs for this practice via raw SQL
-      const locs = await prisma.$queryRaw<Array<{id: string}>>`SELECT id FROM Location WHERE practiceId = ${practiceId} AND deletedAt IS NULL`
-      const locIds = locs.map(l => l.id)
-      locationFilter = locIds.length > 0 ? { locationId: { in: locIds } } : {}
+      sql += ' AND locationId IN (SELECT id FROM Location WHERE practiceId = ? AND deletedAt IS NULL)'
+      values.push(practiceId)
     }
 
-    const patients = await prisma.patient.findMany({
-      where: {
-        deletedAt: null,
-        ...locationFilter,
-        ...(search
-          ? {
-              OR: [
-                { name: { contains: search } },
-                { patientId: { contains: search } },
-                { email: { contains: search } },
-              ],
-            }
-          : {}),
-      },
-      select: {
-        id: true,
-        patientId: true,
-        name: true,
-        dob: true,
-        status: true,
-        doctorId: true,
-        clinicLocation: true,
-        physician: true,
-      },
-      orderBy: [{ name: 'asc' }],
-    })
+    if (search) {
+      sql += ' AND (name LIKE ? OR patientId LIKE ? OR email LIKE ?)'
+      const s = `%${search}%`
+      values.push(s, s, s)
+    }
+
+    sql += ' ORDER BY name ASC LIMIT 500'
+
+    const patients = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(sql, ...values)
 
     return NextResponse.json(patients, { headers: HIPAA_HEADERS })
   } catch (error) {
