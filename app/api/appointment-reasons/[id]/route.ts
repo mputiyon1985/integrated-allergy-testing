@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
+import { requirePermission } from '@/lib/api-permissions'
 
 export const dynamic = 'force-dynamic'
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const denied = await requirePermission(req, 'settings_manage')
+  if (denied) return denied
   try {
     const { id } = await params
     const body = await req.json() as { name?: string; color?: string; duration?: number; active?: boolean; sortOrder?: number }
@@ -24,7 +27,9 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   }
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const denied = await requirePermission(req, 'settings_manage')
+  if (denied) return denied
   try {
     const { id } = await params
     await prisma.appointmentReason.update({ where: { id }, data: { active: false } })

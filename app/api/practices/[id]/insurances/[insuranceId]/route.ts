@@ -4,11 +4,14 @@
 export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
+import { requirePermission } from '@/lib/api-permissions'
 
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string; insuranceId: string }> }
 ) {
+  const denied = await requirePermission(req, 'practices_manage')
+  if (denied) return denied
   try {
     const { id: practiceId, insuranceId } = await params
 

@@ -7,6 +7,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
+import { requirePermission } from '@/lib/api-permissions'
 
 export const dynamic = 'force-dynamic'
 
@@ -26,6 +27,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const denied = await requirePermission(req, 'settings_manage')
+  if (denied) return denied
   try {
     const body = await req.json() as { name: string; color?: string; duration?: number; sortOrder?: number; active?: boolean }
     if (!body.name?.trim()) return NextResponse.json({ error: 'Name is required' }, { status: 400 })

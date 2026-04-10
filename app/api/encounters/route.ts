@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import { HIPAA_HEADERS } from '@/lib/hipaaHeaders'
+import { requirePermission } from '@/lib/api-permissions'
 export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest) {
@@ -23,6 +24,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const denied = await requirePermission(req, 'encounters_create')
+  if (denied) return denied
   try {
     const body = await req.json() as Record<string, unknown>
     if (!body.patientId || !body.chiefComplaint) return NextResponse.json({ error: 'patientId and chiefComplaint required' }, { status: 400 })

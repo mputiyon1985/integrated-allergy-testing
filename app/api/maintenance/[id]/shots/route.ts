@@ -3,6 +3,8 @@ import prisma from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 
+const SHOTS_ALLOWED_ROLES = ['admin', 'provider', 'clinical_staff', 'office_manager']
+
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -24,6 +26,10 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const userRole = req.headers.get('x-user-role') ?? ''
+  if (!SHOTS_ALLOWED_ROLES.includes(userRole)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
   try {
     const { id: vialId } = await params
     const body = await req.json()

@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import { HIPAA_HEADERS } from '@/lib/hipaaHeaders'
+import { requirePermission } from '@/lib/api-permissions'
 
 export const dynamic = 'force-dynamic'
 
@@ -50,6 +51,8 @@ export async function GET() {
 }
 
 export async function PUT(req: NextRequest) {
+  const denied = await requirePermission(req, 'settings_manage')
+  if (denied) return denied
   try {
     const body = await req.json() as { day: string; hours: string }
     const { day, hours } = body

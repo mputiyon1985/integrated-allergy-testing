@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import { createId } from '@paralleldrive/cuid2'
+import { requirePermission } from '@/lib/api-permissions'
 
 export async function GET(
   _req: NextRequest,
@@ -65,6 +66,8 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const denied = await requirePermission(req, 'practices_manage')
+  if (denied) return denied
   try {
     const { id: practiceId } = await params
     const body = await req.json() as { insuranceId?: string }

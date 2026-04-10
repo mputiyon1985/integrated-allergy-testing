@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
+import { requirePermission } from '@/lib/api-permissions'
 
 export async function GET(req: NextRequest) {
   try {
@@ -32,6 +33,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const denied = await requirePermission(req, 'cpt_codes_manage')
+  if (denied) return denied
   try {
     const body = await req.json()
     const { code, description, category, defaultFee, active, sortOrder } = body

@@ -3,10 +3,16 @@ import prisma from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 
+const MAINTENANCE_ALLOWED_ROLES = ['admin', 'provider', 'clinical_staff', 'office_manager']
+
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const userRole = req.headers.get('x-user-role') ?? ''
+  if (!MAINTENANCE_ALLOWED_ROLES.includes(userRole)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
   try {
     const { id } = await params
     const body = await req.json()
@@ -42,9 +48,13 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const userRole = req.headers.get('x-user-role') ?? ''
+  if (!MAINTENANCE_ALLOWED_ROLES.includes(userRole)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
   try {
     const { id } = await params
     await prisma.$executeRawUnsafe(

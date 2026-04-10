@@ -4,6 +4,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import prisma from '@/lib/db'
+import { requirePermission } from '@/lib/api-permissions'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,6 +23,8 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const denied = await requirePermission(request, 'appointments_edit')
+  if (denied) return denied
   try {
     const { id } = await params
     const body = await request.json()
@@ -78,9 +81,11 @@ export async function PUT(
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const denied = await requirePermission(request, 'appointments_delete')
+  if (denied) return denied
   try {
     const { id } = await params
 

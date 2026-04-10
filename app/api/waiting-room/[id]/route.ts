@@ -8,12 +8,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import { HIPAA_HEADERS } from '@/lib/hipaaHeaders'
+import { requirePermission } from '@/lib/api-permissions'
 
 export const dynamic = 'force-dynamic'
 
 const VALID_STATUSES = ['waiting', 'in-service', 'complete', 'cancelled']
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const denied = await requirePermission(req, 'waiting_room_manage')
+  if (denied) return denied
   try {
     const { id } = await params
     const body = await req.json() as { status?: string; nurseName?: string; nurseId?: string; videoAckBy?: string; notes?: string | null }
@@ -66,7 +69,9 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   }
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const denied = await requirePermission(req, 'waiting_room_manage')
+  if (denied) return denied
   try {
     const { id } = await params
     // Soft delete — mark as complete rather than removing
