@@ -1,6 +1,6 @@
 {
   "name": "integrated-allergy-testing",
-  "version": "4.0.0",
+  "version": "3.7.0",
   "private": true,
   "scripts": {
     "dev": "next dev --turbo",
