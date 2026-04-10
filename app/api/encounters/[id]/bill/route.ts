@@ -15,7 +15,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   try {
     const { id } = await params
 
-    const existing = await prisma.encounter.findFirst({ where: { id, deletedAt: null } })
+    const existingRows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+      `SELECT id, status, patientId FROM Encounter WHERE id=? AND deletedAt IS NULL LIMIT 1`,
+      id
+    )
+    const existing = existingRows[0] ?? null
     if (!existing) return NextResponse.json({ error: 'Encounter not found' }, { status: 404 })
     if (existing.status !== 'signed') {
       return NextResponse.json({ error: 'Encounter must be signed before billing' }, { status: 409 })
@@ -36,7 +40,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         action: 'ENCOUNTER_BILLED',
         entity: 'Encounter',
         entityId: id,
-        patientId: existing.patientId,
+        patientId: existing.patientId as string,
         details: 'Encounter marked as billed',
       }
     }).catch(() => {})

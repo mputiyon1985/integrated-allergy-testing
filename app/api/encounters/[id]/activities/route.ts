@@ -6,6 +6,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { randomUUID } from 'crypto'
 import prisma from '@/lib/db'
 import { HIPAA_HEADERS } from '@/lib/hipaaHeaders'
 import { requirePermission } from '@/lib/api-permissions'
@@ -33,18 +34,23 @@ export async function GET(
   try {
     const { id } = await params
 
-    const encounter = await prisma.encounter.findFirst({
-      where: { id, deletedAt: null },
-      select: { id: true, patientId: true },
-    })
-    if (!encounter) {
+    const encounterRows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+      `SELECT id, patientId FROM Encounter WHERE id=? AND deletedAt IS NULL LIMIT 1`,
+      id
+    )
+    if (!encounterRows.length) {
       return NextResponse.json({ error: 'Encounter not found' }, { status: 404 })
     }
 
-    const activities = await prisma.encounterActivity.findMany({
-      where: { encounterId: id, deletedAt: null },
-      orderBy: { timestamp: 'asc' },
-    })
+    const activities = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+      `SELECT id, encounterId, patientId, type, timestamp, performedBy, notes,
+              subjectiveNotes, objectiveNotes, assessment, plan,
+              linkedTestResultId, linkedConsentId, linkedAppointmentId, createdAt, updatedAt
+       FROM EncounterActivity
+       WHERE encounterId=? AND deletedAt IS NULL
+       ORDER BY timestamp ASC`,
+      id
+    )
 
     return NextResponse.json(activities, { headers: HIPAA_HEADERS })
   } catch (error) {
@@ -62,13 +68,14 @@ export async function POST(
   try {
     const { id } = await params
 
-    const encounter = await prisma.encounter.findFirst({
-      where: { id, deletedAt: null },
-      select: { id: true, patientId: true },
-    })
-    if (!encounter) {
+    const encounterRows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+      `SELECT id, patientId FROM Encounter WHERE id=? AND deletedAt IS NULL LIMIT 1`,
+      id
+    )
+    if (!encounterRows.length) {
       return NextResponse.json({ error: 'Encounter not found' }, { status: 404 })
     }
+    const encounter = encounterRows[0]
 
     const body = await request.json()
     const result = createActivitySchema.safeParse(body)
@@ -82,23 +89,37 @@ export async function POST(
       linkedAppointmentId, timestamp,
     } = result.data
 
-    const activity = await prisma.encounterActivity.create({
-      data: {
-        encounterId: id,
-        patientId: encounter.patientId,
-        type,
-        timestamp: timestamp ? new Date(timestamp) : new Date(),
-        performedBy: performedBy ?? null,
-        notes: notes ?? null,
-        subjectiveNotes: subjectiveNotes ?? null,
-        objectiveNotes: objectiveNotes ?? null,
-        assessment: assessment ?? null,
-        plan: plan ?? null,
-        linkedTestResultId: linkedTestResultId ?? null,
-        linkedConsentId: linkedConsentId ?? null,
-        linkedAppointmentId: linkedAppointmentId ?? null,
-      },
-    })
+    const activityId = randomUUID()
+    const ts = timestamp ? timestamp : new Date().toISOString()
+
+    await prisma.$executeRawUnsafe(
+      `INSERT INTO EncounterActivity
+        (id, encounterId, patientId, type, timestamp, performedBy, notes,
+         subjectiveNotes, objectiveNotes, assessment, plan,
+         linkedTestResultId, linkedConsentId, linkedAppointmentId,
+         createdAt, updatedAt)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)`,
+      activityId,
+      id,
+      encounter.patientId as string,
+      type,
+      ts,
+      performedBy ?? null,
+      notes ?? null,
+      subjectiveNotes ?? null,
+      objectiveNotes ?? null,
+      assessment ?? null,
+      plan ?? null,
+      linkedTestResultId ?? null,
+      linkedConsentId ?? null,
+      linkedAppointmentId ?? null
+    )
+
+    const activityRows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+      `SELECT * FROM EncounterActivity WHERE id=? LIMIT 1`,
+      activityId
+    )
+    const activity = activityRows[0] ?? { id: activityId }
 
     return NextResponse.json(activity, { status: 201, headers: HIPAA_HEADERS })
   } catch (error) {

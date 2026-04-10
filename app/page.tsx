@@ -35,6 +35,22 @@ const DEFAULT_LAYOUTS: ResponsiveLayouts = {
     { i: 'waiting-room',   x: 0, y: 8,  w: 6, h: 14 },
     { i: 'appointments',   x: 0, y: 22, w: 6, h: 10 },
   ],
+  xs: [
+    { i: 'kpi-patients',   x: 0, y: 0,  w: 2, h: 4 },
+    { i: 'kpi-waiting',    x: 2, y: 0,  w: 2, h: 4 },
+    { i: 'kpi-inservice',  x: 0, y: 4,  w: 2, h: 4 },
+    { i: 'kpi-encounters', x: 2, y: 4,  w: 2, h: 4 },
+    { i: 'waiting-room',   x: 0, y: 8,  w: 4, h: 14 },
+    { i: 'appointments',   x: 0, y: 22, w: 4, h: 10 },
+  ],
+  xxs: [
+    { i: 'kpi-patients',   x: 0, y: 0,  w: 2, h: 4 },
+    { i: 'kpi-waiting',    x: 0, y: 4,  w: 2, h: 4 },
+    { i: 'kpi-inservice',  x: 0, y: 8,  w: 2, h: 4 },
+    { i: 'kpi-encounters', x: 0, y: 12, w: 2, h: 4 },
+    { i: 'waiting-room',   x: 0, y: 16, w: 2, h: 14 },
+    { i: 'appointments',   x: 0, y: 30, w: 2, h: 10 },
+  ],
 };
 
 function loadLayouts(): ResponsiveLayouts {
@@ -545,14 +561,14 @@ export default function DashboardPage() {
           <div className="page-title">{userName ? `Welcome, ${userName}` : 'Dashboard'}</div>
           <div className="page-subtitle">{today}</div>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <Link href="/patients/new" className="btn-secondary btn-sm btn">+ Register Patient</Link>
-          <Link href="/testing" className="btn btn-sm">🧪 Start Testing</Link>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          <Link href="/patients/new" className="btn-secondary btn-sm btn">+ Register</Link>
+          <Link href="/testing" className="btn btn-sm">🧪 Test</Link>
           <button onClick={() => setEditMode(v => !v)}
-            style={{ padding: '6px 14px', borderRadius: 8, border: `1px solid ${editMode ? '#f59e0b' : '#e2e8f0'}`, background: editMode ? '#fefce8' : '#fff', color: editMode ? '#b45309' : '#374151', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
-            {editMode ? '✅ Done' : '⊞ Edit Layout'}
+            style={{ padding: '6px 12px', borderRadius: 8, border: `1px solid ${editMode ? '#f59e0b' : '#e2e8f0'}`, background: editMode ? '#fefce8' : '#fff', color: editMode ? '#b45309' : '#374151', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+            {editMode ? '✅ Done' : '⊞ Edit'}
           </button>
-          <Link href="/calendar?action=new" className="btn btn-sm" style={{ background: '#7c3aed', color: '#fff' }}>📅 Book Appointment</Link>
+          <Link href="/calendar?action=new" className="btn btn-sm" style={{ background: '#7c3aed', color: '#fff' }}>📅 Book</Link>
         </div>
       </div>
 
