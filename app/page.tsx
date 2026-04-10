@@ -290,37 +290,49 @@ export default function DashboardPage() {
     loadWaiting();
     setGridLayouts(loadLayouts());
 
-    // SSE: real-time waiting room updates (replaces 10s polling)
-    const locId = getActiveLocation();
-    const practId = !locId ? getActivePractice() : '';
-    const sseParams = locId
-      ? `?locationId=${locId}`
-      : practId
-        ? `?practiceId=${practId}`
-        : '';
+    // SSE: real-time waiting room updates with exponential backoff reconnect
     let evtSource: EventSource | null = null;
-    try {
-      evtSource = new EventSource(`/api/waiting-room/stream${sseParams}`);
-      evtSource.onmessage = (e) => {
-        try {
-          const entries = JSON.parse(e.data);
-          setWaiting(entries ?? []);
-        } catch {}
-      };
-      evtSource.onerror = () => {
-        // SSE error: fall back to manual refresh
-        evtSource?.close();
-        evtSource = null;
-      };
-    } catch {
-      // SSE not supported or failed — ignore, manual refresh still works
+    let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
+    let reconnectDelay = 5000; // start at 5s
+
+    function connectSSE() {
+      const locId = getActiveLocation();
+      const practId = !locId ? getActivePractice() : '';
+      const url = locId
+        ? `/api/waiting-room/stream?locationId=${locId}`
+        : practId
+          ? `/api/waiting-room/stream?practiceId=${practId}`
+          : '/api/waiting-room/stream';
+
+      try {
+        evtSource = new EventSource(url);
+        evtSource.onmessage = (e) => {
+          try {
+            const entries = JSON.parse(e.data);
+            setWaiting(entries ?? []);
+            reconnectDelay = 5000; // reset backoff on success
+          } catch {}
+        };
+        evtSource.onerror = () => {
+          evtSource?.close();
+          evtSource = null;
+          // Exponential backoff: 5s, 10s, 20s, 40s, max 60s
+          reconnectDelay = Math.min(reconnectDelay * 2, 60000);
+          reconnectTimeout = setTimeout(connectSSE, reconnectDelay);
+        };
+      } catch {
+        // SSE not supported or failed — ignore, manual refresh still works
+      }
     }
+
+    connectSSE();
 
     // Also listen for manual dashboard reload trigger
     function onReload() { loadData(); }
     window.addEventListener('iat-reload-dashboard', onReload);
     return () => {
       evtSource?.close();
+      if (reconnectTimeout) clearTimeout(reconnectTimeout);
       window.removeEventListener('iat-reload-dashboard', onReload);
     };
   }, [loadWaiting, getActiveLocation]);

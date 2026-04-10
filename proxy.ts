@@ -18,7 +18,21 @@ const PUBLIC_PATHS = ['/login', '/api/auth', '/consent', '/api/consent', '/api/h
 
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl
-  if (PUBLIC_PATHS.some(p => pathname.startsWith(p))) return NextResponse.next()
+  function addSecurityHeaders(response: NextResponse): NextResponse {
+    response.headers.set('X-Frame-Options', 'DENY')
+    response.headers.set('X-Content-Type-Options', 'nosniff')
+    response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
+    response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+    response.headers.set('X-XSS-Protection', '1; mode=block')
+    if (process.env.NODE_ENV === 'production') {
+      response.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains')
+    }
+    return response
+  }
+
+  if (PUBLIC_PATHS.some(p => pathname.startsWith(p))) {
+    return addSecurityHeaders(NextResponse.next())
+  }
 
   const token = req.cookies.get(SESSION_COOKIE)?.value
   if (!token) {
@@ -34,7 +48,7 @@ export async function proxy(req: NextRequest) {
     headers.set('x-user-id', payload.userId as string || '')
     headers.set('x-user-role', payload.role as string || '')
     headers.set('x-location-id', payload.defaultLocationId as string || '')
-    return NextResponse.next({ request: { headers } })
+    return addSecurityHeaders(NextResponse.next({ request: { headers } }))
   } catch {
     if (pathname.startsWith('/api/')) {
       return NextResponse.json({ error: 'Session expired' }, { status: 401 })

@@ -41,7 +41,7 @@ export default function VideosTab() {
     if (!form.title.trim()) { setError('Title is required'); return; }
     setSaving(true); setError('');
     try {
-      const r = await fetch('/api/videos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: form.title, url: form.url || undefined, description: form.description || undefined, category: form.category || undefined, duration: form.duration || undefined }) });
+      const r = await apiFetch('/api/videos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: form.title, url: form.url || undefined, description: form.description || undefined, category: form.category || undefined, duration: form.duration || undefined }) });
       if (!r.ok) throw new Error((await r.json()).error ?? 'Failed to add video');
       setSuccess('Video added successfully!'); setVForm({ ...EMPTY_VIDEO_FORM }); setShowForm(false); loadVideos();
     } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Failed to add video'); }
@@ -53,7 +53,7 @@ export default function VideosTab() {
     if (!editingVideo) return;
     setSaving(true); setError('');
     try {
-      const r = await fetch(`/api/videos/${editingVideo.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: form.title, url: form.url || null, description: form.description || null, category: form.category || null, duration: form.duration || null }) });
+      const r = await apiFetch(`/api/videos/${editingVideo.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: form.title, url: form.url || null, description: form.description || null, category: form.category || null, duration: form.duration || null }) });
       if (!r.ok) throw new Error('Failed to update video');
       setSuccess('Video updated!'); setEditingVideo(null); loadVideos();
     } catch (e: unknown) { setError(e instanceof Error ? e.message : 'Failed to update'); }

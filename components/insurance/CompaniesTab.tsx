@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { InsuranceCompany, EMPTY_COMPANY } from './types';
 import { InsuranceBadge } from './shared';
+import { apiFetch } from '@/lib/api-fetch';
 
 export function CompaniesTab() {
   const [companies, setCompanies] = useState<InsuranceCompany[]>([]);
@@ -38,7 +39,7 @@ export function CompaniesTab() {
     try {
       const url = editingCo ? `/api/insurance-companies/${editingCo.id}` : '/api/insurance-companies';
       const method = editingCo ? 'PUT' : 'POST';
-      await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) });
+      await apiFetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) });
       setModalOpen(false);
       load();
     } catch { /* ignore */ } finally { setSaving(false); }
@@ -46,12 +47,12 @@ export function CompaniesTab() {
 
   async function handleDelete(co: InsuranceCompany) {
     if (!confirm(`Deactivate "${co.name}"?`)) return;
-    await fetch(`/api/insurance-companies/${co.id}`, { method: 'DELETE' });
+    await apiFetch(`/api/insurance-companies/${co.id}`, { method: 'DELETE' });
     load();
   }
 
   async function handleToggle(co: InsuranceCompany) {
-    await fetch(`/api/insurance-companies/${co.id}`, {
+    await apiFetch(`/api/insurance-companies/${co.id}`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ active: !co.active }),
     });

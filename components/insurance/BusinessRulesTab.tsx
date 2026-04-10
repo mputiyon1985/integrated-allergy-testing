@@ -8,6 +8,7 @@ import {
   EMPTY_RULE,
 } from './types';
 import { InsuranceBadge, SeverityBadge, CptBadge } from './shared';
+import { apiFetch } from '@/lib/api-fetch';
 
 export function BusinessRulesTab() {
   const [rules, setRules] = useState<BillingRule[]>([]);
@@ -105,14 +106,14 @@ export function BusinessRulesTab() {
     try {
       const url = editingRule ? `/api/billing-rules/${editingRule.id}` : '/api/billing-rules';
       const method = editingRule ? 'PUT' : 'POST';
-      await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) });
+      await apiFetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) });
       setModalOpen(false);
       load();
     } catch { /* ignore */ } finally { setSaving(false); }
   }
 
   async function handleToggleActive(rule: BillingRule) {
-    await fetch(`/api/billing-rules/${rule.id}`, {
+    await apiFetch(`/api/billing-rules/${rule.id}`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ active: !rule.active }),
     });
@@ -121,7 +122,7 @@ export function BusinessRulesTab() {
 
   async function handleDelete(rule: BillingRule) {
     if (!confirm(`Deactivate rule "${rule.name}"?`)) return;
-    await fetch(`/api/billing-rules/${rule.id}`, { method: 'DELETE' });
+    await apiFetch(`/api/billing-rules/${rule.id}`, { method: 'DELETE' });
     load();
   }
 

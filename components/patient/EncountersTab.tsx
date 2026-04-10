@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { getLocationParam } from '@/lib/location-params';
+import { apiFetch } from '@/lib/api-fetch';
 
 // ────────────────────────────────────────────────────────────
 //  Encounter Activity constants
@@ -124,7 +125,7 @@ function ActivityItem({
   async function saveEdit() {
     setSaving(true);
     try {
-      await fetch(`/api/encounter-activities/${act.id}`, {
+      await apiFetch(`/api/encounter-activities/${act.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editForm),
@@ -287,7 +288,7 @@ function AddActivityModal({
     const notesWithCpt = cptInput.trim()
       ? (form.notes ? form.notes + '\nCPT: ' + cptInput.trim() : 'CPT: ' + cptInput.trim())
       : form.notes;
-    await fetch('/api/encounter-activities', {
+    await apiFetch('/api/encounter-activities', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ encounterId, patientId, ...form, notes: notesWithCpt }),
@@ -398,7 +399,7 @@ function ClaimModal({ encounterId, onClose }: { encounterId: string; onClose: ()
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    fetch(`/api/encounters/${encounterId}/claim`, { method: 'POST' })
+    apiFetch(`/api/encounters/${encounterId}/claim`, { method: 'POST' })
       .then(async r => {
         if (!r.ok) { const d = await r.json(); throw new Error(d.error ?? 'Failed'); }
         return r.json();
@@ -751,7 +752,7 @@ function NewEncounterModal({
 
   async function createEncounter() {
     setSaving(true);
-    const res = await fetch('/api/encounters', {
+    const res = await apiFetch('/api/encounters', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ patientId, ...encForm }),
@@ -765,7 +766,7 @@ function NewEncounterModal({
 
   async function createActivity() {
     setSaving(true);
-    await fetch('/api/encounter-activities', {
+    await apiFetch('/api/encounter-activities', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ encounterId: encId, patientId, ...actForm }),

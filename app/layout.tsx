@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { LocationSelector } from '@/components/LocationSelector';
 import { SidebarLocationSelector } from '@/components/SidebarLocationSelector';
 import { apiFetch } from '@/lib/api-fetch';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
@@ -298,7 +299,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <title>Integrated Allergy Testing</title>
       </head>
       <body>
-        <AppShell>{children}</AppShell>
+        <ErrorBoundary>
+          <AppShell>{children}</AppShell>
+        </ErrorBoundary>
       </body>
     </html>
   );

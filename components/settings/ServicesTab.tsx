@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { apiFetch } from '@/lib/api-fetch';
 
 type ServiceRow = {
   id: string;
@@ -68,13 +69,13 @@ export default function ServicesTab() {
     setSaving(true);
     try {
       if (editingService) {
-        await fetch(`/api/appointment-reasons/${editingService.id}`, {
+        await apiFetch(`/api/appointment-reasons/${editingService.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ name: form.name.trim(), color: form.color, duration: form.duration, sortOrder: form.sortOrder, active: form.active }),
         });
       } else {
-        await fetch('/api/appointment-reasons', {
+        await apiFetch('/api/appointment-reasons', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ name: form.name.trim(), color: form.color, duration: form.duration, sortOrder: form.sortOrder, active: form.active }),
@@ -87,7 +88,7 @@ export default function ServicesTab() {
   }
 
   async function toggleActive(svc: ServiceRow) {
-    await fetch(`/api/appointment-reasons/${svc.id}`, {
+    await apiFetch(`/api/appointment-reasons/${svc.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ active: !svc.active }),
@@ -97,7 +98,7 @@ export default function ServicesTab() {
 
   async function deleteService(svc: ServiceRow) {
     if (!confirm(`Delete "${svc.name}"? This will deactivate the service.`)) return;
-    await fetch(`/api/appointment-reasons/${svc.id}`, { method: 'DELETE' }).catch(() => {});
+    await apiFetch(`/api/appointment-reasons/${svc.id}`, { method: 'DELETE' }).catch(() => {});
     load();
   }
 

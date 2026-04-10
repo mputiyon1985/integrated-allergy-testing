@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { apiFetch } from '@/lib/api-fetch';
 
 interface WaitingEntry {
   id: string;
@@ -134,7 +135,7 @@ export default function WaitingRoomTile({
                             const val = ev.target.value;
                             setEditingNoteText(val);
                             try {
-                              await fetch(`/api/waiting-room/${e.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ notes: val || null }) });
+                              await apiFetch(`/api/waiting-room/${e.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ notes: val || null }) });
                             } catch {}
                             setEditingNoteId(null);
                             loadWaiting();
@@ -192,7 +193,7 @@ export default function WaitingRoomTile({
                       <button
                         onClick={async () => {
                           const ackBy = e.nurseName ?? 'Staff';
-                          await fetch(`/api/waiting-room/${e.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ videoAckBy: ackBy }) });
+                          await apiFetch(`/api/waiting-room/${e.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ videoAckBy: ackBy }) });
                           loadWaiting();
                         }}
                         style={{ fontSize: 11, padding: '2px 7px', borderRadius: 6, border: '1px solid #fde68a', background: '#fefce8', cursor: 'pointer', color: '#92400e', fontWeight: 700, whiteSpace: 'nowrap' }}
