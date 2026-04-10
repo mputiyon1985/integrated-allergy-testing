@@ -41,7 +41,7 @@ function UserCard({ userName }: { userName: string }) {
           await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
           window.location.href = '/api/auth/signout?callbackUrl=/login';
         }}
-        style={{ width: '100%', padding: '7px 0', fontSize: 12, color: '#dc2626', background: 'transparent', border: '1px solid #fca5a5', borderRadius: 8, cursor: 'pointer', fontWeight: 700 }}>
+        style={{ width: '100%', padding: '7px 0', fontSize: 12, color: '#dc2626', background: '#fff', border: '1px solid #fca5a5', borderRadius: 8, cursor: 'pointer', fontWeight: 700 }}>
         🚪 Sign Out
       </button>
     </div>
