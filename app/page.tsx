@@ -77,12 +77,6 @@ interface TodayAppointment {
   providerName?: string | null;
 }
 
-const APPT_TYPE_COLORS: Record<string, { bg: string; text: string }> = {
-  'allergy-test': { bg: '#e8f9f7', text: '#0d9488' },
-  'consultation': { bg: '#eff6ff', text: '#1d4ed8' },
-  'follow-up':   { bg: '#f5f3ff', text: '#7c3aed' },
-};
-
 function formatApptTime(iso: string) {
   const d = new Date(iso);
   const h = d.getHours() % 12 || 12;
@@ -90,6 +84,12 @@ function formatApptTime(iso: string) {
   const ampm = d.getHours() >= 12 ? 'pm' : 'am';
   return m > 0 ? `${h}:${String(m).padStart(2,'0')}${ampm}` : `${h}${ampm}`;
 }
+
+const APPT_TYPE_COLORS: Record<string, { bg: string; text: string }> = {
+  'allergy-test': { bg: '#e8f9f7', text: '#0d9488' },
+  'consultation': { bg: '#eff6ff', text: '#1d4ed8' },
+  'follow-up':   { bg: '#f5f3ff', text: '#7c3aed' },
+};
 
 interface WaitingEntry {
   id: string;
@@ -459,20 +459,6 @@ export default function DashboardPage() {
         }
       } catch {}
     }
-  }
-
-  function waitTime(checkedInAt: string) {
-    const mins = Math.floor((Date.now() - new Date(checkedInAt).getTime()) / 60000);
-    if (mins < 1) return 'Just arrived';
-    if (mins === 1) return '1 min';
-    return `${mins} mins`;
-  }
-
-  function inServiceTime(calledAt: string) {
-    const mins = Math.floor((Date.now() - new Date(calledAt).getTime()) / 60000);
-    if (mins < 1) return '< 1 min';
-    if (mins === 1) return '1 min';
-    return `${mins} mins`;
   }
 
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
