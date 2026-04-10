@@ -74,6 +74,8 @@ model Doctor {
   deletedAt     DateTime?
   entityId      String?
   appUserId     String?
+  practiceId    String?
+  locationId    String?
   patients      Patient[]
   dates         DoctorDate[]
 }

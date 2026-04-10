@@ -46,6 +46,8 @@ export async function PUT(
       phone?: string
       clinicLocation?: string
       active?: boolean
+      practiceId?: string | null
+      locationId?: string | null
     }
 
     const existing = await prisma.doctor.findFirst({ where: { id, deletedAt: null } })
@@ -63,6 +65,8 @@ export async function PUT(
         ...(body.phone !== undefined ? { phone: body.phone } : {}),
         ...(body.clinicLocation !== undefined ? { clinicLocation: body.clinicLocation } : {}),
         ...(body.active !== undefined ? { active: body.active } : {}),
+        ...(body.practiceId !== undefined ? { practiceId: body.practiceId } : {}),
+        ...(body.locationId !== undefined ? { locationId: body.locationId } : {}),
       },
     })
 
