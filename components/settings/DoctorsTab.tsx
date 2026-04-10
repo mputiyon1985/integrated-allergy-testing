@@ -34,7 +34,16 @@ export default function DoctorsTab() {
     setLoading(true); setLoadError(null);
     try {
       const [docRes, practiceRes, locRes] = await Promise.all([
-        fetch('/api/doctors?all=1'),
+        (() => {
+          let lp = '';
+          try {
+            const l = localStorage.getItem('iat_active_location');
+            const p = !l ? localStorage.getItem('iat_active_practice_filter') : '';
+            if (l) lp = `&locationId=${l}`;
+            else if (p) lp = `&practiceId=${p}`;
+          } catch {}
+          return fetch(`/api/doctors?all=1${lp}`);
+        })(),
         fetch('/api/practices'),
         fetch('/api/locations?all=1'),
       ]);

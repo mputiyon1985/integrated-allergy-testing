@@ -26,11 +26,13 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const all = searchParams.get('all') === '1'
+    const practiceId = searchParams.get('practiceId')
 
     const locations = await prisma.location.findMany({
       where: {
         deletedAt: null,
         ...(all ? {} : { active: true }),
+        ...(practiceId ? { practiceId } : {}),
       },
       orderBy: { name: 'asc' },
     })

@@ -431,7 +431,14 @@ export default function UsersManagement({ currentUser }: { currentUser: CurrentU
 
   useEffect(() => {
     loadStaff();
-    fetch('/api/locations')
+    (() => {
+      let lp = '';
+      try {
+        const p = localStorage.getItem('iat_active_practice') ?? '';
+        if (p) lp = `?practiceId=${p}`;
+      } catch {}
+      return fetch(`/api/locations${lp}`);
+    })()
       .then(r => r.ok ? r.json() : [])
       .then(d => setLocations(Array.isArray(d) ? d : (d.locations ?? [])))
       .catch(() => {});

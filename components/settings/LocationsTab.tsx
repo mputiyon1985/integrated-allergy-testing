@@ -38,7 +38,12 @@ export default function LocationsTab() {
     setLoading(true);
     setLoadError(null);
     try {
-      const res = await fetch('/api/locations?all=1');
+      let locParam = '';
+      try {
+        const p = localStorage.getItem('iat_active_practice') ?? '';
+        if (p) locParam = `&practiceId=${p}`;
+      } catch {}
+      const res = await fetch(`/api/locations?all=1${locParam}`);
       if (!res.ok) throw new Error(res.status === 401 ? 'session_expired' : `HTTP ${res.status}`);
       const data = await res.json() as Location[];
       setLocations(Array.isArray(data) ? data : []);
