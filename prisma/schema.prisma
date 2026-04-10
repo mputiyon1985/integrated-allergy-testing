@@ -345,6 +345,7 @@ model StaffUser {
   tempToken         String?
   tempTokenExpiry   DateTime?
   defaultLocationId String?
+  allowedLocations  String?   // JSON array of location IDs; null = all locations
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 }

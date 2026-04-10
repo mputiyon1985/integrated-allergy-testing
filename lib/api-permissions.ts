@@ -7,6 +7,26 @@ import { NextRequest, NextResponse } from 'next/server'
 import { hasPermission, Permission } from './permissions'
 import { verifySession } from '@/lib/auth/session'
 
+/**
+ * Returns the allowed location IDs for a user, or null if unrestricted.
+ * Used to enforce location-scoped data access (e.g. BJ Hockney → MAP only).
+ */
+export async function getUserAllowedLocations(userId: string): Promise<string[] | null> {
+  const prisma = (await import('./db')).default
+  const rows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+    `SELECT allowedLocations FROM StaffUser WHERE id=? LIMIT 1`,
+    userId
+  )
+  const raw = rows[0]?.allowedLocations as string | null | undefined
+  if (!raw) return null
+  try {
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed : null
+  } catch {
+    return null
+  }
+}
+
 export async function requirePermission(req: NextRequest, permission: Permission) {
   const session = await verifySession(req)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

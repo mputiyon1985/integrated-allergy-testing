@@ -118,6 +118,7 @@ const EMPTY_FORM = {
   reasonId: '',
   reasonName: '',
   notes: '',
+  providerName: '',
 };
 
 function CalendarInner() {
@@ -128,6 +129,7 @@ function CalendarInner() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [reasons, setReasons] = useState<AppointmentReason[]>([]);
+  const [doctors, setDoctors] = useState<{id:string;name:string;title?:string}[]>([]);
   const [loading, setLoading] = useState(false);
 
   // Modal state
@@ -190,6 +192,13 @@ function CalendarInner() {
     fetch('/api/appointment-reasons')
       .then(r => r.ok ? r.json() : { reasons: [] })
       .then(d => setReasons(Array.isArray(d) ? d : d.reasons ?? []))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    (() => { let lp = ''; try { const l = localStorage.getItem('iat_active_location'); const p = !l ? localStorage.getItem('iat_active_practice_filter') ?? '' : ''; if (l) lp = `&locationId=${l}`; else if (p) lp = `&practiceId=${p}`; } catch {} return fetch(`/api/doctors?all=1${lp}`); })()
+      .then(r => r.ok ? r.json() : [])
+      .then(d => setDoctors(Array.isArray(d) ? d : d.doctors ?? []))
       .catch(() => {});
   }, []);
 
@@ -295,6 +304,7 @@ function CalendarInner() {
       reasonId: reason?.id ?? appt.type,
       reasonName: reason?.name ?? appt.type,
       notes: appt.notes ?? '',
+      providerName: (appt as unknown as {providerName?:string}).providerName ?? '',
     });
     setSelectedAppt(appt);
     setModalMode('add');
@@ -324,6 +334,7 @@ function CalendarInner() {
       endTime: endDt.toISOString(),
       type: selectedReason?.name ?? form.reasonName ?? form.reasonId,
       notes: form.notes || undefined,
+      providerName: form.providerName || undefined,
     };
 
     try {
@@ -894,6 +905,19 @@ function CalendarInner() {
                         <option key={r.id} value={r.id}>
                           {getReasonIcon(r.name)} {r.name} ({r.duration}min)
                         </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Physician */}
+                  <div style={{ marginBottom: 14 }}>
+                    <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 4 }}>Physician</label>
+                    <select value={form.providerName}
+                      onChange={e => setForm(f => ({ ...f, providerName: e.target.value }))}
+                      style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: 14, boxSizing: 'border-box' }}>
+                      <option value="">— Select physician —</option>
+                      {doctors.map(d => (
+                        <option key={d.id} value={d.name}>{d.name}{d.title ? `, ${d.title}` : ''}</option>
                       ))}
                     </select>
                   </div>

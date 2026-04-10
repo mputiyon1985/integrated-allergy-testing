@@ -9,7 +9,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import prisma from '@/lib/db'
 import { HIPAA_HEADERS } from '@/lib/hipaaHeaders'
-import { requirePermission } from '@/lib/api-permissions'
+import { requirePermission, getUserAllowedLocations } from '@/lib/api-permissions'
 
 export const dynamic = 'force-dynamic'
 
@@ -34,6 +34,12 @@ export async function GET(request: NextRequest) {
     const locationId = searchParams.get('locationId')
     const practiceId = searchParams.get('practiceId')
 
+    // ── Location-scoped access enforcement ──
+    const { verifySession } = await import('@/lib/auth/session')
+    const session = await verifySession(request)
+    const sessionUserId = session?.id as string | undefined
+    const allowedLocs = sessionUserId ? await getUserAllowedLocations(sessionUserId) : null
+
     // Build raw SQL query — Prisma ORM crashes on DateTime fields in Turso
     let sql = `SELECT id, patientId, name, dob, status, doctorId, clinicLocation, physician,
                       phone, email, insuranceProvider, insuranceId, insuranceGroup,
@@ -41,7 +47,18 @@ export async function GET(request: NextRequest) {
                FROM Patient WHERE deletedAt IS NULL`
     const values: unknown[] = []
 
-    if (locationId) {
+    if (allowedLocs) {
+      // User has restricted access — enforce allowed locations
+      const effectiveLocId = locationId && allowedLocs.includes(locationId) ? locationId : null
+      if (effectiveLocId) {
+        sql += ' AND locationId = ?'
+        values.push(effectiveLocId)
+      } else {
+        const placeholders = allowedLocs.map(() => '?').join(',')
+        sql += ` AND locationId IN (${placeholders})`
+        values.push(...allowedLocs)
+      }
+    } else if (locationId) {
       sql += ' AND locationId = ?'
       values.push(locationId)
     } else if (practiceId) {

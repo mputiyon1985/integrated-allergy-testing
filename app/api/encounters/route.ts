@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { randomUUID } from 'crypto'
 import prisma from '@/lib/db'
 import { HIPAA_HEADERS } from '@/lib/hipaaHeaders'
-import { requirePermission } from '@/lib/api-permissions'
+import { requirePermission, getUserAllowedLocations } from '@/lib/api-permissions'
 export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest) {
@@ -10,6 +10,12 @@ export async function GET(req: NextRequest) {
   const patientId = searchParams.get('patientId')
   const locationId = searchParams.get('locationId')
   const practiceId = searchParams.get('practiceId')
+
+  // ── Location-scoped access enforcement ──
+  const { verifySession } = await import('@/lib/auth/session')
+  const session = await verifySession(req)
+  const sessionUserId = session?.id as string | undefined
+  const allowedLocs = sessionUserId ? await getUserAllowedLocations(sessionUserId) : null
   const status = searchParams.get('status')
   const dateFrom = searchParams.get('from')
   const dateTo = searchParams.get('to')
