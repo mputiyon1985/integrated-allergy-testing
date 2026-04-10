@@ -4,7 +4,7 @@
  *   POST — Idempotent: skips if allergens already exist.
  * @security Public route — used during initial database setup
  */
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
@@ -43,7 +43,13 @@ const ALLERGENS: { name: string; category: string }[] = [
   { name: 'Milk', category: 'food' },
 ]
 
-export async function POST() {
+export async function POST(req: NextRequest) {
+  // Admin-only guard
+  const userRole = req.headers.get('x-user-role')
+  if (userRole !== 'admin') {
+    return NextResponse.json({ error: 'Forbidden — admin only' }, { status: 403 })
+  }
+
   // Block in production — seed endpoints must not be accessible publicly
   if (process.env.NODE_ENV === 'production') {
     return NextResponse.json({ error: 'Not available in production' }, { status: 403 })
