@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import type { Layout, ResponsiveLayouts } from 'react-grid-layout';
 import UsersManagement from '@/components/settings/UsersManagement';
+import AppManualTab from '@/components/settings/AppManualTab';
 import RolesManagement from '@/components/settings/RolesManagement';
 import AuditLogTab from '@/components/settings/AuditLogTab';
 import ServicesTab from '@/components/settings/ServicesTab';
@@ -110,7 +111,7 @@ function loadSettingsLayouts(): ResponsiveLayouts {
 }
 
 type CurrentUser = { id: string; role: string; email: string; name: string };
-type SettingsTab = 'dashboard' | 'roles' | 'users' | 'audit' | 'services' | 'doctors' | 'nurses' | 'videos' | 'allergens' | 'practices' | 'locations';
+type SettingsTab = 'dashboard' | 'roles' | 'users' | 'audit' | 'services' | 'doctors' | 'nurses' | 'videos' | 'allergens' | 'practices' | 'locations' | 'manual';
 
 export default function SettingsPage() {
   const [editMode, setEditMode] = useState(false);
@@ -216,6 +217,9 @@ export default function SettingsPage() {
           <button style={TAB_STYLE(activeTab === 'audit')} onClick={() => setActiveTab('audit')}>
             📋 Audit Log
           </button>
+          <button style={TAB_STYLE(activeTab === 'manual')} onClick={() => setActiveTab('manual')}>
+            📘 App Manual
+          </button>
         </div>
 
         {/* Roles Tab */}
@@ -234,6 +238,9 @@ export default function SettingsPage() {
 
         {/* Audit Log Tab */}
         {activeTab === 'audit' && <AuditLogTab />}
+
+        {/* App Manual Tab */}
+        {activeTab === 'manual' && <AppManualTab />}
 
         {/* Services Tab */}
         {activeTab === 'services' && <ServicesTab />}
