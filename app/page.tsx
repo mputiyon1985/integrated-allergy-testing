@@ -55,6 +55,10 @@ const DEFAULT_LAYOUTS: ResponsiveLayouts = {
 
 function loadLayouts(): ResponsiveLayouts {
   try {
+    // Purge all old layout keys
+    ['iat-dashboard-layout-v1','iat-dashboard-layout-v2','iat-dashboard-layout-v3'].forEach(k => {
+      try { localStorage.removeItem(k); } catch {}
+    });
     const saved = localStorage.getItem(LAYOUT_KEY);
     if (saved) return JSON.parse(saved);
   } catch {}
