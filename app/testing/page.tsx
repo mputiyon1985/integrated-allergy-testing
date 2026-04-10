@@ -61,7 +61,7 @@ function TestingSetup({ onStart }: {
   useEffect(() => { search(q); }, [q, search]);
 
   useEffect(() => {
-    fetch('/api/nurses')
+    (() => { let lp = ''; try { const l = localStorage.getItem('iat_active_location'); if (l) lp = `?locationId=${l}`; } catch {} return fetch(`/api/nurses${lp}`); })()
       .then(r => r.ok ? r.json() : [])
       .then((d: { id: string; name: string; title?: string }[] | { nurses?: { id: string; name: string; title?: string }[] }) => {
         const list = Array.isArray(d) ? d : (d.nurses ?? []);
