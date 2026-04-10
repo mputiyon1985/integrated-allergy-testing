@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { validateCsrf } from '@/lib/csrf'
 import { jwtVerify } from 'jose'
 
 // NOTE: proxy.ts runs on the Edge runtime — cannot use Azure Key Vault (Node.js SDK).

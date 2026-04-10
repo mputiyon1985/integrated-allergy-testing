@@ -6,6 +6,7 @@
  * @security Public route — no session required
  */
 import { NextRequest, NextResponse } from 'next/server'
+import { generateCsrfToken } from '@/lib/csrf'
 import bcrypt from 'bcryptjs'
 import { randomUUID } from 'crypto'
 import prisma from '@/lib/db'
@@ -92,7 +93,15 @@ export async function POST(req: NextRequest) {
         maxAge: 60 * 60 * 8,
         path: '/',
       })
-      return response
+        // Set CSRF token cookie (non-httpOnly so JS can read it)
+  response.cookies.set('iat_csrf', generateCsrfToken(), {
+    path: '/',
+    sameSite: 'strict',
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 8 * 60 * 60, // 8 hours (matches session)
+    httpOnly: false, // must be readable by JS
+  })
+  return response
     }
 
     // Issue temp token for MFA flow — clear rate limit since password was valid
