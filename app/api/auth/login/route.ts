@@ -23,8 +23,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Email and password required' }, { status: 400 })
     }
 
-    // Find staff user
-    const user = await prisma.staffUser.findUnique({ where: { email } })
+    // Find staff user — raw SQL to avoid Prisma DateTime mismatch on Turso
+    const rows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+      `SELECT id, email, name, role, passwordHash, active, mfaEnabled, mfaSecret, defaultLocationId FROM StaffUser WHERE email=? LIMIT 1`,
+      email
+    )
+    const user = rows[0] ? {
+      id: rows[0].id as string,
+      email: rows[0].email as string,
+      name: rows[0].name as string,
+      role: rows[0].role as string,
+      passwordHash: rows[0].passwordHash as string,
+      active: Boolean(rows[0].active),
+      mfaEnabled: Boolean(rows[0].mfaEnabled),
+      mfaSecret: rows[0].mfaSecret as string | null,
+      defaultLocationId: rows[0].defaultLocationId as string | null,
+    } : null
 
     if (!user || !user.active) {
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 })
