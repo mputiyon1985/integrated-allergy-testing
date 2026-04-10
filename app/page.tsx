@@ -179,17 +179,45 @@ export default function DashboardPage() {
     }
   }, [getActiveLocation]);
 
-  // Re-fetch when location changes
+  // Re-fetch when location changes — use event detail to avoid stale closure
   useEffect(() => {
-    function onLocationChange() {
-      loadWaiting();
-      // Re-run the full data load
+    async function onLocationChange(e: Event) {
+      const detail = (e as CustomEvent<{ locationId?: string; practiceId?: string }>).detail ?? {};
+      const locId = detail.locationId ?? '';
+      const practId = detail.practiceId ?? '';
+
+      // Reload waiting room with fresh location from event
+      try {
+        const url = locId
+          ? `/api/waiting-room?locationId=${locId}`
+          : practId
+            ? `/api/waiting-room?practiceId=${practId}`
+            : '/api/waiting-room';
+        const r = await fetch(url);
+        if (r.ok) {
+          const d = await r.json();
+          setWaiting(d.entries ?? []);
+        }
+      } catch {}
+
+      // Reload appointments with fresh location from event
+      const todayStr = new Date().toISOString().split('T')[0];
+      const locParam = locId ? `&locationId=${locId}` : practId ? `&practiceId=${practId}` : '';
+      try {
+        const r = await fetch(`/api/iat-appointments?date=${todayStr}${locParam}`);
+        if (r.ok) {
+          const d = await r.json();
+          setTodayAppts(Array.isArray(d) ? d : (d.appointments ?? []));
+        }
+      } catch {}
+
+      // Re-run the full data load for KPIs etc
       const ev = new Event('iat-reload-dashboard');
       window.dispatchEvent(ev);
     }
     window.addEventListener('locationchange', onLocationChange);
     return () => window.removeEventListener('locationchange', onLocationChange);
-  }, [loadWaiting]);
+  }, []);
 
   useEffect(() => {
     async function loadData() {
