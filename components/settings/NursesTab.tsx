@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { getLocationParam } from '@/lib/location-params';
+import { apiFetch } from '@/lib/api-fetch';
 
 interface Nurse {
   id: string;
@@ -56,7 +57,7 @@ export default function NursesTab() {
     setSaving(true);
     try {
       const url = editNurse ? `/api/nurses/${editNurse.id}` : '/api/nurses';
-      const res = await fetch(url, { method: editNurse ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: form.name.trim(), title: form.title || undefined, email: form.email || undefined, phone: form.phone || undefined, clinicLocation: form.clinicLocation || undefined }) });
+      const res = await apiFetch(url, { method: editNurse ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: form.name.trim(), title: form.title || undefined, email: form.email || undefined, phone: form.phone || undefined, clinicLocation: form.clinicLocation || undefined }) });
       if (!res.ok) { const data = await res.json().catch(() => ({})); throw new Error(data.error ?? `Request failed: ${res.status}`); }
       closeModal(); await loadNurses();
     } catch (e: unknown) { setFormError(e instanceof Error ? e.message : 'Failed to save'); }
@@ -64,7 +65,7 @@ export default function NursesTab() {
   }
 
   async function toggleActive(nurse: Nurse) {
-    await fetch(`/api/nurses/${nurse.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ active: !nurse.active }) }).catch(() => {});
+    await apiFetch(`/api/nurses/${nurse.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ active: !nurse.active }) }).catch(() => {});
     loadNurses();
   }
 

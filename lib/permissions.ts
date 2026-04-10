@@ -1,3 +1,26 @@
+/**
+ * @file lib/permissions.ts
+ * @description Role-based access control (RBAC) for the IAT staff portal.
+ *
+ * Defines the full set of granular permissions, per-role permission profiles,
+ * and the `hasPermission()` helper used by API middleware and UI guards.
+ *
+ * ## Usage
+ * ```ts
+ * import { hasPermission } from '@/lib/permissions'
+ * if (!hasPermission(session.role, session.permissionOverrides, 'patients_view')) {
+ *   return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+ * }
+ * ```
+ *
+ * @module permissions
+ */
+
+/**
+ * Exhaustive map of all permission keys used in the application.
+ * Grouped by functional domain (patients, clinical, scheduling, billing, admin).
+ * Values equal their keys for use as string literals.
+ */
 export const PERMISSIONS = {
   // Patients
   patients_view: 'patients_view',
@@ -57,6 +80,13 @@ export const PERMISSIONS = {
 
 export type Permission = keyof typeof PERMISSIONS
 
+/**
+ * Per-role permission profiles.
+ * Maps each staff role to its default set of allowed permissions.
+ * Roles: `admin`, `provider`, `clinical_staff`, `front_desk`, `billing`, `office_manager`.
+ *
+ * Permission overrides (per-user) can extend or restrict these defaults via `hasPermission()`.
+ */
 export const ROLE_PROFILES: Record<string, Permission[]> = {
   admin: Object.keys(PERMISSIONS) as Permission[],
 
@@ -135,6 +165,26 @@ export const ROLE_LABELS: Record<string, string> = {
   office_manager: 'Office Manager',
 }
 
+/**
+ * Checks whether a staff user has a specific permission.
+ *
+ * Resolution order:
+ * 1. `admin` role always returns `true`.
+ * 2. Per-user JSON overrides (`userPermissionOverrides`) take precedence over role defaults.
+ * 3. Falls back to the role's default profile in `ROLE_PROFILES`.
+ *
+ * @param userRole - The staff member's role string (e.g. `'clinical_staff'`).
+ * @param userPermissionOverrides - Optional JSON string of `{ [permission]: boolean }` overrides.
+ * @param permission - The permission key to check (e.g. `'patients_view'`).
+ * @returns `true` if the user has the permission, `false` otherwise.
+ *
+ * @example
+ * ```ts
+ * hasPermission('front_desk', null, 'patients_view')     // true
+ * hasPermission('front_desk', null, 'dosing_administer') // false
+ * hasPermission('billing', '{"reports_view":false}', 'reports_view') // false (override)
+ * ```
+ */
 export function hasPermission(
   userRole: string,
   userPermissionOverrides: string | null | undefined,

@@ -97,7 +97,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(patients, { headers: HIPAA_HEADERS })
   } catch (error) {
-    console.error('GET /api/patients error:', error)
+    console.error('[api/patients:GET]', { error: error instanceof Error ? error.message : String(error), timestamp: new Date().toISOString() })
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -160,7 +160,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(patient, { status: 201, headers: HIPAA_HEADERS })
   } catch (error) {
-    console.error('POST /api/patients error:', error)
+    console.error('[api/patients:POST]', { error: error instanceof Error ? error.message : String(error), timestamp: new Date().toISOString() })
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

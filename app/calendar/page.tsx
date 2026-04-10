@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { getLocationParam } from '@/lib/location-params';
+import { apiFetch } from '@/lib/api-fetch';
 
 interface Appointment {
   id: string;
@@ -339,13 +340,13 @@ function CalendarInner() {
     try {
       let res;
       if (editMode && selectedAppt) {
-        res = await fetch(`/api/iat-appointments/${selectedAppt.id}`, {
+        res = await apiFetch(`/api/iat-appointments/${selectedAppt.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body),
         });
       } else {
-        res = await fetch('/api/iat-appointments', {
+        res = await apiFetch('/api/iat-appointments', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body),
@@ -367,13 +368,13 @@ function CalendarInner() {
 
   async function handleDelete(id: string) {
     if (!confirm('Delete this appointment?')) return;
-    await fetch(`/api/iat-appointments/${id}`, { method: 'DELETE' });
+    await apiFetch(`/api/iat-appointments/${id}`, { method: 'DELETE' });
     setShowModal(false);
     loadAppointments();
   }
 
   async function handleStatusChange(id: string, status: string) {
-    await fetch(`/api/iat-appointments/${id}`, {
+    await apiFetch(`/api/iat-appointments/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status }),

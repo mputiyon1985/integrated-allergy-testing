@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { apiFetch } from '@/lib/api-fetch';
 
 interface EmailTemplate {
   id: string;
@@ -121,7 +122,7 @@ export default function EmailTab() {
 
   const loadTemplates = useCallback(async () => {
     setTplLoading(true);
-    await fetch('/api/email/seed', { method: 'POST' }).catch(() => {});
+    await apiFetch('/api/email/seed', { method: 'POST' }).catch(() => {});
     const r = await fetch('/api/email/templates?all=1');
     if (r.ok) {
       const d = await r.json() as { templates: EmailTemplate[] };
@@ -165,7 +166,7 @@ export default function EmailTab() {
     if (settingsForm.apiKey) payload.apiKey = settingsForm.apiKey;
     if (settingsForm.o365ClientSecret) payload.o365ClientSecret = settingsForm.o365ClientSecret;
 
-    const r = await fetch('/api/email/settings', {
+    const r = await apiFetch('/api/email/settings', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -184,7 +185,7 @@ export default function EmailTab() {
     setTestingSending(true);
     setSettingsMsg('');
     const testTo = settings.fromEmail || settings.o365Mailbox || 'test@example.com';
-    const r = await fetch('/api/email/send', {
+    const r = await apiFetch('/api/email/send', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -224,11 +225,11 @@ export default function EmailTab() {
     const payload = { name: tplForm.name, category: tplForm.category, subject: tplForm.subject, body: tplForm.body };
     let r: Response;
     if (editingTpl) {
-      r = await fetch(`/api/email/templates/${editingTpl.id}`, {
+      r = await apiFetch(`/api/email/templates/${editingTpl.id}`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
       });
     } else {
-      r = await fetch('/api/email/templates', {
+      r = await apiFetch('/api/email/templates', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
       });
     }
@@ -243,12 +244,12 @@ export default function EmailTab() {
 
   async function deleteTpl(id: string) {
     if (!confirm('Delete this template?')) return;
-    await fetch(`/api/email/templates/${id}`, { method: 'DELETE' });
+    await apiFetch(`/api/email/templates/${id}`, { method: 'DELETE' });
     loadTemplates();
   }
 
   async function toggleTplActive(t: EmailTemplate) {
-    await fetch(`/api/email/templates/${t.id}`, {
+    await apiFetch(`/api/email/templates/${t.id}`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ active: t.active === 1 ? 0 : 1 }),
     });

@@ -61,7 +61,7 @@ export async function GET(req: NextRequest) {
 
     const encounters = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(sql, ...values)
     return NextResponse.json({ encounters }, { headers: HIPAA_HEADERS })
-  } catch (err) { console.error(err); return NextResponse.json({ error: 'Failed to fetch encounters', encounters: [] }, { status: 500 }) }
+  } catch (err) { console.error("[api/encounters:GET]", { error: err instanceof Error ? err.message : String(err), timestamp: new Date().toISOString() }); return NextResponse.json({ error: "Failed to fetch encounters", encounters: [] }, { status: 500 }) }
 }
 
 export async function POST(req: NextRequest) {
@@ -102,5 +102,5 @@ export async function POST(req: NextRequest) {
 
     prisma.auditLog.create({ data: { action: 'ENCOUNTER_CREATED', entity: 'Encounter', entityId: id, patientId, details: `Chief complaint: ${chiefComplaint}` }}).catch(()=>{})
     return NextResponse.json({ encounter: { id, patientId, chiefComplaint, status } }, { status: 201, headers: HIPAA_HEADERS })
-  } catch (err) { console.error(err); return NextResponse.json({ error: 'Failed to create encounter' }, { status: 500 }) }
+  } catch (err) { console.error("[api/encounters:POST]", { error: err instanceof Error ? err.message : String(err), timestamp: new Date().toISOString() }); return NextResponse.json({ error: "Failed to create encounter" }, { status: 500 }) }
 }

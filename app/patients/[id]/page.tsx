@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { EncountersTab } from '@/components/patient/EncountersTab';
+import { apiFetch } from '@/lib/api-fetch';
 import { ConsentStatus } from '@/components/patient/ConsentStatus';
 
 interface Patient {
@@ -169,7 +170,7 @@ export default function PatientDetailPage() {
     }
     setEmailSending(true);
     setEmailMsg('');
-    const r = await fetch('/api/email/send', {
+    const r = await apiFetch('/api/email/send', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -237,7 +238,7 @@ export default function PatientDetailPage() {
     const nurseNameVal = sessionNurses[sessionKey] ?? (sessionResults[0]?.nurseName ?? '');
     setSessionNurseSaving(prev => ({ ...prev, [sessionKey]: true }));
     await Promise.allSettled(sessionResults.map(r =>
-      fetch(`/api/test-results/${r.id}`, {
+      apiFetch(`/api/test-results/${r.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ nurseName: nurseNameVal || null }),
@@ -251,7 +252,7 @@ export default function PatientDetailPage() {
     if (!patient) return;
     setSaving(true);
     try {
-      const res = await fetch(`/api/patients/${patient.id}`, {
+      const res = await apiFetch(`/api/patients/${patient.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -396,7 +397,7 @@ ${sectionsHtml}
     const formData = new FormData();
     formData.append('photo', file);
     try {
-      const res = await fetch(`/api/patients/${patient.id}/photo`, { method: 'POST', body: formData });
+      const res = await apiFetch(`/api/patients/${patient.id}/photo`, { method: 'POST', body: formData });
       if (res.ok) {
         const data = await res.json();
         setPatient(p => p ? { ...p, photoUrl: data.photoUrl } : p);
@@ -703,7 +704,7 @@ ${sectionsHtml}
                               parsedSite !== 'Back' ? `Location: ${parsedSite}` : '',
                               editing.notes || '',
                             ].filter(Boolean).join('; ');
-                            await fetch(`/api/test-results/${r.id}`, {
+                            await apiFetch(`/api/test-results/${r.id}`, {
                               method: 'PUT',
                               headers: { 'Content-Type': 'application/json' },
                               body: JSON.stringify({

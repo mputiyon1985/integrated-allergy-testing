@@ -22,6 +22,22 @@ function getSecretBytes(): Uint8Array {
   );
 }
 
+/**
+ * Creates a signed HS256 JWT containing the given payload, valid for 8 hours.
+ *
+ * Uses the `JWT_SECRET` environment variable for signing.
+ * Falls back to a dev-only default secret when `JWT_SECRET` is not set —
+ * ensure `JWT_SECRET` is configured in all production environments.
+ *
+ * @param payload - Arbitrary key-value data to embed in the JWT (e.g. `{ id, role, email }`).
+ * @returns A signed JWT string suitable for storing in an HttpOnly session cookie.
+ *
+ * @example
+ * ```ts
+ * const token = await signSession({ id: user.id, role: user.role, email: user.email })
+ * await setSessionCookie(token)
+ * ```
+ */
 export async function signSession(payload: Record<string, unknown>) {
   const secret = getSecretBytes();
   return new SignJWT(payload)
@@ -31,6 +47,26 @@ export async function signSession(payload: Record<string, unknown>) {
     .sign(secret)
 }
 
+/**
+ * Verifies the `iat_session` JWT cookie from an incoming request.
+ *
+ * Extracts the cookie from the `Cookie` header, verifies the HS256 signature
+ * against `JWT_SECRET`, and returns the decoded payload on success.
+ *
+ * @param req - The incoming `Request` (or `NextRequest`) object.
+ * @returns The JWT payload as a plain object if valid and not expired, or `null` if
+ *   the cookie is missing, the signature is invalid, or the token has expired.
+ *
+ * @example
+ * ```ts
+ * // In an API route:
+ * const session = await verifySession(req)
+ * if (!session) {
+ *   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+ * }
+ * const userId = session.id as string
+ * ```
+ */
 export async function verifySession(req: Request): Promise<Record<string, unknown> | null> {
   try {
     const cookieHeader = req.headers.get('cookie') || ''

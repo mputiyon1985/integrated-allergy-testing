@@ -13,6 +13,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { HIPAA_HEADERS } from '@/lib/hipaaHeaders'
 
+/**
+ * Generates a cryptographically random 64-character hex CSRF token.
+ *
+ * Uses `crypto.getRandomValues` (Web Crypto API, available in both
+ * Node.js ≥ 18 and Edge runtimes).
+ *
+ * @returns A 64-character lowercase hex string suitable for use as a CSRF token.
+ *
+ * @example
+ * ```ts
+ * const token = generateCsrfToken()
+ * // e.g. 'a3f2...c8d1' (64 chars)
+ * ```
+ */
 export function generateCsrfToken(): string {
   const array = new Uint8Array(32)
   crypto.getRandomValues(array)
@@ -20,8 +34,28 @@ export function generateCsrfToken(): string {
 }
 
 /**
- * Validate CSRF token on state-changing requests.
- * Returns null if valid, or a 403 response if invalid.
+ * Validates the CSRF token on state-changing HTTP requests (POST/PUT/DELETE/PATCH).
+ *
+ * Implements the double-submit cookie pattern:
+ * - Reads `X-CSRF-Token` from request headers.
+ * - Compares it to the `iat_csrf` cookie value.
+ * - Returns `null` (valid) or a `403 NextResponse` (invalid/missing token).
+ *
+ * Automatically skips validation for:
+ * - Safe methods (GET, HEAD, OPTIONS)
+ * - Kiosk routes (`/api/kiosk/*`)
+ * - Login route (`/api/auth/login`)
+ * - Non-production environments (NODE_ENV !== 'production')
+ *
+ * @param request - The incoming Next.js `NextRequest` object.
+ * @returns `null` if the CSRF check passes, or a `NextResponse` with status 403 if it fails.
+ *
+ * @example
+ * ```ts
+ * // In middleware or API route:
+ * const csrfError = validateCsrf(request)
+ * if (csrfError) return csrfError
+ * ```
  */
 export function validateCsrf(request: NextRequest): NextResponse | null {
   const method = request.method.toUpperCase()

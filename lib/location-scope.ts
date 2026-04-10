@@ -8,7 +8,21 @@ interface SessionUser { id: string; role: string; }
 
 /**
  * Returns the location IDs this user is allowed to access.
- * Returns null if unrestricted (all locations).
+ * Returns `null` if the user is unrestricted (access to all locations).
+ *
+ * Queries `StaffUser.allowedLocations` (a JSON-encoded string array).
+ * On DB error, fails open (returns `null`) to avoid locking out users.
+ *
+ * @param user - The authenticated session user `{ id, role }`.
+ * @returns Array of allowed location ID strings, or `null` for unrestricted access.
+ *
+ * @example
+ * ```ts
+ * const scope = await getUserLocationScope({ id: session.id, role: session.role })
+ * if (scope) {
+ *   // Restrict query to scope
+ * }
+ * ```
  */
 export async function getUserLocationScope(user: SessionUser): Promise<string[] | null> {
   // Admins can optionally be scoped too — check allowedLocations for everyone
@@ -25,12 +39,25 @@ export async function getUserLocationScope(user: SessionUser): Promise<string[] 
 }
 
 /**
- * Given a requested locationId/practiceId and user scope,
- * returns the effective SQL WHERE clause fragment + values.
- * 
- * Usage:
- *   const { clause, values } = buildLocationClause(requestedLocId, requestedPracticeId, allowedLocIds)
- *   sql += clause ? ` AND ${clause}` : ''
+ * Builds a parameterised SQL WHERE clause fragment enforcing location-scope access control.
+ *
+ * Combines an explicit location/practice filter with the per-user allowed-location scope.
+ * Returns a `clause` string and `values` array suitable for `$queryRawUnsafe`.
+ *
+ * @param requestedLocationId - Specific location ID requested by the caller, or `null`.
+ * @param requestedPracticeId - Practice ID filter (expands to all locations in practice), or `null`.
+ * @param allowedLocIds - Array of location IDs the user may access (`null` = unrestricted).
+ * @param tableAlias - Optional SQL table alias prefix for the `locationId` column.
+ * @returns `{ clause: string; values: unknown[] }` — append to SQL with `AND ${clause}`.
+ *
+ * @example
+ * ```ts
+ * const { clause, values } = buildLocationClause('loc-001', null, null)
+ * // clause = 'locationId = ?', values = ['loc-001']
+ *
+ * const { clause } = buildLocationClause('loc-out', null, ['loc-in'])
+ * // clause contains '__BLOCKED__' — query will return no rows
+ * ```
  */
 export function buildLocationClause(
   requestedLocationId: string | null,

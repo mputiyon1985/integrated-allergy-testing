@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { getLocationParam } from '@/lib/location-params';
+import { apiFetch } from '@/lib/api-fetch';
 
 interface Encounter {
   id: string;
@@ -64,7 +65,7 @@ function QuickClaimButton({ encounterId }: { encounterId: string }) {
   function handleGenerate(e: React.MouseEvent) {
     e.stopPropagation();
     setLoading(true);
-    fetch(`/api/encounters/${encounterId}/claim`, { method: 'POST' })
+    apiFetch(`/api/encounters/${encounterId}/claim`, { method: 'POST' })
       .then(async r => {
         if (!r.ok) { const d = await r.json(); throw new Error(d.error ?? 'Failed'); }
         return r.json();

@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
+import { apiFetch } from '@/lib/api-fetch';
 import type { Layout } from 'react-grid-layout';
 import type { ResponsiveLayouts } from 'react-grid-layout';
 import WaitingRoomTile from '@/components/dashboard/WaitingRoomTile';
@@ -333,7 +334,7 @@ export default function DashboardPage() {
     const startIso = new Date(`${today}T${newApptTime}:00`).toISOString();
     const endIso = new Date(`${today}T${newApptEndTime}:00`).toISOString();
     try {
-      const res = await fetch('/api/iat-appointments', {
+      const res = await apiFetch('/api/iat-appointments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: newApptTitle, startTime: startIso, endTime: endIso, providerName: newApptProvider || undefined, locationId: getActiveLocation() || undefined }),
@@ -359,7 +360,7 @@ export default function DashboardPage() {
     if (!appt.patientId || !appt.patientName) return;
     setCheckingInApptId(appt.id);
     try {
-      const res = await fetch('/api/waiting-room', {
+      const res = await apiFetch('/api/waiting-room', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ patientId: appt.patientId, patientName: appt.patientName }),
@@ -369,7 +370,7 @@ export default function DashboardPage() {
         await loadWaiting();
         // Fire-and-forget: auto-create an open encounter on check-in
         try {
-          await fetch('/api/encounters', {
+          await apiFetch('/api/encounters', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -389,7 +390,7 @@ export default function DashboardPage() {
   async function handleQuickLog() {
     if (!quickLogEntry) return;
     setQuickLogSaving(true);
-    await fetch('/api/encounter-activities', {
+    await apiFetch('/api/encounter-activities', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -408,7 +409,7 @@ export default function DashboardPage() {
     setUpdatingId(id);
     // Find the entry so we can get patientId for encounter side-effects
     const entry = waiting.find(w => w.id === id);
-    await fetch(`/api/waiting-room/${id}`, {
+    await apiFetch(`/api/waiting-room/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status, nurseName }),
@@ -430,13 +431,13 @@ export default function DashboardPage() {
               // Log "Patient brought to exam room" activity AND update encounter with nurse name
               const nurseLabel = nurseName ?? entry.nurseName ?? 'Staff';
               // Update the encounter with the nurse name
-              fetch(`/api/encounters/${encId}`, {
+              apiFetch(`/api/encounters/${encId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ nurseName: nurseLabel }),
               }).catch(() => {});
               // Log the activity
-              fetch('/api/encounter-activities', {
+              apiFetch('/api/encounter-activities', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -449,7 +450,7 @@ export default function DashboardPage() {
               }).catch(() => {});
             } else if (status === 'complete') {
               // Close the open encounter
-              fetch(`/api/encounters/${encId}`, {
+              apiFetch(`/api/encounters/${encId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status: 'complete' }),
@@ -687,7 +688,7 @@ export default function DashboardPage() {
                 onClick={async () => {
                   if (!confirm('Delete this appointment?')) return;
                   setDeletingApptId(selectedAppt.id);
-                  await fetch(`/api/iat-appointments/${selectedAppt.id}`, { method: 'DELETE' });
+                  await apiFetch(`/api/iat-appointments/${selectedAppt.id}`, { method: 'DELETE' });
                   setTodayAppts(prev => prev.filter(a => a.id !== selectedAppt.id));
                   setSelectedAppt(null);
                   setDeletingApptId(null);
@@ -772,7 +773,7 @@ export default function DashboardPage() {
                 const startIso = `${editApptDate}T${editApptStartHour}:${editApptStartMin}:00`;
                 const endIso = `${editApptDate}T${editApptEndHour}:${editApptEndMin}:00`;
                 const reason = editApptReasons.find(r => r.id === editApptReasonId);
-                await fetch(`/api/iat-appointments/${editingAppt.id}`, {
+                await apiFetch(`/api/iat-appointments/${editingAppt.id}`, {
                   method: 'PUT', headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
                     title: editApptTitle, startTime: startIso, endTime: endIso,

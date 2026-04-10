@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
     const entries = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(sql, ...values)
     return NextResponse.json({ entries }, { headers: HIPAA_HEADERS })
   } catch (err) {
-    console.error('GET /api/waiting-room error:', err)
+    console.error('[api/waiting-room:GET]', { error: err instanceof Error ? err.message : String(err), timestamp: new Date().toISOString() })
     return NextResponse.json({ entries: [] })
   }
 }
@@ -102,7 +102,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ entry }, { status: 201, headers: HIPAA_HEADERS })
   } catch (err) {
-    console.error('POST /api/waiting-room error:', err)
+    console.error('[api/waiting-room:POST]', { error: err instanceof Error ? err.message : String(err), timestamp: new Date().toISOString() })
     return NextResponse.json({ error: 'Failed to add to waiting room' }, { status: 500 })
   }
 }

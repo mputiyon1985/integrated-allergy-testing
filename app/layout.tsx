@@ -4,6 +4,7 @@ import './globals.css';
 import Link from 'next/link';
 import { LocationSelector } from '@/components/LocationSelector';
 import { SidebarLocationSelector } from '@/components/SidebarLocationSelector';
+import { apiFetch } from '@/lib/api-fetch';
 
 import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
@@ -39,7 +40,7 @@ function UserCard({ userName }: { userName: string }) {
     <div style={{ margin: '0 8px 8px' }}>
       <button onClick={async () => {
           try { localStorage.removeItem('iat_user'); localStorage.removeItem('iat_active_location'); } catch {}
-          await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+          await apiFetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
           window.location.href = '/api/auth/signout?callbackUrl=/login';
         }}
         style={{ width: '100%', padding: '7px 0', fontSize: 12, color: '#dc2626', background: '#fff', border: '1px solid #fca5a5', borderRadius: 8, cursor: 'pointer', fontWeight: 700 }}>
@@ -268,7 +269,7 @@ function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (isAuthPage) return;
     const interval = setInterval(() => {
-      fetch('/api/auth/refresh', { method: 'POST' }).catch(() => {});
+      apiFetch('/api/auth/refresh', { method: 'POST' }).catch(() => {});
     }, 6 * 60 * 60 * 1000);
     return () => clearInterval(interval);
   }, [isAuthPage]);

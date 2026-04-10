@@ -90,7 +90,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(appointments)
   } catch (error) {
-    console.error('GET /api/iat-appointments error:', error)
+    console.error('[api/iat-appointments:GET]', { error: error instanceof Error ? error.message : String(error), timestamp: new Date().toISOString() })
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -143,7 +143,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(appointment, { status: 201 })
   } catch (error) {
-    console.error('POST /api/iat-appointments error:', error)
+    console.error('[api/iat-appointments:POST]', { error: error instanceof Error ? error.message : String(error), timestamp: new Date().toISOString() })
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

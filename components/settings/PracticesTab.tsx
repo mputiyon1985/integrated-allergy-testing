@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { apiFetch } from '@/lib/api-fetch';
 
 interface Practice {
   id: string; name: string; key: string | null; shortName: string | null;
@@ -207,7 +208,7 @@ export default function PracticesTab() {
     if (!editPractice) return;
     setHoursSaving(true);
     try {
-      const res = await fetch(`/api/practices/${editPractice.id}/hours`, {
+      const res = await apiFetch(`/api/practices/${editPractice.id}/hours`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ hours }),
@@ -228,7 +229,7 @@ export default function PracticesTab() {
     setSaving(true);
     try {
       const url = editPractice ? `/api/practices/${editPractice.id}` : '/api/practices';
-      const res = await fetch(url, {
+      const res = await apiFetch(url, {
         method: editPractice ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -247,7 +248,7 @@ export default function PracticesTab() {
 
   async function toggleActive(p: Practice) {
     try {
-      const res = await fetch(`/api/practices/${p.id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ active: !p.active }) });
+      const res = await apiFetch(`/api/practices/${p.id}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ active: !p.active }) });
       if (!res.ok) throw new Error('Failed');
       await loadData();
     } catch { alert('Failed to update practice status'); }
@@ -259,10 +260,10 @@ export default function PracticesTab() {
     const isActive = practiceInsurances.some(pi => pi.insuranceId === insuranceId);
     try {
       if (isActive) {
-        await fetch(`/api/practices/${editPractice.id}/insurances/${insuranceId}`, { method:'DELETE' });
+        await apiFetch(`/api/practices/${editPractice.id}/insurances/${insuranceId}`, { method:'DELETE' });
         setPracticeInsurances(prev => prev.filter(pi => pi.insuranceId !== insuranceId));
       } else {
-        await fetch(`/api/practices/${editPractice.id}/insurances`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ insuranceId }) });
+        await apiFetch(`/api/practices/${editPractice.id}/insurances`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ insuranceId }) });
         const r = await fetch(`/api/practices/${editPractice.id}/insurances`);
         const d = await r.json() as { insurances?: PracticeInsurance[] };
         setPracticeInsurances(d.insurances ?? []);
