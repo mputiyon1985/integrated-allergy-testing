@@ -20,30 +20,43 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   try {
     const { id } = await params
     const body = await req.json() as { status?: string; nurseName?: string; nurseId?: string; videoAckBy?: string; notes?: string | null }
-    
+
     // Validate status if provided
     if (body.status !== undefined && !VALID_STATUSES.includes(body.status)) {
       return NextResponse.json({ error: `status must be one of: ${VALID_STATUSES.join(', ')}` }, { status: 400, headers: HIPAA_HEADERS })
     }
 
-    const data: Record<string, unknown> = {}
-    if (body.status) data.status = body.status
-    if (body.nurseName) data.nurseName = String(body.nurseName).slice(0, 200)
-    if (body.nurseId) data.nurseId = body.nurseId
-    if (body.videoAckBy) { data.videoAckBy = body.videoAckBy; data.videoAckAt = new Date() }
-    if (body.notes !== undefined) data.notes = body.notes
-    if (body.status === 'in-service') data.calledAt = new Date()
-    if (body.status === 'complete') data.completedAt = new Date()
+    const now = new Date().toISOString()
 
-    const entry = await prisma.waitingRoom.update({ where: { id }, data })
+    // Build SET clauses
+    const sets: string[] = ['updatedAt = ?']
+    const vals: unknown[] = [now]
+
+    if (body.status !== undefined) { sets.push('status = ?'); vals.push(body.status) }
+    if (body.nurseName !== undefined) { sets.push('nurseName = ?'); vals.push(String(body.nurseName).slice(0, 200)) }
+    if (body.nurseId !== undefined) { sets.push('nurseId = ?'); vals.push(body.nurseId) }
+    if (body.videoAckBy !== undefined) {
+      sets.push('videoAckBy = ?', 'videoAckAt = ?')
+      vals.push(body.videoAckBy, now)
+    }
+    if (body.notes !== undefined) { sets.push('notes = ?'); vals.push(body.notes) }
+    if (body.status === 'in-service') { sets.push('calledAt = ?'); vals.push(now) }
+    if (body.status === 'complete') { sets.push('completedAt = ?'); vals.push(now) }
+
+    await prisma.$executeRawUnsafe(
+      `UPDATE WaitingRoom SET ${sets.join(', ')} WHERE id = ?`,
+      ...vals, id
+    )
+
+    const entryRows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+      `SELECT * FROM WaitingRoom WHERE id = ?`, id
+    )
+    const entry = entryRows[0]
 
     // When completing, calculate timing and store on any linked encounter
-    if (body.status === 'complete') {
+    if (body.status === 'complete' && entry) {
       try {
-        const wrRows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
-          `SELECT patientId, checkedInAt, calledAt FROM WaitingRoom WHERE id=? LIMIT 1`, id
-        )
-        const wr = wrRows[0] ?? null
+        const wr = entry
         if (wr?.patientId && wr.checkedInAt) {
           const calledAtRaw = wr.calledAt ? new Date(wr.calledAt as string | number) : new Date()
           const completedAt = new Date()
@@ -83,9 +96,14 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   if (denied) return denied
   try {
     const { id } = await params
+    const now = new Date().toISOString()
     // Soft delete — mark as complete rather than removing
-    await prisma.waitingRoom.update({ where: { id }, data: { status: 'complete', completedAt: new Date() } })
-    return NextResponse.json({ ok: true }, { headers: HIPAA_HEADERS })
+    await prisma.$executeRaw`UPDATE WaitingRoom SET status = 'complete', completedAt = ${now}, updatedAt = ${now} WHERE id = ${id}`
+
+    const rows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+      `SELECT * FROM WaitingRoom WHERE id = ?`, id
+    )
+    return NextResponse.json({ ok: true, entry: rows[0] ?? null }, { headers: HIPAA_HEADERS })
   } catch (err) {
     console.error('DELETE /api/waiting-room/[id] error:', err)
     return NextResponse.json({ error: 'Failed to delete' }, { status: 500 })

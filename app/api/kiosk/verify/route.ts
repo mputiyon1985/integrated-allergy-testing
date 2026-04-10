@@ -54,10 +54,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const patient = await prisma.patient.findFirst({
-      where: { id: patientId, deletedAt: null },
-      select: { id: true, name: true, patientId: true },
-    });
+    const patientRows = await prisma.$queryRawUnsafe<Array<{ id: string; name: string; patientId: string }>>(
+      `SELECT id, name, patientId FROM Patient WHERE id = ? AND deletedAt IS NULL LIMIT 1`, patientId
+    );
+    const patient = patientRows[0] ?? null;
 
     if (!patient) {
       return NextResponse.json({ verified: false, error: 'Patient not found' }, { headers: HIPAA_HEADERS });

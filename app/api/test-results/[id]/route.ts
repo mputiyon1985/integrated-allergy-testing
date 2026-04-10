@@ -28,26 +28,50 @@ export async function PUT(
     }
 
     const { reaction, wheal, notes, nurseName, readAt } = body
+    const now = new Date().toISOString()
+    const readAtStr = readAt ? new Date(readAt).toISOString() : null
 
-    const testResult = await prisma.allergyTestResult.update({
-      where: { id },
-      data: {
-        ...(reaction !== undefined ? { reaction } : {}),
-        ...(wheal !== undefined ? { wheal } : {}),
-        ...(notes !== undefined ? { notes } : {}),
-        ...(nurseName !== undefined ? { nurseName } : {}),
-        ...(readAt !== undefined ? { readAt: new Date(readAt) } : {}),
-      },
-      include: { allergen: true },
-    })
+    // Build SET clause
+    const sets: string[] = ['updatedAt = ?']
+    const vals: unknown[] = [now]
+
+    if (reaction !== undefined) { sets.push('reaction = ?'); vals.push(reaction) }
+    if (wheal !== undefined) { sets.push('wheal = ?'); vals.push(wheal) }
+    if (notes !== undefined) { sets.push('notes = ?'); vals.push(notes) }
+    if (nurseName !== undefined) { sets.push('nurseName = ?'); vals.push(nurseName) }
+    if (readAt !== undefined) { sets.push('readAt = ?'); vals.push(readAtStr) }
+
+    await prisma.$executeRawUnsafe(
+      `UPDATE AllergyTestResult SET ${sets.join(', ')} WHERE id = ?`,
+      ...vals, id
+    )
+
+    const rows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+      `SELECT t.*, a.id as allergen_id, a.name as allergen_name, a.category as allergen_category
+       FROM AllergyTestResult t
+       LEFT JOIN Allergen a ON a.id = t.allergenId
+       WHERE t.id = ?`, id
+    )
+    if (!rows[0]) {
+      return NextResponse.json({ error: 'Test result not found' }, { status: 404 })
+    }
+
+    const testResult = {
+      ...rows[0],
+      allergen: rows[0].allergen_id ? {
+        id: rows[0].allergen_id,
+        name: rows[0].allergen_name,
+        category: rows[0].allergen_category,
+      } : null,
+    }
 
     await prisma.auditLog.create({
       data: {
         action: 'UPDATE',
         entity: 'AllergyTestResult',
-        entityId: testResult.id,
-        patientId: testResult.patientId,
-        details: `Updated test result for allergen ${testResult.allergenId}`,
+        entityId: id,
+        patientId: rows[0].patientId as string,
+        details: `Updated test result for allergen ${rows[0].allergenId as string}`,
       },
     })
 

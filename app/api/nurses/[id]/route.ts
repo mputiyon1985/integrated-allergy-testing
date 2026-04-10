@@ -17,13 +17,13 @@ export async function GET(
 ) {
   try {
     const { id } = await params
-    const nurse = await prisma.nurse.findFirst({
-      where: { id, deletedAt: null },
-    })
-    if (!nurse) {
+    const rows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+      `SELECT * FROM Nurse WHERE id = ? AND deletedAt IS NULL`, id
+    )
+    if (!rows[0]) {
       return NextResponse.json({ error: 'Nurse not found' }, { status: 404 })
     }
-    return NextResponse.json(nurse)
+    return NextResponse.json(rows[0])
   } catch (error) {
     console.error('GET /api/nurses/[id] error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -47,34 +47,39 @@ export async function PUT(
       active?: boolean
     }
 
-    const existing = await prisma.nurse.findFirst({ where: { id, deletedAt: null } })
-    if (!existing) {
+    const existingRows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+      `SELECT id FROM Nurse WHERE id = ? AND deletedAt IS NULL`, id
+    )
+    if (!existingRows[0]) {
       return NextResponse.json({ error: 'Nurse not found' }, { status: 404 })
     }
 
-    const nurse = await prisma.nurse.update({
-      where: { id },
-      data: {
-        ...(body.name !== undefined ? { name: body.name } : {}),
-        ...(body.title !== undefined ? { title: body.title } : {}),
-        ...(body.email !== undefined ? { email: body.email } : {}),
-        ...(body.phone !== undefined ? { phone: body.phone } : {}),
-        ...(body.clinicLocation !== undefined ? { clinicLocation: body.clinicLocation } : {}),
-        ...(body.active !== undefined ? { active: body.active } : {}),
-      },
-    })
+    const now = new Date().toISOString()
+    await prisma.$executeRaw`UPDATE Nurse SET
+      name = COALESCE(${body.name ?? null}, name),
+      title = COALESCE(${body.title ?? null}, title),
+      email = COALESCE(${body.email ?? null}, email),
+      phone = COALESCE(${body.phone ?? null}, phone),
+      clinicLocation = COALESCE(${body.clinicLocation ?? null}, clinicLocation),
+      active = COALESCE(${body.active !== undefined ? (body.active ? 1 : 0) : null}, active),
+      updatedAt = ${now}
+    WHERE id = ${id}`
+
+    const rows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+      `SELECT * FROM Nurse WHERE id = ?`, id
+    )
 
     prisma.auditLog.create({
       data: {
         action: 'NURSE_UPDATED',
         entity: 'Nurse',
-        entityId: nurse.id,
+        entityId: id,
         patientId: null,
-        details: `Nurse updated: ${nurse.name}`,
+        details: `Nurse updated: ${rows[0]?.name ?? id}`,
       },
     }).catch(() => {})
 
-    return NextResponse.json(nurse)
+    return NextResponse.json(rows[0] ?? { id })
   } catch (error) {
     console.error('PUT /api/nurses/[id] error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -89,15 +94,15 @@ export async function DELETE(
   if (denied) return denied
   try {
     const { id } = await params
-    const existing = await prisma.nurse.findFirst({ where: { id, deletedAt: null } })
-    if (!existing) {
+    const existingRows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+      `SELECT id, name FROM Nurse WHERE id = ? AND deletedAt IS NULL`, id
+    )
+    if (!existingRows[0]) {
       return NextResponse.json({ error: 'Nurse not found' }, { status: 404 })
     }
 
-    await prisma.nurse.update({
-      where: { id },
-      data: { deletedAt: new Date(), active: false },
-    })
+    const now = new Date().toISOString()
+    await prisma.$executeRaw`UPDATE Nurse SET deletedAt = ${now}, active = 0, updatedAt = ${now} WHERE id = ${id}`
 
     prisma.auditLog.create({
       data: {
@@ -105,7 +110,7 @@ export async function DELETE(
         entity: 'Nurse',
         entityId: id,
         patientId: null,
-        details: `Nurse deleted: ${existing.name}`,
+        details: `Nurse deleted: ${existingRows[0].name as string}`,
       },
     }).catch(() => {})
 

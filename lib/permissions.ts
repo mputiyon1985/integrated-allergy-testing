@@ -51,6 +51,8 @@ export const PERMISSIONS = {
   nurses_manage: 'nurses_manage',
   locations_manage: 'locations_manage',
   practices_manage: 'practices_manage',
+  // Reports
+  reports_view: 'reports_view',
 } as const
 
 export type Permission = keyof typeof PERMISSIONS
@@ -69,6 +71,7 @@ export const ROLE_PROFILES: Record<string, Permission[]> = {
     'insurance_view', 'billing_rules_view', 'cpt_codes_view', 'icd10_view',
     'forms_view', 'consent_view', 'videos_view',
     'audit_log_view', 'settings_view',
+    'reports_view',
   ],
 
   clinical_staff: [
@@ -100,6 +103,7 @@ export const ROLE_PROFILES: Record<string, Permission[]> = {
     'cpt_codes_view', 'cpt_codes_manage',
     'icd10_view', 'icd10_manage',
     'audit_log_view', 'settings_view',
+    'reports_view',
   ],
 
   office_manager: [
@@ -118,6 +122,7 @@ export const ROLE_PROFILES: Record<string, Permission[]> = {
     'users_view', 'audit_log_view',
     'settings_view', 'settings_manage',
     'doctors_manage', 'nurses_manage',
+    'reports_view',
   ],
 }
 

@@ -22,22 +22,47 @@ export async function GET(req: NextRequest) {
       where: { userId },
     })
 
-    let locations
+    let locationRows: Array<Record<string, unknown>>
     if (accessRows.length === 0) {
       // Fallback: return all active locations (admin / first-run)
-      locations = await prisma.location.findMany({
-        where: { deletedAt: null, active: true },
-        include: { practice: { select: { id: true, name: true, shortName: true } } },
-        orderBy: { name: 'asc' },
-      })
+      locationRows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+        `SELECT l.*, p.id as practiceId_join, p.name as practiceName, p.shortName as practiceShortName
+         FROM Location l
+         LEFT JOIN Practice p ON p.id = l.practiceId
+         WHERE l.deletedAt IS NULL AND l.active = 1
+         ORDER BY l.name ASC`
+      )
     } else {
       const locationIds = accessRows.map((r) => r.locationId)
-      locations = await prisma.location.findMany({
-        where: { id: { in: locationIds }, deletedAt: null },
-        include: { practice: { select: { id: true, name: true, shortName: true } } },
-        orderBy: { name: 'asc' },
-      })
+      const placeholders = locationIds.map(() => '?').join(',')
+      locationRows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+        `SELECT l.*, p.id as practiceId_join, p.name as practiceName, p.shortName as practiceShortName
+         FROM Location l
+         LEFT JOIN Practice p ON p.id = l.practiceId
+         WHERE l.id IN (${placeholders}) AND l.deletedAt IS NULL
+         ORDER BY l.name ASC`,
+        ...locationIds
+      )
     }
+
+    // Map to expected shape
+    const locations = locationRows.map(l => ({
+      id: l.id,
+      name: l.name,
+      key: l.key,
+      active: l.active,
+      city: l.city,
+      state: l.state,
+      street: l.street,
+      zip: l.zip,
+      suite: l.suite,
+      practiceId: l.practiceId,
+      practice: l.practiceName ? {
+        id: l.practiceId,
+        name: l.practiceName,
+        shortName: l.practiceShortName ?? null,
+      } : null,
+    }))
 
     // Get user's defaultLocationId using raw SQL to avoid DateTime parsing issues
     const userRows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(

@@ -18,14 +18,17 @@ export async function GET(req: NextRequest) {
     const formId = searchParams.get('formId')
     if (!patientId || !formId) return NextResponse.json({ error: 'Missing params' }, { status: 400 })
 
-    const [patient, form, record] = await Promise.all([
-      prisma.patient.findUnique({ where: { id: patientId } }),
+    const [patientRows, form, record] = await Promise.all([
+      prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+        `SELECT * FROM Patient WHERE id = ? LIMIT 1`, patientId
+      ),
       prisma.form.findUnique({ where: { id: formId } }),
       prisma.consentRecord.findFirst({
         where: { patientId, formId },
         orderBy: { signedAt: 'desc' },
       }),
     ])
+    const patient = patientRows[0] ?? null
 
     if (!patient || !form) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
@@ -46,9 +49,13 @@ export async function GET(req: NextRequest) {
     // Patient info
     doc.setFontSize(11)
     doc.setTextColor('#374151')
-    doc.text(`Patient: ${patient.name}`, 20, 48)
-    doc.text(`Patient ID: ${patient.patientId ?? patient.id.slice(0, 8).toUpperCase()}`, 20, 56)
-    doc.text(`DOB: ${patient.dob ? new Date(patient.dob).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '—'}`, 20, 64)
+    const ptName = patient.name as string
+    const ptPatientId = patient.patientId as string | null
+    const ptId = patient.id as string
+    const ptDob = patient.dob as string | null
+    doc.text(`Patient: ${ptName}`, 20, 48)
+    doc.text(`Patient ID: ${ptPatientId ?? ptId.slice(0, 8).toUpperCase()}`, 20, 56)
+    doc.text(`DOB: ${ptDob ? new Date(ptDob).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '—'}`, 20, 64)
     doc.text(
       `Date Signed: ${record ? new Date(record.signedAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'Not signed'}`,
       20, 72
@@ -125,7 +132,7 @@ export async function GET(req: NextRequest) {
     return new NextResponse(pdfBytes, {
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="consent-${patient.patientId ?? patient.id.slice(0, 8)}-${formId}.pdf"`,
+        'Content-Disposition': `attachment; filename="consent-${ptPatientId ?? ptId.slice(0, 8)}-${formId}.pdf"`,
       },
     })
   } catch (err) {

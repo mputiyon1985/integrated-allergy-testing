@@ -24,27 +24,20 @@ export async function GET(req: NextRequest) {
     const locationId = searchParams.get('locationId')
     const practiceId = searchParams.get('practiceId')
 
-    let entries
+    let sql = `SELECT * FROM WaitingRoom WHERE status IN ('waiting','in-service')`
+    const values: unknown[] = []
+
     if (locationId) {
-      entries = await prisma.$queryRaw`
-        SELECT * FROM WaitingRoom
-        WHERE status IN ('waiting','in-service') AND locationId = ${locationId}
-        ORDER BY checkedInAt ASC
-      `
+      sql += ' AND locationId = ?'
+      values.push(locationId)
     } else if (practiceId) {
-      entries = await prisma.$queryRaw`
-        SELECT * FROM WaitingRoom
-        WHERE status IN ('waiting','in-service')
-          AND locationId IN (SELECT id FROM Location WHERE practiceId = ${practiceId} AND deletedAt IS NULL)
-        ORDER BY checkedInAt ASC
-      `
-    } else {
-      entries = await prisma.$queryRaw`
-        SELECT * FROM WaitingRoom
-        WHERE status IN ('waiting','in-service')
-        ORDER BY checkedInAt ASC
-      `
+      sql += ' AND locationId IN (SELECT id FROM Location WHERE practiceId = ? AND deletedAt IS NULL)'
+      values.push(practiceId)
     }
+
+    sql += ' ORDER BY checkedInAt ASC'
+
+    const entries = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(sql, ...values)
     return NextResponse.json({ entries }, { headers: HIPAA_HEADERS })
   } catch (err) {
     console.error('GET /api/waiting-room error:', err)
@@ -62,20 +55,20 @@ export async function POST(req: NextRequest) {
     }
 
     // Validate that the patientId actually exists in the database to prevent spoofing
-    const patient = await prisma.patient.findFirst({
-      where: { id: body.patientId, deletedAt: null },
-      select: { id: true, name: true },
-    })
-    if (!patient) {
+    const patientRows = await prisma.$queryRawUnsafe<Array<{ id: string; name: string }>>(
+      `SELECT id, name FROM Patient WHERE id = ? AND deletedAt IS NULL LIMIT 1`, body.patientId
+    )
+    if (!patientRows[0]) {
       return NextResponse.json({ error: 'Patient not found' }, { status: 404, headers: HIPAA_HEADERS })
     }
+    const patient = patientRows[0]
 
     // Dedup: if patient already has an active (waiting/in-service) entry, return it
-    const existing = await prisma.waitingRoom.findFirst({
-      where: { patientId: patient.id, status: { in: ['waiting', 'in-service'] } },
-    })
-    if (existing) {
-      return NextResponse.json({ entry: existing, deduplicated: true }, { headers: HIPAA_HEADERS })
+    const existingRows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+      `SELECT * FROM WaitingRoom WHERE patientId = ? AND status IN ('waiting','in-service') LIMIT 1`, patient.id
+    )
+    if (existingRows[0]) {
+      return NextResponse.json({ entry: existingRows[0], deduplicated: true }, { headers: HIPAA_HEADERS })
     }
 
     // Sanitize inputs and use verified name from DB, not user-provided name
@@ -83,15 +76,17 @@ export async function POST(req: NextRequest) {
       ? Math.floor(body.videosWatched)
       : 0
 
-    const entry = await prisma.waitingRoom.create({
-      data: {
-        patientId: patient.id,
-        patientName: patient.name,   // Always use DB name, not user-supplied name
-        notes: body.notes ? String(body.notes).slice(0, 500) : undefined,
-        videosWatched,
-        status: 'waiting',
-      },
-    })
+    const id = `wr-${Date.now().toString(36)}`
+    const now = new Date().toISOString()
+    const notes = body.notes ? String(body.notes).slice(0, 500) : null
+
+    await prisma.$executeRaw`INSERT INTO WaitingRoom (id, patientId, patientName, notes, videosWatched, status, checkedInAt)
+      VALUES (${id}, ${patient.id}, ${patient.name}, ${notes}, ${videosWatched}, 'waiting', ${now})`
+
+    const entryRows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+      `SELECT * FROM WaitingRoom WHERE id = ?`, id
+    )
+    const entry = entryRows[0] ?? { id, patientId: patient.id, patientName: patient.name, status: 'waiting' }
 
     // Auto-create kiosk_checkin encounter activity
     fetch(`${process.env.NEXTAUTH_URL || 'https://integrated-allergy-testing.vercel.app'}/api/encounter-activities`, {
@@ -100,7 +95,7 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({
         patientId: patient.id,
         type: 'kiosk_checkin',
-        notes: `Patient checked in via kiosk. Videos watched: ${body.videosWatched ?? 0}`,
+        notes: `Patient checked in via kiosk. Videos watched: ${videosWatched}`,
         performedBy: 'Patient (Kiosk)',
       }),
     }).catch(() => {})

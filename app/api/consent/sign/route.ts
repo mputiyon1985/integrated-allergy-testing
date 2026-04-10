@@ -29,10 +29,10 @@ export async function POST(req: NextRequest) {
     }
 
     // Validate patientId exists
-    const patient = await prisma.patient.findFirst({
-      where: { id: patientId, deletedAt: null },
-      select: { id: true },
-    })
+    const patientRows = await prisma.$queryRawUnsafe<Array<{ id: string }>>(
+      `SELECT id FROM Patient WHERE id = ? AND deletedAt IS NULL LIMIT 1`, patientId
+    )
+    const patient = patientRows[0] ?? null
     if (!patient) {
       return NextResponse.json({ error: 'Patient not found' }, { status: 404 })
     }

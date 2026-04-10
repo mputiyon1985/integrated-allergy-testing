@@ -28,23 +28,31 @@ export async function GET(request: NextRequest) {
     const locationId = searchParams.get('locationId')
     const practiceId = searchParams.get('practiceId')
 
-    let locationFilter = {}
-    if (locationId) {
-      locationFilter = { OR: [{ locationId }, { locationId: null }] }
-    } else if (practiceId) {
-      const locs = await prisma.$queryRaw<Array<{id: string}>>`SELECT id FROM Location WHERE practiceId = ${practiceId} AND deletedAt IS NULL`
-      const ids = locs.map(l => l.id)
-      locationFilter = ids.length > 0 ? { OR: [{ locationId: { in: ids } }, { locationId: null }] } : {}
+    let sql = `SELECT * FROM Doctor WHERE deletedAt IS NULL`
+    const values: unknown[] = []
+
+    if (!all) {
+      sql += ' AND active = 1'
     }
 
-    const doctors = await prisma.doctor.findMany({
-      where: {
-        deletedAt: null,
-        ...(all ? {} : { active: true }),
-        ...locationFilter,
-      },
-      orderBy: [{ name: 'asc' }],
-    })
+    if (locationId) {
+      sql += ' AND (locationId = ? OR locationId IS NULL)'
+      values.push(locationId)
+    } else if (practiceId) {
+      // Get location IDs for this practice, then filter
+      const locs = await prisma.$queryRawUnsafe<Array<{ id: string }>>(
+        `SELECT id FROM Location WHERE practiceId = ? AND deletedAt IS NULL`, practiceId
+      )
+      if (locs.length > 0) {
+        const placeholders = locs.map(() => '?').join(',')
+        sql += ` AND (locationId IN (${placeholders}) OR locationId IS NULL)`
+        values.push(...locs.map(l => l.id))
+      }
+    }
+
+    sql += ' ORDER BY name ASC'
+
+    const doctors = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(sql, ...values)
 
     return NextResponse.json(doctors)
   } catch (error) {
@@ -65,20 +73,17 @@ export async function POST(request: NextRequest) {
     }
 
     const { name, title, specialty, email, phone, clinicLocation } = result.data
+    const npi = (body as { npi?: string }).npi ?? null
+    const id = `doc-${Date.now().toString(36)}`
+    const now = new Date().toISOString()
 
-    const doctor = await prisma.doctor.create({
-      data: {
-        name,
-        ...(title ? { title } : {}),
-        ...(specialty ? { specialty } : {}),
-        ...(email ? { email } : {}),
-        ...(phone ? { phone } : {}),
-        ...(clinicLocation ? { clinicLocation } : {}),
-        ...(((body as { npi?: string }).npi) ? { npi: (body as { npi?: string }).npi } : {}),
-      },
-    })
+    await prisma.$executeRaw`INSERT INTO Doctor (id, name, title, specialty, email, phone, clinicLocation, npi, active, createdAt, updatedAt)
+      VALUES (${id}, ${name}, ${title ?? null}, ${specialty ?? null}, ${email ?? null}, ${phone ?? null}, ${clinicLocation ?? null}, ${npi}, 1, ${now}, ${now})`
 
-    return NextResponse.json(doctor, { status: 201 })
+    const rows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+      `SELECT * FROM Doctor WHERE id = ?`, id
+    )
+    return NextResponse.json(rows[0] ?? { id, name }, { status: 201 })
   } catch (error) {
     console.error('POST /api/doctors error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

@@ -32,11 +32,12 @@ export async function GET(request: NextRequest) {
     let patientMap: Record<string, string> = {}
     if (patientIds.length > 0) {
       try {
-        const patients = await prisma.patient.findMany({
-          where: { id: { in: patientIds } },
-          select: { id: true, name: true, patientId: true },
-        })
-        patientMap = Object.fromEntries(patients.map(p => [p.id, `${p.name} (${p.patientId})`]))
+        const placeholders = patientIds.map(() => '?').join(',')
+        const patients = await prisma.$queryRawUnsafe<Array<{ id: string; name: string; patientId: string | null }>>(
+          `SELECT id, name, patientId FROM Patient WHERE id IN (${placeholders})`,
+          ...patientIds
+        )
+        patientMap = Object.fromEntries(patients.map(p => [p.id, `${p.name} (${p.patientId ?? p.id.slice(0, 8)})`]))
       } catch { /* non-fatal */ }
     }
 

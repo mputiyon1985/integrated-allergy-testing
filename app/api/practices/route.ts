@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import prisma from '@/lib/db'
+import { requirePermission } from '@/lib/api-permissions'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,19 +26,42 @@ const createSchema = z.object({
 })
 
 export async function GET(req: NextRequest) {
+  const denied = await requirePermission(req, 'patients_view')
+  if (denied) return denied
+
   try {
-    const practices = await prisma.practice.findMany({
-      where: { active: true },
-      include: {
-        locations: {
-          where: { deletedAt: null },
-          select: { id: true, name: true, key: true, active: true },
-          orderBy: { name: 'asc' },
-        },
-      },
-      orderBy: { name: 'asc' },
-    })
-    return NextResponse.json({ practices })
+    const practices = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+      `SELECT p.id, p.name, p.shortName, p.key, p.phone, p.fax, p.email, p.website,
+              p.npi, p.taxId, p.logoUrl, p.active, p.createdAt, p.updatedAt
+       FROM Practice p
+       WHERE p.active = 1
+       ORDER BY p.name ASC`
+    )
+
+    // Enrich with locations
+    const practiceIds = practices.map(p => p.id as string)
+    let locationRows: Array<Record<string, unknown>> = []
+    if (practiceIds.length > 0) {
+      const placeholders = practiceIds.map(() => '?').join(',')
+      locationRows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+        `SELECT id, name, key, active, practiceId FROM Location WHERE practiceId IN (${placeholders}) AND deletedAt IS NULL ORDER BY name ASC`,
+        ...practiceIds
+      )
+    }
+
+    const locByPractice: Record<string, Array<Record<string, unknown>>> = {}
+    for (const loc of locationRows) {
+      const pid = loc.practiceId as string
+      if (!locByPractice[pid]) locByPractice[pid] = []
+      locByPractice[pid].push(loc)
+    }
+
+    const enriched = practices.map(p => ({
+      ...p,
+      locations: locByPractice[p.id as string] ?? [],
+    }))
+
+    return NextResponse.json({ practices: enriched })
   } catch (error) {
     console.error('GET /api/practices error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -45,9 +69,13 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const denied = await requirePermission(req, 'patients_view')
+  if (denied) return denied
+
   try {
-    const role = req.headers.get('x-user-role')
-    if (role !== 'admin') {
+    const session = (await import('@/lib/auth/session')).verifySession
+    const s = await session(req)
+    if (s?.role !== 'admin') {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
     }
 
@@ -57,8 +85,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: result.error.issues[0].message }, { status: 400 })
     }
 
-    const practice = await prisma.practice.create({ data: result.data })
-    return NextResponse.json({ practice }, { status: 201 })
+    const d = result.data
+    const id = `prac-${Date.now().toString(36)}`
+    const now = new Date().toISOString()
+
+    await prisma.$executeRaw`INSERT INTO Practice (id, name, key, shortName, phone, fax, email, website, npi, taxId, logoUrl, active, createdAt, updatedAt)
+      VALUES (${id}, ${d.name}, ${d.key ?? null}, ${d.shortName ?? null}, ${d.phone ?? null}, ${d.fax ?? null}, ${d.email ?? null}, ${d.website ?? null}, ${d.npi ?? null}, ${d.taxId ?? null}, ${d.logoUrl ?? null}, 1, ${now}, ${now})`
+
+    const rows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+      `SELECT * FROM Practice WHERE id = ?`, id
+    )
+    return NextResponse.json({ practice: rows[0] }, { status: 201 })
   } catch (error) {
     console.error('POST /api/practices error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

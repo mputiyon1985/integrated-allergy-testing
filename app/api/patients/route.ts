@@ -95,41 +95,46 @@ export async function POST(request: NextRequest) {
     }
 
     const { name, dob } = result.data
+    const bodyRaw = body as Record<string, string>
 
-    const patientId = `PAT-${Date.now().toString(36).toUpperCase()}`
+    // Use PA-XXXXXXXX nanoid-style format per architecture rules
+    const { customAlphabet } = await import('nanoid')
+    const nanoid = customAlphabet('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', 8)
+    const patientId = `PA-${nanoid()}`
 
-    const patient = await prisma.patient.create({
-      data: {
-        patientId,
-        name,
-        dob: new Date(dob),
-        email: result.data.email,
-        phone: result.data.phone,
-        homePhone: (body as Record<string, string>).homePhone || null,
-        street: (body as Record<string, string>).street || null,
-        city: (body as Record<string, string>).city || null,
-        state: (body as Record<string, string>).state || null,
-        zip: (body as Record<string, string>).zip || null,
-        physician: result.data.physician,
-        clinicLocation: result.data.clinicLocation,
-        diagnosis: result.data.diagnosis,
-        insuranceId: result.data.insuranceId,
-        insuranceProvider: (body as Record<string, string>).insuranceProvider || null,
-        insuranceGroup: (body as Record<string, string>).insuranceGroup || null,
-        emergencyName: (body as Record<string, string>).emergencyName || null,
-        emergencyPhone: (body as Record<string, string>).emergencyPhone || null,
-        emergencyRelation: (body as Record<string, string>).emergencyRelation || null,
-        notes: result.data.notes,
-        doctorId: (body as { doctorId?: string }).doctorId,
-      },
-    })
+    const id = crypto.randomUUID()
+    const now = new Date().toISOString()
+    const dobStr = dob // YYYY-MM-DD stored as string for Turso compatibility
+
+    await prisma.$executeRaw`INSERT INTO Patient (
+        id, patientId, name, dob, email, phone, homePhone,
+        street, city, state, zip, apt,
+        physician, clinicLocation, diagnosis, insuranceId,
+        insuranceProvider, insuranceGroup,
+        emergencyName, emergencyPhone, emergencyRelation,
+        notes, doctorId, status, createdAt, updatedAt
+      ) VALUES (
+        ${id}, ${patientId}, ${name}, ${dobStr},
+        ${result.data.email ?? null}, ${result.data.phone ?? null}, ${bodyRaw.homePhone ?? null},
+        ${bodyRaw.street ?? null}, ${bodyRaw.city ?? null}, ${bodyRaw.state ?? null}, ${bodyRaw.zip ?? null}, ${bodyRaw.apt ?? null},
+        ${result.data.physician ?? null}, ${result.data.clinicLocation ?? null}, ${result.data.diagnosis ?? null}, ${result.data.insuranceId ?? null},
+        ${bodyRaw.insuranceProvider ?? null}, ${bodyRaw.insuranceGroup ?? null},
+        ${bodyRaw.emergencyName ?? null}, ${bodyRaw.emergencyPhone ?? null}, ${bodyRaw.emergencyRelation ?? null},
+        ${result.data.notes ?? null}, ${(body as { doctorId?: string }).doctorId ?? null},
+        'active', ${now}, ${now}
+      )`
+
+    const rows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+      `SELECT * FROM Patient WHERE id = ?`, id
+    )
+    const patient = rows[0] ?? { id, patientId, name }
 
     await prisma.auditLog.create({
       data: {
         action: 'CREATE',
         entity: 'Patient',
-        entityId: patient.id,
-        patientId: patient.id,
+        entityId: id,
+        patientId: id,
         details: `Created patient ${patientId}: ${name}`,
       },
     })

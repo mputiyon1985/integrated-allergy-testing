@@ -110,14 +110,15 @@ export async function GET(req: NextRequest) {
       defaultLocationId: u.defaultLocationId as string | null,
     }))
 
-    // Enrich with location names
+    // Enrich with location names (raw SQL — Location has DateTime fields)
     const locationIds = [...new Set(users.map(u => u.defaultLocationId).filter(Boolean))] as string[]
     let locationMap: Record<string, string> = {}
     if (locationIds.length > 0) {
-      const locs = await prisma.location.findMany({
-        where: { id: { in: locationIds } },
-        select: { id: true, name: true },
-      })
+      const placeholders = locationIds.map(() => '?').join(',')
+      const locs = await prisma.$queryRawUnsafe<Array<{ id: string; name: string }>>(
+        `SELECT id, name FROM Location WHERE id IN (${placeholders})`,
+        ...locationIds
+      )
       locationMap = Object.fromEntries(locs.map(l => [l.id, l.name]))
     }
 

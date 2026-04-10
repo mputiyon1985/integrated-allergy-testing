@@ -32,9 +32,10 @@ export async function GET(
     }
     const encounter = encounterRows[0]
 
-    const patient = await prisma.patient.findUnique({
-      where: { id: encounter.patientId as string },
-    })
+    const patientRows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+      `SELECT * FROM Patient WHERE id = ? LIMIT 1`, encounter.patientId as string
+    )
+    const patient = patientRows[0] ?? null
     if (!patient) {
       return NextResponse.json({ error: 'Patient not found' }, { status: 404 })
     }
@@ -92,16 +93,18 @@ export async function GET(
     doc.setTextColor('#111827')
     y += 5
 
-    const dob = patient.dob
-      ? new Date(patient.dob).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    const ptDob = patient.dob as string | null
+    const ptId2 = patient.id as string
+    const dob = ptDob
+      ? new Date(ptDob).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
       : '—'
-    const patientDisplayId = (patient as Record<string, unknown>).patientId
-      ? String((patient as Record<string, unknown>).patientId)
-      : patient.id.slice(0, 8).toUpperCase()
+    const patientDisplayId = patient.patientId
+      ? String(patient.patientId)
+      : ptId2.slice(0, 8).toUpperCase()
 
     doc.setFontSize(9)
     doc.setTextColor('#6b7280')
-    doc.text('Name:', margin, y); doc.setTextColor('#111827'); doc.text(patient.name, margin + 22, y); y += 5
+    doc.text('Name:', margin, y); doc.setTextColor('#111827'); doc.text(patient.name as string, margin + 22, y); y += 5
     doc.setTextColor('#6b7280')
     doc.text('DOB:', margin, y); doc.setTextColor('#111827'); doc.text(dob, margin + 22, y); y += 5
     doc.setTextColor('#6b7280')
@@ -109,8 +112,8 @@ export async function GET(
     doc.setTextColor('#6b7280')
     doc.text('Insurance:', margin, y)
     doc.setTextColor('#111827')
-    const insurance = (patient as Record<string, unknown>).insuranceId
-      ? String((patient as Record<string, unknown>).insuranceId)
+    const insurance = patient.insuranceId
+      ? String(patient.insuranceId)
       : '—'
     doc.text(insurance, margin + 22, y)
 

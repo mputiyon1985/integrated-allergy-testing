@@ -26,18 +26,24 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const patient = await prisma.patient.findFirst({
-      where: {
-        OR: [{ id: patientId }, { patientId }],
-      },
-    })
+    const patientRows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+      `SELECT * FROM Patient WHERE (id = ? OR patientId = ?) LIMIT 1`, patientId, patientId
+    )
+    const patient = patientRows[0] ?? null
 
     if (!patient) {
       return NextResponse.json({ error: 'Patient not found' }, { status: 404 })
     }
 
+    // Type helpers for raw query result
+    const ptId = patient.id as string
+    const ptPatientId = patient.patientId as string | null
+    const ptName = patient.name as string
+    const ptDob = patient.dob as string | null
+    const ptEmail = patient.email as string | null
+
     // Parse name into firstName/lastName for PDF compatibility
-    const [firstName, ...rest] = patient.name.split(' ')
+    const [firstName, ...rest] = ptName.split(' ')
     const lastName = rest.join(' ')
 
     let pdfBlob: Blob
@@ -46,7 +52,7 @@ export async function GET(req: NextRequest) {
     if (type === 'consent') {
       // Get the most recent signature if available
       const formActivity = await prisma.formActivity.findFirst({
-        where: { patientId: patient.id, signedAt: { not: null } },
+        where: { patientId: ptId, signedAt: { not: null } },
         orderBy: { signedAt: 'desc' },
       })
 
@@ -54,39 +60,40 @@ export async function GET(req: NextRequest) {
         {
           firstName,
           lastName,
-          dob: patient.dob,
-          email: patient.email,
-          patientId: patient.patientId,
+          dob: ptDob ? new Date(ptDob) : new Date(),
+          email: ptEmail ?? undefined,
+          patientId: ptPatientId ?? ptId,
         },
         formActivity?.signature ?? undefined
       )
-      filename = `consent-${patient.patientId}.pdf`
+      filename = `consent-${ptPatientId ?? ptId}.pdf`
     } else {
-      // Fetch test results
-      const testResults = await prisma.allergyTestResult.findMany({
-        where: { patientId: patient.id, active: true },
-        include: { allergen: true },
-        orderBy: { testedAt: 'desc' },
-      })
+      // Fetch test results with raw SQL (AllergyTestResult has DateTime fields)
+      const testResultRows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+        `SELECT t.*, a.name as allergen_name FROM AllergyTestResult t
+         LEFT JOIN Allergen a ON a.id = t.allergenId
+         WHERE t.patientId = ? AND t.active = 1
+         ORDER BY t.testedAt DESC`, ptId
+      )
 
-      const results = testResults.map((r) => ({
-        allergenName: r.allergen.name,
-        testType: r.testType,
-        reaction: r.reaction,
-        wheal: r.wheal,
-        testedAt: r.testedAt,
+      const results = testResultRows.map((r) => ({
+        allergenName: (r.allergen_name as string) ?? 'Unknown',
+        testType: r.testType as string,
+        reaction: r.reaction as number,
+        wheal: r.wheal as string | null,
+        testedAt: r.testedAt ? new Date(r.testedAt as string) : new Date(),
       }))
 
       pdfBlob = generateTestResultsPDF(
         {
           firstName,
           lastName,
-          patientId: patient.patientId,
-          dob: patient.dob,
+          patientId: ptPatientId ?? ptId,
+          dob: ptDob ? new Date(ptDob) : new Date(),
         },
         results
       )
-      filename = `results-${patient.patientId}.pdf`
+      filename = `results-${ptPatientId ?? ptId}.pdf`
     }
 
     const arrayBuffer = await pdfBlob.arrayBuffer()
@@ -96,9 +103,9 @@ export async function GET(req: NextRequest) {
       data: {
         action: 'PDF_GENERATED',
         entity: 'Patient',
-        entityId: patient.id,
-        patientId: patient.id,
-        details: `Generated ${type} PDF for patient ${patient.patientId}`,
+        entityId: ptId,
+        patientId: ptId,
+        details: `Generated ${type} PDF for patient ${ptPatientId}`,
       },
     })
 

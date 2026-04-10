@@ -377,7 +377,7 @@ describe('Protected routes — return 401 without valid session', () => {
     )
 
     const result = await requirePermission(
-      new Request('http://localhost/api/protected'),
+      new Request('http://localhost/api/protected') as unknown as import('next/server').NextRequest,
       'patients_view'
     )
 

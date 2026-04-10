@@ -65,17 +65,10 @@ export async function POST(request: NextRequest) {
     const dayBefore = new Date(dobDate.getTime() - 86400000);
     const dayAfter = new Date(dobDate.getTime() + 86400000);
 
-    const patients = await prisma.patient.findMany({
-      where: {
-        deletedAt: null,
-        dob: { gte: dayBefore, lte: dayAfter },
-      },
-      select: {
-        id: true,
-        name: true,
-        dob: true,
-      },
-    });
+    const patients = await prisma.$queryRawUnsafe<Array<{ id: string; name: string; dob: string }>>(
+      `SELECT id, name, dob FROM Patient WHERE deletedAt IS NULL AND dob >= ? AND dob <= ?`,
+      dayBefore.toISOString(), dayAfter.toISOString()
+    );
 
     if (patients.length === 0) {
       return NextResponse.json({ found: false }, { headers: HIPAA_HEADERS });

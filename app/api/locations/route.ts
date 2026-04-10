@@ -20,6 +20,7 @@ const createLocationSchema = z.object({
   city: z.string().min(1).max(100),
   state: z.string().length(2, 'State must be 2 letters').toUpperCase(),
   zip: z.string().regex(/^\d{5}(-\d{4})?$/, 'Invalid ZIP code'),
+  practiceId: z.string().optional(),
 })
 
 export async function GET(request: NextRequest) {
@@ -28,14 +29,20 @@ export async function GET(request: NextRequest) {
     const all = searchParams.get('all') === '1'
     const practiceId = searchParams.get('practiceId')
 
-    const locations = await prisma.location.findMany({
-      where: {
-        deletedAt: null,
-        ...(all ? {} : { active: true }),
-        ...(practiceId ? { practiceId } : {}),
-      },
-      orderBy: { name: 'asc' },
-    })
+    let sql = `SELECT * FROM Location WHERE deletedAt IS NULL`
+    const values: unknown[] = []
+
+    if (!all) {
+      sql += ' AND active = 1'
+    }
+    if (practiceId) {
+      sql += ' AND practiceId = ?'
+      values.push(practiceId)
+    }
+
+    sql += ' ORDER BY name ASC'
+
+    const locations = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(sql, ...values)
 
     return NextResponse.json(locations)
   } catch (error) {
@@ -55,31 +62,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: result.error.issues[0].message }, { status: 400 })
     }
 
-    const { name, key, suite, street, city, state, zip } = result.data
+    const { name, key, suite, street, city, state, zip, practiceId } = result.data
+    const id = `loc-${Date.now().toString(36)}`
+    const now = new Date().toISOString()
 
-    const location = await prisma.location.create({
-      data: {
-        name,
-        key,
-        suite,
-        street,
-        city,
-        state,
-        zip,
-      },
-    })
+    await prisma.$executeRaw`INSERT INTO Location (id, name, key, suite, street, city, state, zip, practiceId, active, createdAt, updatedAt)
+      VALUES (${id}, ${name}, ${key}, ${suite ?? null}, ${street}, ${city}, ${state}, ${zip}, ${practiceId ?? null}, 1, ${now}, ${now})`
+
+    const rows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+      `SELECT * FROM Location WHERE id = ?`, id
+    )
 
     prisma.auditLog.create({
       data: {
         action: 'LOCATION_CREATED',
         entity: 'Location',
-        entityId: location.id,
+        entityId: id,
         patientId: null,
-        details: `Location created: ${location.name} (${location.key})`,
+        details: `Location created: ${name} (${key})`,
       },
     }).catch(() => {})
 
-    return NextResponse.json(location, { status: 201 })
+    return NextResponse.json(rows[0] ?? { id, name, key }, { status: 201 })
   } catch (error) {
     console.error('POST /api/locations error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

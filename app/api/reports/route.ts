@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import { HIPAA_HEADERS } from '@/lib/hipaaHeaders'
+import { requirePermission } from '@/lib/api-permissions'
 
 export const dynamic = 'force-dynamic'
 
@@ -223,6 +224,9 @@ async function getTesting(from: string, to: string) {
 
 // ── Handler ──────────────────────────────────────────────────────────────────
 export async function GET(req: NextRequest) {
+  const denied = await requirePermission(req, 'reports_view')
+  if (denied) return denied
+
   const { searchParams } = new URL(req.url)
   const type = searchParams.get('type') ?? 'clinical'
   const from = searchParams.get('from') ?? new Date().toISOString().slice(0, 10)

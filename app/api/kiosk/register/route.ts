@@ -57,30 +57,27 @@ export async function POST(request: NextRequest) {
     }
 
     const fullName = `${firstName.trim()} ${lastName.trim()}`;
-    const patientId = `PAT-${Date.now().toString(36).toUpperCase()}`;
+    // Use PA-XXXXXXXX nanoid format per architecture rules
+    const { customAlphabet } = await import('nanoid');
+    const nanoid = customAlphabet('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ', 8);
+    const patientId = `PA-${nanoid()}`;
+    const id = crypto.randomUUID();
+    const nowStr = new Date().toISOString();
+    const dobStr = dobDate.toISOString();
 
-    const patient = await prisma.patient.create({
-      data: {
-        patientId,
-        name: fullName,
-        dob: dobDate,
-        phone: body.phone?.trim() || null,
-        email: body.email?.trim() || null,
-        street: body.street?.trim() || null,
-        apt: body.apt?.trim() || null,
-        city: body.city?.trim() || null,
-        state: body.state?.trim() || null,
-        zip: body.zip?.trim() || null,
-        insuranceProvider: body.insuranceProvider?.trim() || null,
-        insuranceId: body.insuranceId?.trim() || null,
-      },
-      select: {
-        id: true,
-        patientId: true,
-        name: true,
-        dob: true,
-      },
-    });
+    await prisma.$executeRaw`INSERT INTO Patient (
+        id, patientId, name, dob, phone, email, street, apt, city, state, zip,
+        insuranceProvider, insuranceId, status, createdAt, updatedAt
+      ) VALUES (
+        ${id}, ${patientId}, ${fullName}, ${dobStr},
+        ${body.phone?.trim() || null}, ${body.email?.trim() || null},
+        ${body.street?.trim() || null}, ${body.apt?.trim() || null},
+        ${body.city?.trim() || null}, ${body.state?.trim() || null}, ${body.zip?.trim() || null},
+        ${body.insuranceProvider?.trim() || null}, ${body.insuranceId?.trim() || null},
+        'active', ${nowStr}, ${nowStr}
+      )`;
+
+    const patient = { id, patientId, name: fullName, dob: dobStr };
 
     await prisma.auditLog.create({
       data: {

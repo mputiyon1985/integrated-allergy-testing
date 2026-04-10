@@ -25,10 +25,10 @@ export async function PUT(req: NextRequest) {
     }
 
     // Verify patient exists
-    const patient = await prisma.patient.findFirst({
-      where: { id: patientId, deletedAt: null },
-      select: { id: true },
-    })
+    const patientRows = await prisma.$queryRawUnsafe<Array<{ id: string }>>(
+      `SELECT id FROM Patient WHERE id = ? AND deletedAt IS NULL LIMIT 1`, patientId
+    )
+    const patient = patientRows[0] ?? null
     if (!patient) {
       return NextResponse.json({ error: 'Patient not found' }, { status: 404 })
     }
@@ -45,10 +45,15 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ ok: true, message: 'Nothing to update' })
     }
 
-    await prisma.patient.update({
-      where: { id: patientId },
-      data: safeUpdates,
-    })
+    // Build raw SQL update from safe fields
+    const fieldNames = Object.keys(safeUpdates) as AllowedField[]
+    const setClauses = fieldNames.map(f => `${f} = ?`).join(', ')
+    const fieldValues = fieldNames.map(f => safeUpdates[f])
+    const now = new Date().toISOString()
+    await prisma.$executeRawUnsafe(
+      `UPDATE Patient SET ${setClauses}, updatedAt = ? WHERE id = ?`,
+      ...fieldValues, now, patientId
+    )
 
     // Audit log (non-blocking)
     prisma.auditLog.create({
