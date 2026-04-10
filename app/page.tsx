@@ -296,6 +296,20 @@ export default function DashboardPage() {
       if (res.ok) {
         setCheckedInApptIds(prev => new Set([...prev, appt.id]));
         await loadWaiting();
+        // Fire-and-forget: auto-create an open encounter on check-in
+        try {
+          await fetch('/api/encounters', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              patientId: appt.patientId,
+              chiefComplaint: `Visit - ${appt.reasonName ?? appt.title}`,
+              status: 'open',
+              nurseName: '',
+              doctorName: '',
+            }),
+          });
+        } catch {}
       }
     } catch {}
     setCheckingInApptId(null);
@@ -321,6 +335,8 @@ export default function DashboardPage() {
 
   async function updateStatus(id: string, status: string, nurseName?: string) {
     setUpdatingId(id);
+    // Find the entry so we can get patientId for encounter side-effects
+    const entry = waiting.find(w => w.id === id);
     await fetch(`/api/waiting-room/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -328,6 +344,42 @@ export default function DashboardPage() {
     });
     await loadWaiting();
     setUpdatingId(null);
+
+    // Side-effects on encounter (fire-and-forget)
+    if (entry?.patientId) {
+      try {
+        // Find the most recent open encounter for this patient
+        const encRes = await fetch(`/api/encounters?patientId=${entry.patientId}&status=open&limit=1`);
+        if (encRes.ok) {
+          const encData = await encRes.json();
+          const openEncs: { id: string }[] = encData.encounters ?? [];
+          const encId = openEncs[0]?.id;
+          if (encId) {
+            if (status === 'in-service') {
+              // Log "Patient brought to exam room" activity
+              await fetch('/api/encounter-activities', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  encounterId: encId,
+                  patientId: entry.patientId,
+                  activityType: 'note',
+                  performedBy: nurseName ?? entry.nurseName ?? '',
+                  notes: 'Patient brought to exam room',
+                }),
+              });
+            } else if (status === 'complete') {
+              // Close the open encounter
+              await fetch(`/api/encounters/${encId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: 'complete' }),
+              });
+            }
+          }
+        }
+      } catch {}
+    }
   }
 
   function waitTime(checkedInAt: string) {

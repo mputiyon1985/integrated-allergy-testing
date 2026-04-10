@@ -84,27 +84,14 @@ function fmtDateLabel(iso: string) {
 }
 
 // ────────────────────────────────────────────────────────────
-//  Shared types for doctor/nurse dropdowns
-// ────────────────────────────────────────────────────────────
-interface DoctorOption { id: string; name: string; title?: string; locationId?: string | null; practiceId?: string | null; }
-interface NurseOption  { id: string; name: string; title?: string; locationId?: string | null; }
-
-// ────────────────────────────────────────────────────────────
 //  Add Activity Modal
 // ────────────────────────────────────────────────────────────
 function AddActivityModal({
-  encounterId, patientId, onClose, onSaved, nurseName,
-}: {
-  encounterId: string;
-  patientId: string;
-  onClose: () => void;
-  onSaved: () => void;
-  nurseName?: string;
-}) {
-  const [nurses, setNurses] = useState<NurseOption[]>([]);
+  encounterId, patientId, onClose, onSaved,
+}: { encounterId: string; patientId: string; onClose: () => void; onSaved: () => void }) {
   const [form, setForm] = useState({
     activityType: 'note',
-    performedBy: nurseName ?? '',
+    performedBy: '',
     notes: '',
     soapSubjective: '',
     soapObjective: '',
@@ -118,17 +105,6 @@ function AddActivityModal({
 
   useEffect(() => {
     fetch('/api/cpt-codes').then(r => r.ok ? r.json() : { codes: [] }).then(d => setCptCodes(d.codes ?? [])).catch(() => {});
-
-    let locId = '';
-    try { locId = localStorage.getItem('iat_active_location') ?? ''; } catch {}
-    fetch('/api/nurses?all=1')
-      .then(r => r.ok ? r.json() : [])
-      .then(d => {
-        const all: NurseOption[] = Array.isArray(d) ? d : (d.nurses ?? []);
-        const filtered = locId ? all.filter(n => n.locationId === locId || !n.locationId) : all;
-        setNurses(filtered.filter(n => (n as unknown as { active?: boolean }).active !== false));
-      })
-      .catch(() => {});
   }, []);
 
   async function submit() {
@@ -163,15 +139,7 @@ function AddActivityModal({
           </div>
           <div>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Performed By</label>
-            <select className="form-input" value={form.performedBy} onChange={e => setForm(p => ({ ...p, performedBy: e.target.value }))}>
-              <option value="">— Select Nurse / Tech —</option>
-              {nurses.map(n => (
-                <option key={n.id} value={n.name}>{n.title ? `${n.name}, ${n.title}` : n.name}</option>
-              ))}
-              {nurseName && !nurses.find(n => n.name === nurseName) && (
-                <option value={nurseName}>{nurseName}</option>
-              )}
-            </select>
+            <input className="form-input" value={form.performedBy} placeholder="e.g. RN Michelle Roman" onChange={e => setForm(p => ({ ...p, performedBy: e.target.value }))} />
           </div>
           <div>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Notes</label>
@@ -218,87 +186,15 @@ function AddActivityModal({
 // ────────────────────────────────────────────────────────────
 //  Activity Item
 // ────────────────────────────────────────────────────────────
-function ActivityItem({ act, onRefresh }: { act: EncounterActivity; onRefresh: () => void }) {
+function ActivityItem({ act }: { act: EncounterActivity }) {
   const [expanded, setExpanded] = useState(false);
   const [soapOpen, setSoapOpen] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editSaving, setEditSaving] = useState(false);
-  const [editForm, setEditForm] = useState({
-    activityType: act.activityType,
-    performedBy: act.performedBy ?? '',
-    notes: act.notes ?? '',
-    soapSubjective: act.soapSubjective ?? '',
-    soapObjective: act.soapObjective ?? '',
-    soapAssessment: act.soapAssessment ?? '',
-    soapPlan: act.soapPlan ?? '',
-  });
-  const editShowSoap = SOAP_TYPES.has(editForm.activityType);
-
   const icon = ACTIVITY_ICON[act.activityType] ?? '📝';
   const label = ACTIVITY_LABEL[act.activityType] ?? act.activityType;
   const ts = act.performedAt ?? act.createdAt;
   const truncNote = act.notes && act.notes.length > 100 ? act.notes.slice(0, 100) + '…' : act.notes;
   const hasFullNote = (act.notes?.length ?? 0) > 100;
   const hasSoap = act.soapSubjective || act.soapObjective || act.soapAssessment || act.soapPlan;
-
-  async function saveEdit() {
-    setEditSaving(true);
-    await fetch(`/api/encounter-activities/${act.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(editForm),
-    });
-    setEditSaving(false);
-    setIsEditing(false);
-    onRefresh();
-  }
-
-  if (isEditing) {
-    return (
-      <div style={{ padding: '10px 0', borderBottom: '1px solid #f1f5f9', display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontSize: 12, fontWeight: 700, color: '#7c3aed', textTransform: 'uppercase' }}>✏️ Editing Activity</span>
-          <button onClick={() => setIsEditing(false)} style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: 18, cursor: 'pointer', lineHeight: 1 }}>✕</button>
-        </div>
-        <div>
-          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 3, textTransform: 'uppercase' }}>Activity Type</label>
-          <select className="form-input" style={{ fontSize: 13 }} value={editForm.activityType} onChange={e => setEditForm(p => ({ ...p, activityType: e.target.value }))}>
-            {ACTIVITY_TYPES.map(t => <option key={t.value} value={t.value}>{t.icon} {t.label}</option>)}
-          </select>
-        </div>
-        <div>
-          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 3, textTransform: 'uppercase' }}>Performed By</label>
-          <input className="form-input" style={{ fontSize: 13 }} value={editForm.performedBy} onChange={e => setEditForm(p => ({ ...p, performedBy: e.target.value }))} placeholder="e.g. RN Michelle Roman" />
-        </div>
-        <div>
-          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 3, textTransform: 'uppercase' }}>Notes</label>
-          <textarea className="form-input" style={{ fontSize: 13, resize: 'vertical' }} rows={4} value={editForm.notes} onChange={e => setEditForm(p => ({ ...p, notes: e.target.value }))} />
-        </div>
-        {editShowSoap && (
-          <>
-            <div style={{ fontWeight: 700, fontSize: 11, color: '#7c3aed', textTransform: 'uppercase', borderTop: '1px solid #e2e8f0', paddingTop: 6 }}>SOAP Notes</div>
-            {[
-              { label: 'Subjective', key: 'soapSubjective' },
-              { label: 'Objective', key: 'soapObjective' },
-              { label: 'Assessment', key: 'soapAssessment' },
-              { label: 'Plan', key: 'soapPlan' },
-            ].map(f => (
-              <div key={f.key}>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 3, textTransform: 'uppercase' }}>{f.label}</label>
-                <textarea className="form-input" style={{ fontSize: 13, resize: 'vertical' }} rows={2} value={(editForm as Record<string, string>)[f.key]} onChange={e => setEditForm(p => ({ ...p, [f.key]: e.target.value }))} />
-              </div>
-            ))}
-          </>
-        )}
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <button onClick={() => setIsEditing(false)} style={{ padding: '6px 14px', borderRadius: 7, border: '1px solid #e2e8f0', background: '#fff', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>Cancel</button>
-          <button onClick={saveEdit} disabled={editSaving} style={{ padding: '6px 14px', borderRadius: 7, border: 'none', background: '#0d9488', color: '#fff', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>
-            {editSaving ? '⏳ Saving…' : '💾 Save'}
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div style={{ display: 'flex', gap: 10, padding: '8px 0', borderBottom: '1px solid #f1f5f9' }}>
@@ -308,13 +204,6 @@ function ActivityItem({ act, onRefresh }: { act: EncounterActivity; onRefresh: (
           <span style={{ fontSize: 12, color: '#94a3b8', minWidth: 72, fontVariantNumeric: 'tabular-nums' }}>{fmtTime(ts)}</span>
           <span style={{ fontSize: 13, fontWeight: 700, color: '#1a2233' }}>{label}</span>
           {act.performedBy && <span style={{ fontSize: 12, color: '#64748b' }}>— {act.performedBy}</span>}
-          <button
-            onClick={() => setIsEditing(true)}
-            title="Edit activity"
-            style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 12, padding: '2px 6px', borderRadius: 5, lineHeight: 1 }}
-            onMouseEnter={e => (e.currentTarget.style.color = '#0d9488')}
-            onMouseLeave={e => (e.currentTarget.style.color = '#94a3b8')}
-          >✏️</button>
         </div>
         {act.notes && (
           <div style={{ fontSize: 13, color: '#374151', marginTop: 3 }}>
@@ -377,8 +266,8 @@ function EncounterCard({
             📄 PDF
           </a>
           <button onClick={() => setShowAdd(true)}
-            style={{ padding: '5px 14px', borderRadius: 7, border: 'none', background: '#0d9488', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-            ➕ Add Note
+            style={{ padding: '5px 12px', borderRadius: 7, border: 'none', background: '#0d9488', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+            + Add Activity
           </button>
         </div>
       </div>
@@ -387,7 +276,7 @@ function EncounterCard({
         {activities.length === 0 ? (
           <div style={{ padding: '16px 0', textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>No activities recorded yet</div>
         ) : (
-          activities.map(a => <ActivityItem key={a.id} act={a} onRefresh={onRefresh} />)
+          activities.map(a => <ActivityItem key={a.id} act={a} />)
         )}
       </div>
 
@@ -395,7 +284,6 @@ function EncounterCard({
         <AddActivityModal
           encounterId={enc.id}
           patientId={patientId}
-          nurseName={enc.nurseName}
           onClose={() => setShowAdd(false)}
           onSaved={() => { setShowAdd(false); onRefresh(); }}
         />
@@ -459,6 +347,8 @@ function PatientTimeline({ encounters }: { encounters: EncounterRecord[] }) {
 // ────────────────────────────────────────────────────────────
 //  New Encounter + First Activity Modal
 // ────────────────────────────────────────────────────────────
+interface DoctorOption { id: string; name: string; title?: string; locationId?: string | null; practiceId?: string | null; }
+interface NurseOption  { id: string; name: string; title?: string; locationId?: string | null; }
 
 function NewEncounterModal({
   patientId, patientName, onClose, onSaved,
@@ -515,20 +405,7 @@ function NewEncounterModal({
     const data = await res.json();
     const id = data.id ?? data.encounter?.id;
     setSaving(false);
-    if (id) {
-      setEncId(id);
-      // Pre-fill the activity step with nurse + SOAP note template
-      setActForm({
-        activityType: 'in_person_visit',
-        performedBy: encForm.nurseName,
-        notes: `Chief Complaint: ${encForm.chiefComplaint}\n\nSubjective: Patient presents with ${encForm.chiefComplaint}. \n\nObjective: Vital signs stable. \n\nAssessment: \n\nPlan: `,
-        soapSubjective: '',
-        soapObjective: '',
-        soapAssessment: '',
-        soapPlan: '',
-      });
-      setStep('activity');
-    }
+    if (id) { setEncId(id); setStep('activity'); }
     else { onSaved(); }
   }
 
@@ -608,16 +485,11 @@ function NewEncounterModal({
             </div>
             <div>
               <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Performed By</label>
-              <select className="form-input" value={actForm.performedBy} onChange={e => setActForm(p => ({ ...p, performedBy: e.target.value }))}>
-                <option value="">— Select Nurse / Tech —</option>
-                {nurses.map(n => (
-                  <option key={n.id} value={n.name}>{n.title ? `${n.name}, ${n.title}` : n.name}</option>
-                ))}
-              </select>
+              <input className="form-input" value={actForm.performedBy} placeholder="e.g. RN Michelle Roman" onChange={e => setActForm(p => ({ ...p, performedBy: e.target.value }))} />
             </div>
             <div>
               <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Notes</label>
-              <textarea className="form-input" rows={6} value={actForm.notes} onChange={e => setActForm(p => ({ ...p, notes: e.target.value }))} style={{ resize: 'vertical', fontFamily: 'monospace', fontSize: 13 }} />
+              <textarea className="form-input" rows={3} value={actForm.notes} onChange={e => setActForm(p => ({ ...p, notes: e.target.value }))} style={{ resize: 'vertical' }} />
             </div>
             {showSoap && (
               <>
