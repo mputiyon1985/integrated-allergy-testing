@@ -347,6 +347,9 @@ function PatientTimeline({ encounters }: { encounters: EncounterRecord[] }) {
 // ────────────────────────────────────────────────────────────
 //  New Encounter + First Activity Modal
 // ────────────────────────────────────────────────────────────
+interface DoctorOption { id: string; name: string; title?: string; locationId?: string | null; practiceId?: string | null; }
+interface NurseOption  { id: string; name: string; title?: string; locationId?: string | null; }
+
 function NewEncounterModal({
   patientId, patientName, onClose, onSaved,
 }: { patientId: string; patientName: string; onClose: () => void; onSaved: () => void }) {
@@ -361,6 +364,35 @@ function NewEncounterModal({
     activityType: 'note', performedBy: '', notes: '',
     soapSubjective: '', soapObjective: '', soapAssessment: '', soapPlan: '',
   });
+
+  // Load doctors + nurses filtered by active location
+  const [doctors, setDoctors] = useState<DoctorOption[]>([]);
+  const [nurses, setNurses] = useState<NurseOption[]>([]);
+
+  useEffect(() => {
+    let locId = '';
+    try { locId = localStorage.getItem('iat_active_location') ?? ''; } catch {}
+
+    Promise.all([
+      fetch('/api/doctors?all=1').then(r => r.ok ? r.json() : { doctors: [] }),
+      fetch('/api/nurses?all=1').then(r => r.ok ? r.json() : []),
+    ]).then(([docData, nurseData]) => {
+      const allDocs: DoctorOption[] = Array.isArray(docData) ? docData : (docData.doctors ?? []);
+      const allNurses: NurseOption[] = Array.isArray(nurseData) ? nurseData : (nurseData.nurses ?? []);
+
+      // Filter by location if one is selected — fallback to all active
+      const filteredDocs = locId
+        ? allDocs.filter(d => d.locationId === locId || !d.locationId)
+        : allDocs;
+      const filteredNurses = locId
+        ? allNurses.filter(n => n.locationId === locId || !n.locationId)
+        : allNurses;
+
+      setDoctors(filteredDocs.filter(d => (d as unknown as { active?: boolean }).active !== false));
+      setNurses(filteredNurses.filter(n => (n as unknown as { active?: boolean }).active !== false));
+    }).catch(() => {});
+  }, []);
+
   const showSoap = SOAP_TYPES.has(actForm.activityType);
 
   async function createEncounter() {
@@ -400,16 +432,41 @@ function NewEncounterModal({
 
         {step === 'encounter' ? (
           <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {[
-              { label: 'Chief Complaint *', key: 'chiefComplaint' },
-              { label: 'Physician', key: 'doctorName' },
-              { label: 'Nurse', key: 'nurseName' },
-            ].map(f => (
-              <div key={f.key}>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>{f.label}</label>
-                <input className="form-input" value={(encForm as Record<string,string>)[f.key]} onChange={e => setEncForm(p => ({ ...p, [f.key]: e.target.value }))} />
-              </div>
-            ))}
+            {/* Chief Complaint */}
+            <div>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Chief Complaint *</label>
+              <input className="form-input" value={encForm.chiefComplaint} onChange={e => setEncForm(p => ({ ...p, chiefComplaint: e.target.value }))} placeholder="Reason for visit" />
+            </div>
+
+            {/* Physician dropdown */}
+            <div>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Physician</label>
+              <select className="form-input" value={encForm.doctorName} onChange={e => setEncForm(p => ({ ...p, doctorName: e.target.value }))}>
+                <option value="">— Select Physician —</option>
+                {doctors.map(d => (
+                  <option key={d.id} value={d.name}>
+                    {d.title ? `${d.name}, ${d.title}` : d.name}
+                  </option>
+                ))}
+                {doctors.length === 0 && <option disabled>No physicians at this location</option>}
+              </select>
+            </div>
+
+            {/* Nurse dropdown */}
+            <div>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Nurse / Tech</label>
+              <select className="form-input" value={encForm.nurseName} onChange={e => setEncForm(p => ({ ...p, nurseName: e.target.value }))}>
+                <option value="">— Select Nurse / Tech —</option>
+                {nurses.map(n => (
+                  <option key={n.id} value={n.name}>
+                    {n.title ? `${n.name}, ${n.title}` : n.name}
+                  </option>
+                ))}
+                {nurses.length === 0 && <option disabled>No nurses at this location</option>}
+              </select>
+            </div>
+
+            {/* Status */}
             <div>
               <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Status</label>
               <select className="form-input" value={encForm.status} onChange={e => setEncForm(p => ({ ...p, status: e.target.value }))}>
