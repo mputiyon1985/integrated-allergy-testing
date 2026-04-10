@@ -8,7 +8,7 @@ import type { ResponsiveLayouts } from 'react-grid-layout';
 
 const DashboardGrid = dynamic(() => import('@/components/DashboardGrid'), { ssr: false });
 
-const LAYOUT_KEY = 'iat-dashboard-layout-v3';
+const LAYOUT_KEY = 'iat-dashboard-layout-v4';
 
 const DEFAULT_LAYOUTS: ResponsiveLayouts = {
   lg: [
