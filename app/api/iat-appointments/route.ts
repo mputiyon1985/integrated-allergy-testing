@@ -54,14 +54,28 @@ export async function GET(request: NextRequest) {
       ? getMonthRange(base)
       : getWeekRange(base)
 
-    const appointments = await prisma.iATAppointment.findMany({
-      where: {
-        deletedAt: null,
-        startTime: { gte: start, lte: end },
-        ...(locationId ? { locationId } : {}),
-      },
-      orderBy: { startTime: 'asc' },
-    })
+    const startStr = start.toISOString()
+    const endStr = end.toISOString()
+
+    let appointments
+    if (locationId) {
+      appointments = await prisma.$queryRaw`
+        SELECT * FROM IatAppointment
+        WHERE deletedAt IS NULL
+          AND startTime >= ${startStr}
+          AND startTime <= ${endStr}
+          AND locationId = ${locationId}
+        ORDER BY startTime ASC
+      `
+    } else {
+      appointments = await prisma.$queryRaw`
+        SELECT * FROM IatAppointment
+        WHERE deletedAt IS NULL
+          AND startTime >= ${startStr}
+          AND startTime <= ${endStr}
+        ORDER BY startTime ASC
+      `
+    }
 
     return NextResponse.json(appointments)
   } catch (error) {
