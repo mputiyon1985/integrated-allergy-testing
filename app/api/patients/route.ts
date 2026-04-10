@@ -36,8 +36,6 @@ export async function GET(request: NextRequest) {
     const patients = await prisma.patient.findMany({
       where: {
         deletedAt: null,
-        // Only show IAT patients (patientId starts with PAT-)
-        patientId: { startsWith: 'PAT-' },
         ...(locationId ? { locationId } : {}),
         ...(search
           ? {
