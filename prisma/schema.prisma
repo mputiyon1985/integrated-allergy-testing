@@ -567,6 +567,23 @@ model PracticeInsurance {
   @@index([practiceId])
 }
 
+model PracticeHours {
+  id           String  @id @default(cuid())
+  practiceId   String
+  dayOfWeek    Int     // 0=Sunday, 1=Monday ... 6=Saturday
+  isOpen       Boolean @default(true)
+  openTime     String  @default("08:00")  // HH:MM 24hr
+  closeTime    String  @default("17:00")
+  lunchStart   String? // HH:MM 24hr, null = no lunch break
+  lunchEnd     String? // HH:MM 24hr
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([practiceId, dayOfWeek])
+  @@index([practiceId])
+}
+
 model BillingRule {
   id                    String   @id @default(cuid())
   name                  String
