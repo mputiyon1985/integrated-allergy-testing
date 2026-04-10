@@ -316,16 +316,14 @@ ${sectionsHtml}
     );
   }
 
-  function Field({ label, field, type = 'text' }: { label: string; field: keyof Patient; type?: string }) {
-    // For date fields, normalize ISO datetime to YYYY-MM-DD
+  // NOTE: renderField is a plain function (not a React component) to prevent
+  // re-mounting on every keystroke (which would lose focus after first character).
+  function renderField(label: string, field: keyof Patient, type = 'text') {
     const rawVal = (editForm[field] as string) ?? '';
-    // For date inputs: extract YYYY-MM-DD from ISO string, handling timezone
     const displayVal = type === 'date' && rawVal
       ? (() => {
           const s = rawVal.split('T')[0];
-          // Validate it's a real date string
           if (/^\d{4}-\d{2}-\d{2}$/.test(s) && parseInt(s.substring(0,4)) > 1900) return s;
-          // Fallback: parse and format as UTC
           try {
             const d = new Date(rawVal);
             return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
@@ -333,7 +331,7 @@ ${sectionsHtml}
         })()
       : rawVal;
     return (
-      <div style={{ marginBottom: 14 }}>
+      <div style={{ marginBottom: 14 }} key={field}>
         <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{label}</label>
         <input
           type={type}
@@ -344,6 +342,7 @@ ${sectionsHtml}
       </div>
     );
   }
+
 
   if (loading) return (
     <><div className="page-header"><div className="page-title">Patient Detail</div></div>
@@ -686,17 +685,17 @@ ${sectionsHtml}
             </div>
             <div style={{ padding: 24 }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div style={{ gridColumn: '1/-1' }}><Field label="Full Name *" field="name" /></div>
-                <Field label="Date of Birth" field="dob" type="date" />
-                <Field label="Cell Phone" field="phone" />
-                <Field label="Home Phone" field="homePhone" />
-                <Field label="Email" field="email" type="email" />
+                <div style={{ gridColumn: '1/-1' }}>{renderField("Full Name *", "name")}</div>
+                {renderField("Date of Birth", "dob", "date")}
+                {renderField("Cell Phone", "phone")}
+                {renderField("Home Phone", "homePhone")}
+                {renderField("Email", "email", "email")}
                 <div style={{ gridColumn: '1/-1', fontWeight: 700, fontSize: 12, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em', paddingTop: 8, borderTop: '1px solid #e2e8f0' }}>Address</div>
-                <Field label="Street" field="street" />
-                <Field label="Apt / Suite" field="apt" />
-                <Field label="City" field="city" />
-                <Field label="State" field="state" />
-                <Field label="ZIP" field="zip" />
+                {renderField("Street", "street")}
+                {renderField("Apt / Suite", "apt")}
+                {renderField("City", "city")}
+                {renderField("State", "state")}
+                {renderField("ZIP", "zip")}
                 <div style={{ gridColumn: '1/-1', fontWeight: 700, fontSize: 12, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em', paddingTop: 8, borderTop: '1px solid #e2e8f0' }}>Insurance</div>
                 <div>
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Insurance Provider</label>
@@ -709,12 +708,12 @@ ${sectionsHtml}
                     <option value="Other">Other (specify in notes)</option>
                   </select>
                 </div>
-                <Field label="Member ID" field="insuranceId" />
-                <Field label="Group #" field="insuranceGroup" />
+                {renderField("Member ID", "insuranceId")}
+                {renderField("Group #", "insuranceGroup")}
                 <div style={{ gridColumn: '1/-1', fontWeight: 700, fontSize: 12, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em', paddingTop: 8, borderTop: '1px solid #e2e8f0' }}>Emergency Contact</div>
-                <Field label="Name" field="emergencyName" />
-                <Field label="Phone" field="emergencyPhone" />
-                <Field label="Relationship" field="emergencyRelation" />
+                {renderField("Name", "emergencyName")}
+                {renderField("Phone", "emergencyPhone")}
+                {renderField("Relationship", "emergencyRelation")}
                 <div>
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Status</label>
                   <select className="form-input" value={editForm.status ?? ''} onChange={e => setEditForm(f => ({ ...f, status: e.target.value }))}>
@@ -743,7 +742,7 @@ ${sectionsHtml}
                     ))}
                   </select>
                 </div>
-                                <div style={{ gridColumn: '1/-1' }}><Field label="Diagnosis" field="diagnosis" /></div>
+                                <div style={{ gridColumn: '1/-1' }}>{renderField("Diagnosis", "diagnosis")}</div>
                 <div style={{ gridColumn: '1/-1' }}>
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>ICD-10 Diagnosis Code</label>
                   <input className="form-input" list="icd10-list" value={editForm.icd10Code ?? ''}
