@@ -8,6 +8,17 @@ import prisma from '@/lib/db'
 import { requirePermission } from '@/lib/api-permissions'
 import { HIPAA_HEADERS } from '@/lib/hipaaHeaders'
 
+
+function sanitizeHtml(html: string): string {
+  // Allow safe HTML tags, strip scripts/iframes/on* handlers
+  return html
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+    .replace(/<iframe[^>]*>[\s\S]*?<\/iframe>/gi, '')
+    .replace(/\son\w+\s*=\s*["'][^"']*["']/gi, '')
+    .replace(/javascript:/gi, '')
+    .replace(/vbscript:/gi, '')
+}
+
 export const dynamic = 'force-dynamic'
 
 // ── Resend sender ──────────────────────────────────────────────────────────────

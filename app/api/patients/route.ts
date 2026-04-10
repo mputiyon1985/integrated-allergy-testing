@@ -31,8 +31,27 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const search = searchParams.get('search')
-    const locationId = searchParams.get('locationId')
-    const practiceId = searchParams.get('practiceId')
+    let locationId = searchParams.get('locationId')
+    let practiceId = searchParams.get('practiceId')
+
+    // Enforce per-user location scope via allowedLocations
+    try {
+      const { verifySession } = await import('@/lib/auth/session')
+      const { getUserLocationScope } = await import('@/lib/location-scope')
+      const userSession = await verifySession(request)
+      if (userSession) {
+        const scopedLocs = await getUserLocationScope({ id: String(userSession.id ?? userSession.userId ?? ""), role: String(userSession.role ?? "staff") })
+        if (scopedLocs) {
+          if (locationId && !scopedLocs.includes(locationId)) {
+            return NextResponse.json([], { headers: HIPAA_HEADERS })
+          }
+          if (!locationId && !practiceId) {
+            // Restrict to first allowed location as default scope
+            locationId = scopedLocs.join(',').split(',')[0]
+          }
+        }
+      }
+    } catch { /* non-critical, continue */ }
 
     // ── Location-scoped access enforcement ──
     const { verifySession } = await import('@/lib/auth/session')

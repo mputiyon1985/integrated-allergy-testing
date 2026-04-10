@@ -5,12 +5,15 @@
  * @security Requires authenticated session (iat_session cookie via proxy.ts)
  */
 import { NextRequest, NextResponse } from 'next/server'
+import { requirePermission } from '@/lib/api-permissions'
 import prisma from '@/lib/db'
 import { HIPAA_HEADERS } from '@/lib/hipaaHeaders'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest) {
+  const denied = await requirePermission(request, 'audit_log_view')
+  if (denied) return denied
   try {
     const { searchParams } = new URL(request.url)
     const patientId = searchParams.get('patientId')
