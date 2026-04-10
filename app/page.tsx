@@ -8,7 +8,7 @@ import type { ResponsiveLayouts } from 'react-grid-layout';
 
 const DashboardGrid = dynamic(() => import('@/components/DashboardGrid'), { ssr: false });
 
-const LAYOUT_KEY = 'iat-dashboard-layout-v6';
+const LAYOUT_KEY = 'iat-dashboard-layout-v7';
 
 const DEFAULT_LAYOUTS: ResponsiveLayouts = {
   lg: [
@@ -56,7 +56,7 @@ const DEFAULT_LAYOUTS: ResponsiveLayouts = {
 function loadLayouts(): ResponsiveLayouts {
   try {
     // Purge all old layout keys
-    ['iat-dashboard-layout-v1','iat-dashboard-layout-v2','iat-dashboard-layout-v3','iat-dashboard-layout-v4','iat-dashboard-layout-v5'].forEach(k => {
+    ['iat-dashboard-layout-v1','iat-dashboard-layout-v2','iat-dashboard-layout-v3','iat-dashboard-layout-v4','iat-dashboard-layout-v5','iat-dashboard-layout-v6'].forEach(k => {
       try { localStorage.removeItem(k); } catch {}
     });
     const saved = localStorage.getItem(LAYOUT_KEY);
@@ -639,9 +639,9 @@ export default function DashboardPage() {
               id: 'kpi-patients',
               content: (
                 <div className="kpi-card" style={{ height: '100%', borderTop: '4px solid #6366f1', border: editMode ? '2px dashed #f59e0b' : undefined }}>
-                  <div className="kpi-icon">👥</div>
-                  <div className="kpi-label">Total Patients</div>
-                  {loading ? <div style={{width:40,height:24,borderRadius:6,background:'#e2e8f0',animation:'pulse 1.5s infinite'}} /> : <div className="kpi-value" style={{ color: '#4f46e5' }}>{patientCount ?? 0}</div>}
+                  <div className="kpi-icon">📅</div>
+                  <div className="kpi-label">Appointments Today</div>
+                  {loading ? <div style={{width:40,height:24,borderRadius:6,background:'#e2e8f0',animation:'pulse 1.5s infinite'}} /> : <div className="kpi-value" style={{ color: todayAppts.length > 0 ? '#4f46e5' : '#64748b' }}>{todayAppts.length}</div>}
                 </div>
               ),
             },
