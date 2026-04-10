@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { EncountersTab } from '@/components/patient/EncountersTab';
 import { ConsentStatus } from '@/components/patient/ConsentStatus';
@@ -88,10 +88,12 @@ type Tab = 'overview' | 'tests' | 'videos' | 'forms' | 'consent' | 'encounters';
 
 export default function PatientDetailPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const id = params?.id as string;
 
   const [patient, setPatient] = useState<Patient | null>(null);
-  const [tab, setTab] = useState<Tab>('overview');
+  // Auto-switch to encounters tab if ?action=encounter in URL
+  const [tab, setTab] = useState<Tab>(searchParams?.get('action') === 'encounter' ? 'encounters' : 'overview');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [editing, setEditing] = useState(false);
@@ -671,7 +673,7 @@ ${sectionsHtml}
         )}
 
         {tab === 'encounters' && (
-          <EncountersTab patientId={patient.id} patientName={patient.name} />
+          <EncountersTab patientId={patient.id} patientName={patient.name} autoOpen={searchParams?.get('action') === 'encounter'} />
         )}
       </div>
 

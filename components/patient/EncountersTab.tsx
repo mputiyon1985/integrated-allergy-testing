@@ -475,11 +475,11 @@ function NewEncounterModal({
 // ────────────────────────────────────────────────────────────
 //  Encounters Tab (exported)
 // ────────────────────────────────────────────────────────────
-export function EncountersTab({ patientId, patientName }: { patientId: string; patientName: string }) {
+export function EncountersTab({ patientId, patientName, autoOpen = false }: { patientId: string; patientName: string; autoOpen?: boolean }) {
   const [encounters, setEncounters] = useState<EncounterRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [showNew, setShowNew] = useState(false);
+  const [showNew, setShowNew] = useState(autoOpen);
 
   function load() {
     setLoading(true);

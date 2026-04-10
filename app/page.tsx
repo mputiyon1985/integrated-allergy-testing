@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import type { Layout } from 'react-grid-layout';
@@ -104,6 +105,7 @@ interface WaitingEntry {
 interface Nurse { id: string; name: string; title?: string; }
 
 export default function DashboardPage() {
+  const router = useRouter();
   const [patientCount, setPatientCount] = useState<number | null>(null);
   const [encounterCount, setEncounterCount] = useState<number | null>(null);
   const [nurseCount, setNurseCount] = useState<number | null>(null);
@@ -384,7 +386,12 @@ export default function DashboardPage() {
               const rowBg = e.status === 'in-service' ? '#e8f9f7' : isNew ? '#fffbeb' : 'white';
               const rowBorder = isNew && e.status === 'waiting' ? '2px solid #f59e0b' : '1px solid #f1f5f9';
               return (
-              <tr key={e.id} style={{ borderBottom: rowBorder, background: rowBg }}>
+              <tr key={e.id}
+                onClick={() => e.patientId && router.push(`/patients/${e.patientId}?action=encounter`)}
+                style={{ borderBottom: rowBorder, background: rowBg, cursor: e.patientId ? 'pointer' : 'default', transition: 'background 0.15s' }}
+                onMouseEnter={ev => { if (e.patientId) ev.currentTarget.style.background = e.status === 'in-service' ? '#c8f5ef' : '#fef3c7'; }}
+                onMouseLeave={ev => ev.currentTarget.style.background = rowBg}
+              >
                 <td style={{ padding: '5px 10px' }}>
                   <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5 }}>
                     {isNew && e.status === 'waiting' && <span style={{ fontSize: 9, background: '#f59e0b', color: '#fff', borderRadius: 4, padding: '1px 5px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>NEW</span>}
@@ -440,7 +447,7 @@ export default function DashboardPage() {
                     </div>
                   )}
                 </td>
-                <td style={{ padding: '5px 10px', fontSize: 12 }}>
+                <td style={{ padding: '5px 10px', fontSize: 12 }} onClick={ev => ev.stopPropagation()}>
                   {e.status === 'in-service' && e.calledAt ? (
                     <div>
                       <div style={{ color: '#0d9488', fontWeight: 700 }}>🩺 {inServiceTime(e.calledAt)}</div>
@@ -489,20 +496,29 @@ export default function DashboardPage() {
                     <span style={{ fontWeight: 600, color: '#0d9488' }}>{e.nurseName ?? '—'}</span>
                   )}
                 </td>
-                <td style={{ padding: '5px 10px' }}>
-                  {e.status === 'in-service' && (
-                    <div style={{ display: 'flex', gap: 4 }}>
-                      <button onClick={() => { setQuickLogEntry(e); setQuickLogForm({ activityType: 'note', notes: '' }); }}
-                        style={{ padding: '3px 8px', borderRadius: 6, border: '1px solid #0d9488', background: '#fff', color: '#0d9488', fontSize: 11, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                        + Log
+                <td style={{ padding: '5px 10px' }} onClick={ev => ev.stopPropagation()}>
+                  <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                    {e.patientId && (
+                      <button
+                        onClick={ev => { ev.stopPropagation(); router.push(`/patients/${e.patientId}?action=encounter`); }}
+                        style={{ padding: '3px 9px', borderRadius: 6, border: '1px solid #6366f1', background: '#eef2ff', color: '#4f46e5', fontSize: 11, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                        🏥 Encounter
                       </button>
-                      <button onClick={() => updateStatus(e.id, 'complete')}
-                        disabled={updatingId === e.id}
-                        style={{ padding: '3px 10px', borderRadius: 6, border: 'none', background: '#0055A5', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-                        {updatingId === e.id ? '⏳' : '✅ Complete'}
-                      </button>
-                    </div>
-                  )}
+                    )}
+                    {e.status === 'in-service' && (
+                      <>
+                        <button onClick={ev => { ev.stopPropagation(); setQuickLogEntry(e); setQuickLogForm({ activityType: 'note', notes: '' }); }}
+                          style={{ padding: '3px 8px', borderRadius: 6, border: '1px solid #0d9488', background: '#fff', color: '#0d9488', fontSize: 11, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                          + Log
+                        </button>
+                        <button onClick={ev => { ev.stopPropagation(); updateStatus(e.id, 'complete'); }}
+                          disabled={updatingId === e.id}
+                          style={{ padding: '3px 10px', borderRadius: 6, border: 'none', background: '#0055A5', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                          {updatingId === e.id ? '⏳' : '✅ Complete'}
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </td>
               </tr>
               );
