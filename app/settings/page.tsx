@@ -9,6 +9,7 @@ import AppManualTab from '@/components/settings/AppManualTab';
 import RolesManagement from '@/components/settings/RolesManagement';
 import AuditLogTab from '@/components/settings/AuditLogTab';
 import ServicesTab from '@/components/settings/ServicesTab';
+import EmailTab from '@/components/settings/EmailTab';
 
 const DashboardGrid = dynamic(() => import('@/components/DashboardGrid'), { ssr: false });
 const DoctorsTab = dynamic(() => import('@/components/settings/DoctorsTab'), { ssr: false });
@@ -111,7 +112,7 @@ function loadSettingsLayouts(): ResponsiveLayouts {
 }
 
 type CurrentUser = { id: string; role: string; email: string; name: string };
-type SettingsTab = 'dashboard' | 'roles' | 'users' | 'audit' | 'services' | 'doctors' | 'nurses' | 'videos' | 'allergens' | 'practices' | 'locations' | 'manual';
+type SettingsTab = 'dashboard' | 'roles' | 'users' | 'audit' | 'services' | 'doctors' | 'nurses' | 'videos' | 'allergens' | 'practices' | 'locations' | 'manual' | 'email';
 
 export default function SettingsPage() {
   const [editMode, setEditMode] = useState(false);
@@ -220,6 +221,9 @@ export default function SettingsPage() {
           <button style={TAB_STYLE(activeTab === 'manual')} onClick={() => setActiveTab('manual')}>
             📘 App Manual
           </button>
+          <button style={TAB_STYLE(activeTab === 'email')} onClick={() => setActiveTab('email')}>
+            📧 Email
+          </button>
         </div>
 
         {/* Roles Tab */}
@@ -241,6 +245,9 @@ export default function SettingsPage() {
 
         {/* App Manual Tab */}
         {activeTab === 'manual' && <AppManualTab />}
+
+        {/* Email Tab */}
+        {activeTab === 'email' && <EmailTab />}
 
         {/* Services Tab */}
         {activeTab === 'services' && <ServicesTab />}

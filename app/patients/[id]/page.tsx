@@ -113,6 +113,83 @@ export default function PatientDetailPage() {
   const [photoUploading, setPhotoUploading] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
+  // Email modal
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [emailTemplates, setEmailTemplates] = useState<{ id: string; name: string; subject: string; body: string; category: string }[]>([]);
+  const [emailForm, setEmailForm] = useState({ to: '', templateId: 'custom', subject: '', body: '' });
+  const [emailSending, setEmailSending] = useState(false);
+  const [emailMsg, setEmailMsg] = useState('');
+  const [emailPreview, setEmailPreview] = useState(false);
+
+  function interpolateEmail(template: string): string {
+    const vars: Record<string, string> = {
+      patientName: patient?.name ?? '',
+      practiceName: 'Integrated Allergy Testing',
+      date: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+      time: '',
+      location: patient?.clinicLocation ?? '',
+    };
+    return template.replace(/\{\{(\w+)\}\}/g, (_, key) => vars[key] ?? `{{${key}}}`);
+  }
+
+  async function openEmailModal() {
+    setEmailMsg('');
+    setEmailPreview(false);
+    setEmailForm({ to: patient?.email ?? '', templateId: 'custom', subject: '', body: '' });
+    // Load templates
+    const r = await fetch('/api/email/templates');
+    if (r.ok) {
+      const d = await r.json() as { templates: { id: string; name: string; subject: string; body: string; category: string }[] };
+      setEmailTemplates(d.templates ?? []);
+    }
+    setShowEmailModal(true);
+  }
+
+  function handleEmailTemplateChange(templateId: string) {
+    if (templateId === 'custom') {
+      setEmailForm(f => ({ ...f, templateId: 'custom', subject: '', body: '' }));
+    } else {
+      const tpl = emailTemplates.find(t => t.id === templateId);
+      if (tpl) {
+        setEmailForm(f => ({
+          ...f,
+          templateId,
+          subject: interpolateEmail(tpl.subject),
+          body: interpolateEmail(tpl.body),
+        }));
+      }
+    }
+    setEmailPreview(false);
+  }
+
+  async function sendEmail() {
+    if (!emailForm.to || !emailForm.subject || !emailForm.body) {
+      setEmailMsg('❌ Please fill in all fields');
+      return;
+    }
+    setEmailSending(true);
+    setEmailMsg('');
+    const r = await fetch('/api/email/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        patientId: patient?.id,
+        to: emailForm.to,
+        subject: emailForm.subject,
+        body: emailForm.body,
+        templateId: emailForm.templateId === 'custom' ? undefined : emailForm.templateId,
+      }),
+    });
+    const d = await r.json() as { messageId?: string; error?: string };
+    if (r.ok) {
+      setEmailMsg(`✅ Email sent! ID: ${d.messageId}`);
+      setTimeout(() => setShowEmailModal(false), 2000);
+    } else {
+      setEmailMsg(`❌ ${d.error ?? 'Failed to send email'}`);
+    }
+    setEmailSending(false);
+  }
+
   const load = useCallback(() => {
     if (!id) return;
     setLoading(true);
@@ -438,6 +515,10 @@ ${sectionsHtml}
             style={{ padding: '8px 16px', borderRadius: 8, background: '#7c3aed', color: '#fff', fontSize: 14, fontWeight: 700, textDecoration: 'none' }}>
             📅 Book Appt
           </Link>
+          <button onClick={openEmailModal}
+            style={{ padding: '8px 16px', borderRadius: 8, background: '#0ea5e9', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', border: 'none' }}>
+            📧 Send Email
+          </button>
         </div>
       </div>
 
@@ -821,6 +902,69 @@ ${sectionsHtml}
               <button onClick={() => setEditing(false)} style={{ padding: '8px 20px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', color: '#374151', cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
               <button onClick={handleSave} disabled={saving} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: '#0d9488', color: '#fff', cursor: 'pointer', fontWeight: 700 }}>
                 {saving ? '⏳ Saving…' : '💾 Save Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Email Modal */}
+      {showEmailModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ background: '#fff', borderRadius: 16, width: 580, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#1a2233' }}>📧 Send Email to {patient?.name}</h2>
+              <button onClick={() => setShowEmailModal(false)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#64748b' }}>✕</button>
+            </div>
+            <div style={{ padding: 24 }}>
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>To Email</label>
+                <input className="form-input" type="email" value={emailForm.to} onChange={e => setEmailForm(f => ({ ...f, to: e.target.value }))} placeholder="patient@email.com" />
+              </div>
+
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Template</label>
+                <select className="form-input" value={emailForm.templateId} onChange={e => handleEmailTemplateChange(e.target.value)}>
+                  <option value="custom">✏️ Custom (no template)</option>
+                  {emailTemplates.map(t => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Subject</label>
+                <input className="form-input" value={emailForm.subject} onChange={e => setEmailForm(f => ({ ...f, subject: e.target.value }))} placeholder="Email subject..." />
+              </div>
+
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Body (HTML)</label>
+                <textarea className="form-input" rows={6} value={emailForm.body} onChange={e => setEmailForm(f => ({ ...f, body: e.target.value }))} style={{ fontFamily: 'monospace', fontSize: 12 }} placeholder="<p>Hi {{patientName}}, ...</p>" />
+              </div>
+
+              <div style={{ marginBottom: 14 }}>
+                <button onClick={() => setEmailPreview(v => !v)} style={{ padding: '5px 14px', borderRadius: 6, background: '#f8fafc', color: '#374151', border: '1px solid #e2e8f0', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+                  {emailPreview ? '📝 Edit' : '👁️ Preview'}
+                </button>
+              </div>
+
+              {emailPreview && emailForm.body && (
+                <div style={{ border: '1px solid #e2e8f0', borderRadius: 8, padding: 16, marginBottom: 14, background: '#fafafa' }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#64748b', marginBottom: 8 }}>Subject: {emailForm.subject}</div>
+                  <div style={{ fontSize: 13 }} dangerouslySetInnerHTML={{ __html: emailForm.body }} />
+                </div>
+              )}
+
+              {emailMsg && (
+                <div style={{ marginBottom: 12, padding: '8px 14px', borderRadius: 8, background: emailMsg.startsWith('✅') ? '#f0fdf4' : '#fef2f2', fontSize: 13, color: emailMsg.startsWith('✅') ? '#15803d' : '#b91c1c', border: `1px solid ${emailMsg.startsWith('✅') ? '#86efac' : '#fca5a5'}` }}>
+                  {emailMsg}
+                </div>
+              )}
+            </div>
+            <div style={{ padding: '16px 24px', borderTop: '1px solid #e2e8f0', display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <button onClick={() => setShowEmailModal(false)} style={{ padding: '8px 20px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', color: '#374151', cursor: 'pointer', fontWeight: 600 }}>Cancel</button>
+              <button onClick={sendEmail} disabled={emailSending} style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: '#0ea5e9', color: '#fff', cursor: 'pointer', fontWeight: 700 }}>
+                {emailSending ? '⏳ Sending…' : '📧 Send Email'}
               </button>
             </div>
           </div>
