@@ -34,6 +34,7 @@ interface Patient {
   icd10Code?: string;
   createdAt?: string;
   updatedAt?: string;
+  photoUrl?: string;
   doctor?: { id: string; name: string; title?: string } | null;
   testResults?: TestResult[];
   videoActivity?: VideoWatch[];
@@ -109,6 +110,8 @@ export default function PatientDetailPage() {
   const [icd10Codes, setIcd10Codes] = useState<{ id: string; code: string; description: string }[]>([]);
   const [insurerOptions, setInsurerOptions] = useState<{ id: string; name: string; type: string }[]>([]);
   const locationsFetchedRef = useRef(false);
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(() => {
     if (!id) return;
@@ -309,6 +312,24 @@ ${sectionsHtml}
     if (w) { w.document.write(html); w.document.close(); w.focus(); setTimeout(() => w.print(), 400); }
   }
 
+  async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !patient) return;
+    setPhotoUploading(true);
+    const formData = new FormData();
+    formData.append('photo', file);
+    try {
+      const res = await fetch(`/api/patients/${patient.id}/photo`, { method: 'POST', body: formData });
+      if (res.ok) {
+        const data = await res.json();
+        setPatient(p => p ? { ...p, photoUrl: data.photoUrl } : p);
+      }
+    } catch {}
+    setPhotoUploading(false);
+    // Reset input
+    if (photoInputRef.current) photoInputRef.current.value = '';
+  }
+
   function InfoRow({ label, value }: { label: string; value?: string | null }) {
     return (
       <div style={{ display: 'flex', gap: 16, padding: '10px 0', borderBottom: '1px solid #f1f5f9' }}>
@@ -443,7 +464,39 @@ ${sectionsHtml}
         {tab === 'overview' && (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
             <div className="card">
-              <div className="card-title">Personal Information</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16 }}>
+                {/* Patient Avatar */}
+                <div
+                  title="Click to upload photo"
+                  onClick={() => !photoUploading && photoInputRef.current?.click()}
+                  style={{
+                    width: 72, height: 72, borderRadius: '50%', overflow: 'hidden',
+                    border: '3px solid #0d9488', cursor: 'pointer', flexShrink: 0,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: patient.photoUrl ? 'transparent' : '#0d9488',
+                    position: 'relative',
+                  }}
+                >
+                  {patient.photoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={patient.photoUrl} alt={patient.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <span style={{ fontSize: 26, fontWeight: 800, color: '#fff', userSelect: 'none' }}>
+                      {patient.name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()}
+                    </span>
+                  )}
+                  {photoUploading && (
+                    <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <div className="spinner" style={{ width: 20, height: 20 }} />
+                    </div>
+                  )}
+                </div>
+                <input ref={photoInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handlePhotoUpload} />
+                <div>
+                  <div className="card-title" style={{ marginBottom: 2 }}>Personal Information</div>
+                  <div style={{ fontSize: 11, color: '#94a3b8' }}>Click avatar to upload photo</div>
+                </div>
+              </div>
               <InfoRow label="Full Name" value={patient.name} />
               <InfoRow label="Date of Birth" value={fmt(patient.dob)} />
               <InfoRow label="Cell Phone" value={patient.phone} />

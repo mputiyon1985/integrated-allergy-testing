@@ -13,6 +13,7 @@ interface Patient {
   clinicLocation?: string;
   physician?: string;
   email?: string;
+  photoUrl?: string;
 }
 
 const STATUS_BADGE: Record<string, string> = {
@@ -117,6 +118,7 @@ export default function PatientsPage() {
               <thead>
                 <tr>
                   <th>Patient ID</th>
+                  <th></th>
                   <th>Name</th>
                   <th>Date of Birth</th>
                   <th>Status</th>
@@ -131,6 +133,23 @@ export default function PatientsPage() {
                       <code style={{ fontSize: 12, background: '#f1f5f9', padding: '2px 6px', borderRadius: 4 }}>
                         {p.patientId ?? p.id.slice(0, 8).toUpperCase()}
                       </code>
+                    </td>
+                    <td style={{ width: 40, padding: '6px 0 6px 12px' }}>
+                      <div style={{
+                        width: 32, height: 32, borderRadius: '50%', overflow: 'hidden',
+                        background: p.photoUrl ? 'transparent' : '#0d9488',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        flexShrink: 0, border: '2px solid #e2e8f0',
+                      }}>
+                        {p.photoUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={p.photoUrl} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                          <span style={{ fontSize: 12, fontWeight: 800, color: '#fff', userSelect: 'none' }}>
+                            {p.name.split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase()}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td>
                       <div style={{ fontWeight: 600 }}>
