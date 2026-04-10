@@ -8,38 +8,34 @@ import type { ResponsiveLayouts } from 'react-grid-layout';
 
 const DashboardGrid = dynamic(() => import('@/components/DashboardGrid'), { ssr: false });
 
-const LAYOUT_KEY = 'iat-dashboard-layout-v7';
+const LAYOUT_KEY = 'iat-dashboard-layout-v8';
 
 const DEFAULT_LAYOUTS: ResponsiveLayouts = {
   lg: [
-    { i: 'kpi-patients',   x: 0,  y: 0,  w: 3, h: 4,  minW: 2, minH: 3 },
-    { i: 'kpi-waiting',    x: 3,  y: 0,  w: 3, h: 4,  minW: 2, minH: 3 },
-    { i: 'kpi-inservice',  x: 6,  y: 0,  w: 3, h: 4,  minW: 2, minH: 3 },
-    { i: 'kpi-encounters', x: 9,  y: 0,  w: 3, h: 4,  minW: 2, minH: 3 },
+    { i: 'kpi-patients',   x: 0,  y: 0,  w: 4, h: 4,  minW: 2, minH: 3 },
+    { i: 'kpi-waiting',    x: 4,  y: 0,  w: 4, h: 4,  minW: 2, minH: 3 },
+    { i: 'kpi-inservice',  x: 8,  y: 0,  w: 4, h: 4,  minW: 2, minH: 3 },
     { i: 'waiting-room',   x: 0,  y: 4,  w: 8, h: 16, minW: 4, minH: 8 },
     { i: 'appointments',   x: 8,  y: 4,  w: 4, h: 16, minW: 3, minH: 6 },
   ],
   md: [
-    { i: 'kpi-patients',   x: 0, y: 0,  w: 5,  h: 4 },
-    { i: 'kpi-waiting',    x: 5, y: 0,  w: 5,  h: 4 },
-    { i: 'kpi-inservice',  x: 0, y: 4,  w: 5,  h: 4 },
-    { i: 'kpi-encounters', x: 5, y: 4,  w: 5,  h: 4 },
+    { i: 'kpi-patients',   x: 0, y: 0,  w: 4,  h: 4 },
+    { i: 'kpi-waiting',    x: 4, y: 0,  w: 3,  h: 4 },
+    { i: 'kpi-inservice',  x: 7, y: 0,  w: 3,  h: 4 },
     { i: 'waiting-room',   x: 0, y: 8,  w: 10, h: 14 },
     { i: 'appointments',   x: 0, y: 22, w: 10, h: 10 },
   ],
   sm: [
-    { i: 'kpi-patients',   x: 0, y: 0,  w: 3, h: 4 },
-    { i: 'kpi-waiting',    x: 3, y: 0,  w: 3, h: 4 },
-    { i: 'kpi-inservice',  x: 0, y: 4,  w: 3, h: 4 },
-    { i: 'kpi-encounters', x: 3, y: 4,  w: 3, h: 4 },
+    { i: 'kpi-patients',   x: 0, y: 0,  w: 2, h: 4 },
+    { i: 'kpi-waiting',    x: 2, y: 0,  w: 2, h: 4 },
+    { i: 'kpi-inservice',  x: 4, y: 0,  w: 2, h: 4 },
     { i: 'waiting-room',   x: 0, y: 8,  w: 6, h: 14 },
     { i: 'appointments',   x: 0, y: 22, w: 6, h: 10 },
   ],
   xs: [
     { i: 'kpi-patients',   x: 0, y: 0,  w: 2, h: 4 },
     { i: 'kpi-waiting',    x: 2, y: 0,  w: 2, h: 4 },
-    { i: 'kpi-inservice',  x: 0, y: 4,  w: 2, h: 4 },
-    { i: 'kpi-encounters', x: 2, y: 4,  w: 2, h: 4 },
+    { i: 'kpi-inservice',  x: 0, y: 4,  w: 4, h: 4 },
     { i: 'waiting-room',   x: 0, y: 8,  w: 4, h: 14 },
     { i: 'appointments',   x: 0, y: 22, w: 4, h: 10 },
   ],
@@ -47,7 +43,6 @@ const DEFAULT_LAYOUTS: ResponsiveLayouts = {
     { i: 'kpi-patients',   x: 0, y: 0,  w: 2, h: 4 },
     { i: 'kpi-waiting',    x: 0, y: 4,  w: 2, h: 4 },
     { i: 'kpi-inservice',  x: 0, y: 8,  w: 2, h: 4 },
-    { i: 'kpi-encounters', x: 0, y: 12, w: 2, h: 4 },
     { i: 'waiting-room',   x: 0, y: 16, w: 2, h: 14 },
     { i: 'appointments',   x: 0, y: 30, w: 2, h: 10 },
   ],
@@ -56,7 +51,7 @@ const DEFAULT_LAYOUTS: ResponsiveLayouts = {
 function loadLayouts(): ResponsiveLayouts {
   try {
     // Purge all old layout keys
-    ['iat-dashboard-layout-v1','iat-dashboard-layout-v2','iat-dashboard-layout-v3','iat-dashboard-layout-v4','iat-dashboard-layout-v5','iat-dashboard-layout-v6'].forEach(k => {
+    ['iat-dashboard-layout-v1','iat-dashboard-layout-v2','iat-dashboard-layout-v3','iat-dashboard-layout-v4','iat-dashboard-layout-v5','iat-dashboard-layout-v7'].forEach(k => {
       try { localStorage.removeItem(k); } catch {}
     });
     const saved = localStorage.getItem(LAYOUT_KEY);
@@ -662,16 +657,6 @@ export default function DashboardPage() {
                   <div className="kpi-icon">🩺</div>
                   <div className="kpi-label">In Service</div>
                   {loading ? <div style={{width:40,height:24,borderRadius:6,background:'#e2e8f0',animation:'pulse 1.5s infinite'}} /> : <div className="kpi-value" style={{ color: inServiceCount > 0 ? '#0d9488' : '#64748b' }}>{inServiceCount}</div>}
-                </div>
-              ),
-            },
-            {
-              id: 'kpi-encounters',
-              content: (
-                <div className="kpi-card" style={{ height: '100%', borderTop: '4px solid #8b5cf6', border: editMode ? '2px dashed #f59e0b' : undefined }}>
-                  <div className="kpi-icon">✅</div>
-                  <div className="kpi-label">Checked In Today</div>
-                  {loading ? <div style={{width:40,height:24,borderRadius:6,background:'#e2e8f0',animation:'pulse 1.5s infinite'}} /> : <div className="kpi-value" style={{ color: '#8b5cf6' }}>{(waitingCount + inServiceCount)}</div>}
                 </div>
               ),
             },
