@@ -8,10 +8,12 @@ import ReactMarkdown from 'react-markdown';
 // ─────────────────────────────────────────────────────────────────────────────
 const MANUAL_MARKDOWN = `# 📘 Integrated Allergy Testing — Application Manual
 
-> **Version:** 3.4.2 | **Last Updated:** April 10, 2026
+> **Version:** 3.7.0
+> **Last Updated:** April 10, 2026
 > **Live URL:** https://integrated-allergy-testing.vercel.app
 > **Kiosk URL:** https://integrated-allergy-testing.vercel.app/kiosk
 > **GitHub:** https://github.com/mputiyon1985/integrated-allergy-testing
+> **Code Review Score:** 9.6/10 | **Tests:** 297/297 passing
 
 ---
 
@@ -27,158 +29,226 @@ const MANUAL_MARKDOWN = `# 📘 Integrated Allergy Testing — Application Manua
 8. [Calendar & Appointments](#calendar--appointments)
 9. [Allergy Testing](#allergy-testing)
 10. [Insurance Hub](#insurance-hub)
-11. [Settings](#settings)
-12. [Kiosk Mode](#kiosk-mode)
-13. [Audit Log](#audit-log)
-14. [Upcoming Modules](#upcoming-modules)
-15. [Changelog](#changelog)
+11. [Reports](#reports)
+12. [Email Module](#email-module)
+13. [Settings](#settings)
+14. [Kiosk Mode](#kiosk-mode)
+15. [Audit Log](#audit-log)
+16. [Security Architecture](#security-architecture)
+17. [Location & Practice Scoping](#location--practice-scoping)
+18. [Upcoming Modules](#upcoming-modules)
+19. [Changelog](#changelog)
 
 ---
 
 ## Overview
 
-**Integrated Allergy Testing** is a clinical practice management application purpose-built for allergy testing practices. It covers the full patient journey — from kiosk check-in through testing, encounter documentation, billing rules validation, and insurance management.
+**Integrated Allergy Testing** is a multi-location clinical practice management platform for allergy testing practices. It covers the full patient journey — kiosk check-in through testing, encounter documentation, billing rules validation, insurance management, reporting, and patient communications.
 
 **Tech Stack:**
-- Frontend: Next.js (App Router), React, TailwindCSS, react-grid-layout
+- Frontend: Next.js 15 (App Router), React, TailwindCSS, react-grid-layout
 - Backend: Next.js API Routes (custom \`proxy.ts\` auth guard)
 - Database: Turso (LibSQL / SQLite-compatible edge database)
-- ORM: Prisma with raw SQL fallback
-- Auth: Custom JWT-based session authentication
+- ORM: Prisma with raw SQL (all DateTime fields use \`$queryRaw\`)
+- Auth: Custom JWT-based session authentication + CSRF protection
+- Email: Microsoft 365 / Exchange via Graph API (primary) + Resend (fallback)
 - Hosting: Vercel
 
-**Practices & Locations:**
+**Practices & Locations (11 total):**
 
-| Practice | Code |
-|----------|------|
-| Medical Associates of Prince William | MAP |
-| Northern Virginia Allergy Associates | NVAA |
-| Capital Area Allergy Clinic | CAAC |
-
-Currently: 3 practices, 11 locations, 130 allergens.
+| Practice | Code | Locations |
+|----------|------|-----------|
+| Medical Associates of Prince William | MAP | Dumfries, Woodbridge, Stafford, Fredericksburg |
+| Northern Virginia Allergy Associates | NVAA | Fairfax, Arlington, Reston, Tysons |
+| Capital Area Allergy Clinic | CAAC | Bethesda, Silver Spring, Rockville |
 
 ---
 
 ## User Roles & Permissions
 
-The application uses a **hybrid RBAC system** — fixed role profiles with optional per-user JSON permission overrides.
+Hybrid RBAC — 6 fixed role profiles with optional per-user JSON permission overrides.
 
-| Role | Badge Color | Intended For |
-|------|-------------|--------------|
-| \`admin\` | Red | Practice administrators, IT staff |
-| \`provider\` | Blue | Physicians |
-| \`clinical_staff\` | Green | Nurses, medical technicians |
-| \`front_desk\` | Yellow | Receptionist, check-in staff |
-| \`billing\` | Purple | Billing and insurance specialists |
-| \`office_manager\` | Orange | Office managers |
+| Role | Badge | Access Level |
+|------|-------|-------------|
+| \`admin\` | Red | Full access — all locations, all settings |
+| \`provider\` | Blue | Physicians — clinical + encounter signing |
+| \`clinical_staff\` | Green | Nurses/techs — testing, encounters, waiting room |
+| \`front_desk\` | Yellow | Scheduling, check-in, patient registration |
+| \`billing\` | Purple | Billing, insurance, claims, reports |
+| \`office_manager\` | Orange | Reporting, staff management, locations |
 
-**45 discrete permissions** spanning: patient management, encounters, testing, billing, insurance, reports, settings, and user management.
+**Location-Scoped Permissions:** Individual users can be restricted to specific locations via \`allowedLocations\` JSON field in StaffUser. Example: BJ Hockney is restricted to MAP locations only.
 
-Admins can set **JSON permission overrides** on individual users to grant or restrict specific permissions beyond their role defaults.
-
-**Current Admin Users:**
-
-| Name | Email |
-|------|-------|
-| Mark Putiyon | mputiyon@tipinc.ai |
-| Sebastian Paliath | spaliath@tipinc.ai |
-| BJ Hockney | bjhockney@vcfaa.com |
-| Dr. Rob Sikora | sikora398@yahoo.com |
-| Brandon Pople | bpople@tipinc.ai |
-
-> Default password for all users: \`TIPinc2026!\`
+**Current Staff:**
+- All users default password: \`TIPinc2026!\`
+- 2 physicians + 4 nurses seeded per location (66 staff total)
+- 220 patients across all 11 locations
 
 ---
 
 ## Authentication & Login
 
-1. Navigate to the app URL
-2. Enter **email** and **password**
-3. On success, a JWT session token is issued as a \`strict\` SameSite HTTP cookie
-4. All API routes are protected by the \`proxy.ts\` auth guard
+- JWT session cookies (\`iat_session\`): \`httpOnly: true\`, \`sameSite: strict\`, \`secure: production\`
+- **Rate limiting:** 5 failed attempts per IP per 15 minutes → 429 Too Many Requests
+- **CSRF protection:** Double-submit cookie (\`iat_csrf\`) — all POST/PUT/DELETE require matching \`X-CSRF-Token\` header (production only)
+- MFA support via TOTP
+- Session expires after 8 hours
 
-**Audit Events:** Every login/logout generates \`LOGIN_SUCCESS\`, \`LOGIN_FAILED\`, or \`LOGOUT\` entries in the audit log.
+**Audit events:** \`LOGIN_SUCCESS\`, \`LOGIN_FAILED\`, \`LOGOUT\`
 
 ---
 
 ## Dashboard
 
-The Dashboard provides an at-a-glance view through **8 draggable, resizable tiles**:
+Central operations view with 3 KPI tiles + waiting room + appointment schedule.
 
-| Tile | Description |
-|------|-------------|
-| Today's Appointments | Count for the current day |
-| Patients in Waiting Room | Live checked-in count |
-| Patients In Service | Currently active encounters |
-| Recent Patients | Recently added/updated records |
-| Upcoming Appointments | Next appointments with time + patient |
-| Testing Queue | Patients awaiting prick or intradermal test |
-| Billing Alerts | Pending billing rule warnings or hard blocks |
-| Quick Stats | Aggregate numbers (total patients, encounters today) |
+**KPI Tiles:**
+- 📅 **Appointments Today** — total scheduled for selected location
+- ⏳ **Waiting** — patients currently in waiting room
+- 🩺 **In Service** — patients actively being seen
 
-**Layout:** Drag tiles to reposition, drag bottom-right corner to resize. Layout persists to localStorage.
+**Waiting Room (left panel):**
+- Live updates via Server-Sent Events (SSE) — no polling
+- Reconnects automatically with exponential backoff (5s → 10s → 20s → max 60s)
+- Click any row → navigates to patient's open encounter
+- Actions: assign nurse, + Log activity, ✅ Complete
+- Color coding: yellow = new arrival (<5 min), green = in service
 
-**Appointment Color Coding:**
-- 🟢 Green — Confirmed / Checked In
-- 🟡 Yellow — Pending / Waiting
-- 🔵 Blue — In Service
-- 🔴 Red — Cancelled or No-Show
+**Today's Schedule (right panel):**
+- ✓ Check In button on each appointment card — single click, no modal
+- Check-in auto-creates an open Encounter for the patient
+- Appointment cards show service type with color coding
+
+**Layout:** Drag-to-reposition, resize tiles. Layout persists per user per device.
 
 ---
 
 ## Patients
 
-The Patients module is the central patient registry. All clinical activity ties back to a patient record.
+Central patient registry. All data scoped to selected location/practice.
 
-**Key Fields:** Patient ID (auto-generated \`PA-XXXXXXXX\`), Name, DOB, Gender, Phone, Email, Address, Insurance (dropdown), Member ID, Group Number, Practice/Location, Notes.
+**Patient ID format:** \`PA-XXXXXXXX\` (8 alphanumeric chars, nanoid generated)
+
+**Key Fields:** Name, DOB, Phone, Email, Address, Insurance Provider, Member ID, Group #, Emergency Contact (name/phone/relationship), Physician, Diagnosis, Status, Location.
 
 **Patient Detail Tabs:**
-- **Overview** — Demographics + insurance summary
-- **🏥 Encounters** — All encounters for this patient
-- **Testing** — Prick and intradermal test history
-- **Notes** — Clinical notes history
-- **Billing** — Billing rule results
+- **Overview** — demographics, insurance, emergency contact (all inline-editable)
+- **🏥 Encounters** — all encounters with activity timeline
+- **Testing** — prick and intradermal test history
+- **Notes** — clinical notes
+- **Videos** — education videos watched
+- **Consent** — signed consent forms
+- **📧 Send Email** button — opens email modal with template selection
 
-**Pagination:** 50 patients per page (max 200 per request).
+**Photo Upload:** Click the circular avatar to upload a patient photo (5MB max, image files only).
+
+**Pagination:** 500 patients max per request. Use search for large datasets.
 
 ---
 
 ## Encounters
 
-Encounters represent a single clinical visit. Accessed via the patient's **🏥 Encounters tab** (not a top-level nav item).
+Encounters represent a clinical visit episode. They **start automatically at check-in** and build throughout the visit.
 
-**Lifecycle:**
+### Encounter Lifecycle
+
 \`\`\`
-Check-In (Waiting Room) → In Service → Encounter Closed
+Check-In → Encounter Created (open) → Nurse Calls Back → Activity Logged → During Visit: Add Notes/Activities → MD Signs → Bill → Complete
 \`\`\`
 
-- **Wait time** — check-in to service start (auto-calculated)
-- **In-service time** — service start to close (auto-calculated)
-- Both are stored on the encounter for reporting
+**Auto-creation at check-in:**
+- Encounter created with \`status: open\` when ✓ Check In is clicked
+- \`chiefComplaint\` populated from appointment reason
 
-**Closing an Encounter:** System validates billing rules. Hard block violations prevent close until resolved or admin-overridden.
+**Nurse call-back:**
+- When nurse selects patient from waiting room, activity logged: *"Patient brought to exam room by [Nurse]"*
+- \`nurseName\` auto-populated on encounter
+
+**Auto-close:**
+- When ✅ Complete clicked, encounter closes automatically
+
+### Encounter Statuses
+
+| Status | Meaning |
+|--------|---------|
+| \`open\` | Active visit in progress |
+| \`awaiting_md\` | Documentation complete, waiting for MD sign-off |
+| \`signed\` | MD signed — ready to bill |
+| \`billed\` | Submitted to insurance |
+| \`complete\` | Visit closed |
+
+### Encounter Detail Page \`/encounters/[id]\`
+
+**Left panel (editable):**
+- Chief Complaint, Physician, Nurse, Status
+- Subjective / Objective / Assessment / Plan (SOAP)
+- Primary Diagnosis (ICD-10 dropdown)
+- Save button → \`PUT /api/encounters/[id]\`
+
+**Right panel (activity timeline):**
+- All activities chronologically
+- ✏️ Edit button on each activity → inline edit → save
+- + Add Activity button
+
+### Encounters List Page (Left Nav)
+
+Filters: Today / This Week / This Month / Custom date range, Search, Status, Physician, Nurse, Insurance, **Service**
+
+Stats bar (clickable — filters the list):
+Open | Awaiting MD | Signed | Billed | Complete
+
+Actions per row: 👤 Patient, 📝 Document (open), ✍️ Sign (awaiting MD), 🧾 Superbill (signed/billed), 📋 Claim
+
+### Claim Generation
+
+From signed/billed encounters:
+- 🧾 Generate Claim → JSON claim summary
+- Includes: patient info, insurance, DOS, provider NPI, CPT codes, ICD-10, total charges
+- Copy to clipboard or ⬇️ Download JSON
 
 ---
 
 ## Waiting Room
 
-Real-time view of patients who have checked in and are waiting.
+Real-time view of all checked-in patients.
 
-- **Live patient list** — wait time counter per patient
-- **In-service timer** — live timer once provider starts service
-- **Service assignment** — select service from dropdown
-- **Status progression:** Waiting → In Service → Done
-- **Polling:** 10-second refresh (WebSockets on roadmap)
+- **Live updates via SSE** — near-real-time (~8 second server push)
+- **Auto-reconnect** with exponential backoff if connection drops
+- Manual ↻ Refresh button as fallback
+- Click any row → open patient's encounter directly
+- 🏥 Encounter button per row
+
+**Patient card shows:**
+- Patient name + reason for visit (editable inline)
+- Wait time counter (live)
+- In-service timer (once called back)
+- Videos watched count
+- Status badge (Waiting / In Service)
+- Nurse assigned
+
+**Staff actions:**
+- Call patient: select nurse from dropdown → status → In Service
+- + Log: add activity to encounter
+- ✅ Complete: closes encounter, removes from waiting room
 
 ---
 
 ## Calendar & Appointments
 
-**Views:** Day, Week, Month
+**Views:** Day, Week, Month (default)
 
-**Double/Triple Bookings:** Cards appear side-by-side with a gradient connecting bar — scheduling conflicts are immediately visible.
+**Appointment booking:**
+- Patient search (live dropdown with debounce)
+- **Physician dropdown** (location-filtered)
+- Service/Reason dropdown (auto-sets duration)
+- Date + time pickers (15-min increments)
+- Notes field
 
-**Appointment Statuses:** Scheduled, Confirmed, Checked In, In Service, Completed, No Show, Cancelled.
+**Double/Triple bookings:** Cards appear side-by-side with gradient connector.
+
+**Appointment statuses:** Scheduled, Confirmed, Checked In, In Service, Completed, No Show, Cancelled
+
+**Location-aware:** Calendar only shows appointments for selected location/practice.
 
 ---
 
@@ -186,96 +256,150 @@ Real-time view of patients who have checked in and are waiting.
 
 ### Allergen Panels
 
-Allergens support a **dual-panel structure**:
-
-| Panel | Flag | Used For |
-|-------|------|---------|
-| Prick Test Panel | \`showOnPrickTest\` | Percutaneous / scratch test |
-| Intradermal Panel | \`showOnIntradermalTest\` | Intradermal (deeper skin) test |
+50 allergens on Prick Test panel, additional on Intradermal panel. Configurable per allergen in Settings → Allergens.
 
 ### Prick Test
 
-For each allergen: record **Wheal** (mm) and **Flare** (mm) in 0.1 increments.
+Record **Wheal** (mm) and **Flare** (mm) per allergen. Auto-grades reaction 0-4+.
 
-**Result Classification:**
-
-| Wheal Size | Classification |
-|-----------|---------------|
+| Wheal | Grade |
+|-------|-------|
 | < 3mm | Negative |
-| 3–5mm | 1+ (Mild) |
-| 5–8mm | 2+ (Moderate) |
-| 8–12mm | 3+ (Significant) |
-| > 12mm | 4+ (Strongly Positive) |
+| 3-5mm | 1+ Mild |
+| 5-8mm | 2+ Moderate |
+| 8-12mm | 3+ Significant |
+| >12mm | 4+ Strongly Positive |
 
-**Controls:** Histamine (positive) + Saline (negative) must pass to validate the test.
+Controls: Histamine (positive) + Saline (negative) must pass for valid test.
 
 ### Intradermal Test
 
-For each allergen: record **Initial Wheal**, **15-Minute Wheal**, and **15-Minute Flare** (all in mm).
-
-More sensitive than prick — detects lower levels of IgE reactivity. Typically performed after a negative prick test.
+Records Initial Wheal, 15-min Wheal, and 15-min Flare. More sensitive than prick.
 
 ---
 
 ## Insurance Hub
 
-The Insurance Hub (\`/insurance\`) is the centralized billing and insurance management area. It contains **5 tabs**:
+Centralized billing and insurance management at \`/insurance\`.
 
-### Business Rules
-
-Billing rules that must be satisfied before a claim can be submitted.
+### Business Rules (15 seeded)
 
 | Severity | Behavior | Override |
 |----------|----------|---------|
 | \`hard_block\` | Prevents claim submission | Admin only |
-| \`warning\` | Flags issue, allows submission | Any authorized user |
+| \`warning\` | Flags issue, allows submission | Authorized user |
 
-**15 rules seeded** covering: missing diagnosis codes, CPT/ICD-10 compatibility, units billed, Medicare documentation requirements, modifier requirements, age restrictions, duplicate claim detection.
+### Insurance Companies (12 payers)
 
-### Insurance Companies
-
-**12 payers configured:** Medicare, Medicaid, BCBS, Aetna, United Healthcare, Cigna, Humana, Tricare, Kaiser Permanente, WellCare, Molina Healthcare, CareFirst.
-
-Each record includes: Company Name, Payer ID (EDI), Address, Phone, Website, Notes, Active toggle.
+Medicare, Medicaid, BCBS, Aetna, United Healthcare, Cigna, Humana, Tricare, Kaiser Permanente, WellCare, Molina, CareFirst
 
 ### CPT Codes
 
-**31 allergy-specific CPT codes** with the **2026 Medicare Fee Schedule**:
-
-| Rate Type | Description |
-|-----------|-------------|
-| NF | Non-Facility (office/clinic) |
-| FAC | Facility (hospital) |
-| NoVA MAC | Northern Virginia local contractor rate |
+31 allergy-specific codes with **2026 Medicare Fee Schedule** (NF / FAC / NoVA MAC rates).
 
 ### ICD-10 Codes
 
-**32 allergy-specific diagnosis codes** with category grouping, common allergen associations, and payer coverage notes.
+32 allergy-specific diagnosis codes with payer coverage notes.
 
 ### Reference Guide
 
-Read-only quick reference for staff covering: modifier quick reference, place of service codes, NCCI edit overview, allergy testing protocol summary, Medicare documentation requirements, prior authorization guide.
+Modifier quick reference, POS codes, NCCI overview, documentation requirements.
+
+---
+
+## Reports
+
+\`/reports\` — Left nav. 4 tabs with date range filter, CSV export, and print-optimized PDF export.
+
+**Filter bar:** Today / This Week / This Month / Custom | Location-aware | Auto-reloads on location switch
+
+### Clinical Tab
+- KPIs: Total Encounters, Open, Avg Wait Time, Avg In-Service Time
+- Encounters by Day, by Physician, Top Chief Complaints, by Diagnosis
+
+### Billing Tab
+- KPIs: Signed, Billed, Awaiting MD counts
+- Status Summary, Ready-to-Bill list, Insurance Breakdown
+
+### Staff Tab
+- Encounters by Nurse, by Physician
+- Activity Log by Type
+
+### Testing Tab
+- KPIs: Total Tests, Positive Results
+- Tests by Type (prick vs intradermal), Top Reactive Allergens, Daily Volume
+
+### PDF Export
+Print-optimized layout: teal table headers, alternating rows, page numbers, CONFIDENTIAL footer, practice header with date range.
+
+---
+
+## Email Module
+
+In-app email via Microsoft 365 / Exchange (primary) or Resend (fallback).
+
+**Provider:** \`emrmail@tipinc.ai\` via Microsoft Graph API
+- Sends from Exchange → saves to Sent Items
+- Full email audit trail in M365
+
+### Settings → 📧 Email
+
+**⚙️ Provider subtab:**
+- Toggle: Microsoft 365 / Exchange ↔ Resend
+- M365: Azure Client ID, Secret (auto-pulled from Key Vault), Tenant ID, Send-From Mailbox
+- Resend: API Key, From Email, From Name
+- Test Email button
+
+**📝 Templates subtab:**
+4 default templates (auto-seeded):
+1. Appointment Reminder — \`{{patientName}}\`, \`{{date}}\`, \`{{time}}\`, \`{{location}}\`
+2. Test Results Ready
+3. Welcome New Patient — \`{{practiceName}}\`
+4. Billing Statement
+
+Full CRUD: name, category, HTML body editor, variable hints, live preview.
+
+**📋 Email Log subtab:**
+Full send history with status (sent/failed/pending/bounced), date filter, patient search.
+
+### Send Email from Patient Page
+📧 Send Email button in patient header → modal with:
+- Pre-filled patient email
+- Template dropdown (variables auto-resolved)
+- Custom option (subject + body)
+- HTML preview
+- Success/error feedback
+
+**Email HTML is sanitized before sending** (strips \`<script>\`, \`on*\` handlers, \`javascript:\` URIs).
 
 ---
 
 ## Settings
 
-Administrative configuration hub. All sections support drag-and-drop reordering and resizing.
+Administrative configuration. All tabs accessed via Settings → [tab name].
 
 | Tab | Contents |
 |-----|---------|
 | ⚙️ Dashboard | System status, app version, quick links |
-| 🔐 Roles *(admin only)* | Permission matrix — all 6 roles × 45 permissions |
-| 👥 Users *(admin only)* | Staff user CRUD, role assignment, permission overrides |
-| 🏢 Practices | Practice records |
+| 🔐 Roles *(admin)* | Permission matrix — 6 roles × 45 permissions |
+| 👥 Users *(admin)* | Staff CRUD, role assignment, permission overrides, **allowed locations** |
+| 🏢 Practices | Practice records with 3 tabs: Info, Accepted Insurances, Hours of Operation |
 | 📍 Locations | Location records per practice |
-| 👨‍⚕️ Doctors | Physician records + NPI numbers |
-| 👩‍⚕️ Nurses | Nursing/clinical tech staff |
-| 🎨 Services | Service types with color picker (propagates to calendar badges) |
+| 👨‍⚕️ Doctors | Physician directory with practice + location assignment |
+| 👩‍⚕️ Nurses | Nursing/clinical tech staff with location assignment |
+| 🎨 Services | Service types with color picker |
 | 🎬 Videos | Patient education video library |
-| 🧪 Allergens | Master allergen library with dual panel toggles |
-| 📋 Audit Log | Tamper-evident event log |
-| 📘 App Manual *(you are here)* | This application manual |
+| 🧪 Allergens | Master allergen library, dual panel toggles (Prick / Intradermal) |
+| 📧 Email | Provider config, templates, email log |
+| 📋 Audit Log | HIPAA audit trail |
+| 📘 App Manual | This document (live in-app) |
+
+### Practice Hours of Operation
+Each practice can set open/close times + lunch break per day of week.
+- Open/Closed toggle per day
+- Time dropdowns (30-min increments)
+- 🍽 Lunch break checkbox with start/end times
+- Notes per day
 
 ---
 
@@ -283,37 +407,113 @@ Administrative configuration hub. All sections support drag-and-drop reordering 
 
 **URL:** \`/kiosk\`
 
-Patient-facing check-in interface for tablets/touchscreens.
+Patient-facing check-in on tablets/touchscreens.
 
-**Flow:**
+### Flow
 \`\`\`
-Welcome Screen → Patient Lookup (DOB) → Service Selection → Check-In Confirmation
+Welcome → DOB Entry → Patient Lookup → Identity Verify → Onboarding Check → Service Selection → Videos → Consent → Check-In Confirmation
 \`\`\`
 
-On confirmation, the patient is added to the **Waiting Room** queue and the wait timer starts automatically.
+### Onboarding Checklist (auto-triggered if missing)
+Kiosk stops and collects missing info before allowing check-in:
+- ☐ Phone number
+- ☐ Email address
+- ☐ Insurance Provider + Member ID + Group #
+- ☐ Emergency Contact (name, phone, relationship)
+- ☐ Videos not watched
+- ☐ Consent forms not signed
+
+### Check-In Result
+On confirmation, patient added to **Waiting Room** queue and wait timer starts automatically.
 
 ---
 
 ## Audit Log
 
-Captures a tamper-evident record of security-relevant and clinical events.
+Tamper-evident HIPAA compliance log. **Admin-only access.**
 
-**Logged Events:** LOGIN_SUCCESS, LOGIN_FAILED, LOGOUT, PATIENT_CREATED, PATIENT_UPDATED, ENCOUNTER_CREATED, ENCOUNTER_CLOSED, BILLING_RULE_OVERRIDE, USER_CREATED, USER_ROLE_CHANGED, TEST_RECORDED.
+**Logged Events:**
 
-Each entry includes: Timestamp, Event Type, User (patient name, not just ID), Target, IP Address, Detail JSON.
+| Event | Trigger |
+|-------|---------|
+| \`LOGIN_SUCCESS\` / \`LOGIN_FAILED\` / \`LOGOUT\` | Auth events |
+| \`PATIENT_CREATED\` / \`PATIENT_UPDATED\` | Patient record changes |
+| \`ENCOUNTER_CREATED\` / \`ENCOUNTER_CLOSED\` | Encounter lifecycle |
+| \`BILLING_RULE_OVERRIDE\` | Admin overrides hard block |
+| \`USER_CREATED\` / \`USER_ROLE_CHANGED\` | Staff management |
+| \`TEST_RECORDED\` | Allergy test results saved |
+| \`APPOINTMENT_CREATED\` / \`APPOINTMENT_UPDATED\` | Scheduling |
+
+Each entry: Timestamp, Event Type, User (name not ID), Target, IP Address, Detail JSON.
+
+---
+
+## Security Architecture
+
+**Authentication:**
+- JWT session tokens, \`httpOnly\`, \`sameSite: strict\`, \`secure: production\`
+- Rate limiting: 5 attempts / 15 min per IP → 429
+
+**CSRF Protection:**
+- Double-submit cookie pattern (\`iat_csrf\`)
+- All POST/PUT/DELETE require matching \`X-CSRF-Token\` header (production)
+- \`apiFetch()\` utility auto-injects token on all state-changing requests
+
+**Security Headers (all responses):**
+- \`X-Frame-Options: DENY\`
+- \`X-Content-Type-Options: nosniff\`
+- \`Referrer-Policy: strict-origin-when-cross-origin\`
+- \`Permissions-Policy: camera=(), microphone=(), geolocation=()\`
+- \`X-XSS-Protection: 1; mode=block\`
+- \`Strict-Transport-Security\` (production only)
+
+**Database:**
+- All DateTime model queries use raw SQL (\`$queryRaw\` / \`$executeRaw\`) — Turso compatibility
+- Parameterized queries throughout — no SQL injection risk
+- Location scope enforcement per user (\`allowedLocations\` in StaffUser)
+
+**Email Security:**
+- HTML body sanitized before sending (strips scripts/handlers)
+- Azure credentials stored in Key Vault, never hardcoded
+
+**Error Boundary:**
+- Global React ErrorBoundary catches unhandled errors → clean UI with refresh button
+
+---
+
+## Location & Practice Scoping
+
+Every data fetch in the app is location/practice aware.
+
+**How it works:**
+- \`iat_active_location\` in localStorage = current location ID
+- \`iat_active_practice_filter\` = practice ID when "All Locations" selected
+- \`getLocationParam()\` utility from \`lib/location-params.ts\` builds query params
+- All APIs support \`?locationId=\` and \`?practiceId=\` params
+
+**Sidebar selector:**
+- Practice dropdown (MAP / NVAA / CAAC)
+- Location dropdown with **"— All Locations —"** option at top
+- Switching location instantly refreshes all data (via \`locationchange\` event)
+
+**Per-user restrictions:**
+- \`allowedLocations\` JSON array in StaffUser
+- Empty = unrestricted (all locations)
+- Set in Settings → Users → Edit → Allowed Locations
 
 ---
 
 ## Upcoming Modules
 
-### 🧪 Immunotherapy Module *(in design — awaiting BJ Hockney clinical input)*
+### 🧪 Immunotherapy Module *(awaiting clinical input from BJ Hockney)*
 
-Full allergy shot workflow covering:
-- **AllergenInventory** — stock vials (lot#, qty, expiry, manufacturer)
-- **PatientVialSet** — patient-specific mixed vials
-- **ImmunotherapyAdministration** — shot records (arm, vial, volume, reaction, injector)
-- **BuildUpSchedule** — dose progression (0.05ml → 0.50ml)
-- **VialSetFormula** — physician prescription
+| Component | Description |
+|-----------|-------------|
+| AllergenInventory | Stock vials with lot#, qty, expiry, manufacturer |
+| PatientVialSet | Patient-specific mixed vials |
+| ImmunotherapyAdministration | Shot records (arm, vial, volume, reaction, injector) |
+| BuildUpSchedule | Dose progression (0.05ml → 0.50ml) |
+| VialSetFormula | Physician prescription |
 
 **Vial Color System:**
 
@@ -327,18 +527,13 @@ Full allergy shot workflow covering:
 
 Standard maintenance dose: **0.4ml** (per Dr. Rob Sikora)
 
-### 📊 Reports Module *(planned)*
-- Encounter volume by provider/location/date
-- Testing result summaries
-- Billing rule violation reports
-- Revenue cycle metrics
+**v4.0.0 milestone** — ships when immunotherapy module is complete.
 
-### Other Planned Features
-- Claim generation (837P EDI files)
-- WebSocket waiting room (replace 10-second polling)
-- Location-scoped permissions
-- Patient photo upload
-- Integration testing coverage
+### Other Planned
+- BAAs for Turso + Vercel
+- Real DB integration tests
+- WebRTC/WebSocket waiting room (upgrade from SSE)
+- Location-scoped permission enforcement in all remaining APIs
 
 ---
 
@@ -346,17 +541,16 @@ Standard maintenance dose: **0.4ml** (per Dr. Rob Sikora)
 
 | Version | Date | Summary |
 |---------|------|---------|
+| **3.7.0** | Apr 10, 2026 | Encounter lifecycle, SSE real-time, claim gen, photo upload, encounter detail page, reports, email module (M365+Resend), CSRF, rate limiting, security headers, apiFetch CSRF wiring, global error boundary, SSE reconnect backoff, 297 tests, 9.6/10 score |
 | **3.4.2** | Apr 9, 2026 | Demo version — presented to Dr. Sikora & BJ Hockney ✅ |
 | **3.4.x** | Apr 9, 2026 | Permission profiles (6 roles), dual allergen panels, sidebar location selector, in-service timer, kiosk services |
 | **3.3.x** | Apr 9, 2026 | Dashboard tile persist, calendar side-by-side bookings, waiting room timers, color-coded badges, Services management |
-| **3.2.0** | Apr 9, 2026 | Error handling (8 pages), audit logging, Business Rules fix, Sebastian added |
-| **3.1.0** | Apr 8–9, 2026 | Insurance Hub (5 tabs), 12 payers, 15 billing rules, 2026 Medicare fee schedule, drag+resize |
-| **2.x** | Apr 3–6, 2026 | Code review hardening — SQL injection fix, pagination, cookie security, auth guard |
-| **1.x** | Mar 2026 | Initial build — patients, basic testing, appointments |
+| **3.2.0** | Apr 9, 2026 | Error handling (8 pages), audit logging, Business Rules fix |
+| **1.x–3.1.x** | Mar–Apr 2026 | Initial build through Insurance Hub |
 
 ---
 
-*This manual lives in Settings → 📘 App Manual. Update it whenever new modules ship.*
+*This manual is maintained automatically. Pepper updates both the workspace file and the in-app version (\`components/settings/AppManualTab.tsx\`) after every feature ship.*
 `;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -373,9 +567,13 @@ const TOC_SECTIONS = [
   { id: 'calendar--appointments', label: '📅 Calendar' },
   { id: 'allergy-testing', label: '🧪 Allergy Testing' },
   { id: 'insurance-hub', label: '🏦 Insurance Hub' },
+  { id: 'reports', label: '📊 Reports' },
+  { id: 'email-module', label: '📧 Email Module' },
   { id: 'settings', label: '⚙️ Settings' },
   { id: 'kiosk-mode', label: '📟 Kiosk Mode' },
   { id: 'audit-log', label: '📋 Audit Log' },
+  { id: 'security-architecture', label: '🔒 Security' },
+  { id: 'location--practice-scoping', label: '📍 Location Scoping' },
   { id: 'upcoming-modules', label: '🚀 Upcoming Modules' },
   { id: 'changelog', label: '📝 Changelog' },
 ];
