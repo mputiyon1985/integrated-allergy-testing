@@ -105,6 +105,8 @@ model Nurse {
   deletedAt     DateTime?
   entityId      String?
   appUserId     String?
+  practiceId    String?
+  locationId    String?
 }
 
 // Patient — matches IMS schema but with IAT-specific date relations
