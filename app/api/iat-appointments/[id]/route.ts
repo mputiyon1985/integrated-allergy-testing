@@ -33,47 +33,39 @@ export async function PUT(
       return NextResponse.json({ error: result.error.issues[0].message }, { status: 400 })
     }
 
-    const existing = await prisma.iATAppointment.findFirst({
-      where: { id, deletedAt: null },
-    })
+    const rows = await prisma.$queryRaw<Array<{id:string}>>`SELECT id FROM IatAppointment WHERE id = ${id} AND deletedAt IS NULL LIMIT 1`
+    const existing = rows[0] ?? null
     if (!existing) {
       return NextResponse.json({ error: 'Appointment not found' }, { status: 404 })
     }
 
     const data = result.data
-    // Validate time order if both provided
-    const start = data.startTime ? new Date(data.startTime) : existing.startTime
-    const end = data.endTime ? new Date(data.endTime) : existing.endTime
-    if (start >= end) {
-      return NextResponse.json({ error: 'endTime must be after startTime' }, { status: 400 })
-    }
+    const now = new Date().toISOString()
 
-    const updated = await prisma.iATAppointment.update({
-      where: { id },
-      data: {
-        ...(data.title !== undefined ? { title: data.title } : {}),
-        ...(data.patientId !== undefined ? { patientId: data.patientId } : {}),
-        ...(data.patientName !== undefined ? { patientName: data.patientName } : {}),
-        ...(data.startTime !== undefined ? { startTime: new Date(data.startTime) } : {}),
-        ...(data.endTime !== undefined ? { endTime: new Date(data.endTime) } : {}),
-        ...(data.type !== undefined ? { type: data.type } : {}),
-        ...(data.notes !== undefined ? { notes: data.notes } : {}),
-        ...(data.status !== undefined ? { status: data.status } : {}),
-        updatedAt: new Date(),
-      },
-    })
+    // Build SET clause safely with hardcoded column names
+    const setClauses: string[] = ['updatedAt=?']
+    const values: unknown[] = [now]
+
+    if (data.title !== undefined) { setClauses.push('title=?'); values.push(data.title) }
+    if (data.patientId !== undefined) { setClauses.push('patientId=?'); values.push(data.patientId) }
+    if (data.patientName !== undefined) { setClauses.push('patientName=?'); values.push(data.patientName) }
+    if (data.startTime !== undefined) { setClauses.push('startTime=?'); values.push(data.startTime) }
+    if (data.endTime !== undefined) { setClauses.push('endTime=?'); values.push(data.endTime) }
+    if (data.type !== undefined) { setClauses.push('type=?'); values.push(data.type) }
+    if (data.notes !== undefined) { setClauses.push('notes=?'); values.push(data.notes) }
+    if (data.status !== undefined) { setClauses.push('status=?'); values.push(data.status) }
+    values.push(id)
+
+    await prisma.$executeRawUnsafe(
+      `UPDATE IatAppointment SET ${setClauses.join(', ')} WHERE id=?`,
+      ...values
+    )
 
     prisma.auditLog.create({
-      data: {
-        action: 'APPOINTMENT_UPDATED',
-        entity: 'IATAppointment',
-        entityId: updated.id,
-        patientId: updated.patientId || null,
-        details: `Appointment updated: ${updated.title} at ${updated.startTime}`,
-      },
+      data: { action: 'APPOINTMENT_UPDATED', entity: 'IATAppointment', entityId: id, patientId: null, details: 'Appointment updated' },
     }).catch(() => {})
 
-    return NextResponse.json(updated)
+    return NextResponse.json({ id })
   } catch (error) {
     console.error('PUT /api/iat-appointments/[id] error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -88,27 +80,14 @@ export async function DELETE(
   if (denied) return denied
   try {
     const { id } = await params
+    const rows = await prisma.$queryRaw<Array<{id:string}>>`SELECT id FROM IatAppointment WHERE id = ${id} AND deletedAt IS NULL LIMIT 1`
+    if (!rows[0]) return NextResponse.json({ error: 'Appointment not found' }, { status: 404 })
 
-    const existing = await prisma.iATAppointment.findFirst({
-      where: { id, deletedAt: null },
-    })
-    if (!existing) {
-      return NextResponse.json({ error: 'Appointment not found' }, { status: 404 })
-    }
-
-    await prisma.iATAppointment.update({
-      where: { id },
-      data: { deletedAt: new Date(), updatedAt: new Date() },
-    })
+    const now = new Date().toISOString()
+    await prisma.$executeRaw`UPDATE IatAppointment SET deletedAt=${now}, updatedAt=${now} WHERE id=${id}`
 
     prisma.auditLog.create({
-      data: {
-        action: 'APPOINTMENT_DELETED',
-        entity: 'IATAppointment',
-        entityId: id,
-        patientId: existing.patientId || null,
-        details: `Appointment deleted: ${existing.title} at ${existing.startTime}`,
-      },
+      data: { action: 'APPOINTMENT_DELETED', entity: 'IATAppointment', entityId: id, patientId: null, details: 'Appointment deleted' },
     }).catch(() => {})
 
     return NextResponse.json({ ok: true })

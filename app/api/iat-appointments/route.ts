@@ -112,19 +112,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'endTime must be after startTime' }, { status: 400 })
     }
 
-    const appointment = await prisma.iATAppointment.create({
-      data: {
-        title,
-        patientId: patientId || '',
-        patientName: patientName ?? null,
-        startTime: new Date(startTime),
-        endTime: new Date(endTime),
-        type: type ?? 'allergy-test',
-        notes: notes ?? null,
-        providerName: providerName ?? null,
-        createdBy: createdBy ?? null,
-      },
-    })
+    const { createId } = await import('@paralleldrive/cuid2')
+    const newId = createId()
+    const now = new Date().toISOString()
+    const locId = (result.data as Record<string,unknown>).locationId as string | undefined ?? null
+    await prisma.$executeRaw`
+      INSERT INTO IatAppointment (id, title, patientId, patientName, startTime, endTime, type, notes, status, providerName, locationId, createdBy, createdAt, updatedAt)
+      VALUES (${newId}, ${title}, ${patientId || ''}, ${patientName ?? null}, ${startTime}, ${endTime}, ${type ?? 'allergy-test'}, ${notes ?? null}, 'scheduled', ${providerName ?? null}, ${locId}, ${createdBy ?? null}, ${now}, ${now})
+    `
+    const appointment = { id: newId, patientId: patientId || '', title, startTime, endTime }
 
     // Fire-and-forget: record encounter activity (only when patientId is present)
     if (appointment.patientId) {
