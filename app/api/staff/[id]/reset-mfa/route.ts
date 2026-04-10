@@ -25,20 +25,23 @@ export async function POST(
   const { id } = await params
 
   try {
-    const user = await prisma.staffUser.findUnique({ where: { id } })
+    const rows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+      `SELECT id, email FROM StaffUser WHERE id=? LIMIT 1`,
+      id
+    )
+    const user = rows[0] ? {
+      id: rows[0].id as string,
+      email: rows[0].email as string,
+    } : null
+
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
-    await prisma.staffUser.update({
-      where: { id },
-      data: {
-        mfaEnabled: false,
-        mfaSecret: null,
-        tempToken: null,
-        tempTokenExpiry: null,
-      },
-    })
+    await prisma.$executeRawUnsafe(
+      `UPDATE StaffUser SET mfaEnabled=0, mfaSecret=NULL, tempToken=NULL, tempTokenExpiry=NULL, updatedAt=CURRENT_TIMESTAMP WHERE id=?`,
+      id
+    )
 
     await prisma.auditLog.create({
       data: {

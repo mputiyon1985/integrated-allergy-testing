@@ -30,10 +30,10 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: 'Access denied to this location' }, { status: 403 })
     }
 
-    await prisma.staffUser.update({
-      where: { id: userId },
-      data: { defaultLocationId: body.locationId },
-    })
+    await prisma.$executeRawUnsafe(
+      `UPDATE StaffUser SET defaultLocationId=?, updatedAt=CURRENT_TIMESTAMP WHERE id=?`,
+      body.locationId, userId
+    )
 
     return NextResponse.json({ ok: true })
   } catch (error) {

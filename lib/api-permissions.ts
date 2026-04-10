@@ -15,14 +15,15 @@ export async function requirePermission(req: NextRequest, permission: Permission
 
   if (userRole === 'admin') return null
 
-  // Fetch per-user permission overrides from DB
+  // Fetch per-user permission overrides from DB using raw SQL (Turso DateTime compatibility)
   const prisma = (await import('./db')).default
-  const user = await prisma.staffUser.findUnique({
-    where: { id: session.id as string },
-    select: { permissions: true },
-  })
+  const rows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+    `SELECT permissions FROM StaffUser WHERE id=? LIMIT 1`,
+    session.id as string
+  )
+  const userPermissions = rows[0]?.permissions as string | null | undefined
 
-  if (!hasPermission(userRole, user?.permissions, permission)) {
+  if (!hasPermission(userRole, userPermissions, permission)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 

@@ -3,7 +3,8 @@ import prisma from '@/lib/db'
 export const dynamic = 'force-dynamic'
 export async function GET() {
   try {
-    await prisma.staffUser.count()
+    const result = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>('SELECT COUNT(*) as count FROM StaffUser')
+    const _count = result[0]?.count
     return NextResponse.json({ ok: true })
   } catch (e) {
     const err = e as Error

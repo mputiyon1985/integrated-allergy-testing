@@ -23,20 +23,20 @@ export async function GET(
   const { id } = await params
 
   try {
-    const user = await prisma.staffUser.findUnique({
-      where: { id },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        active: true,
-        mfaEnabled: true,
-        defaultLocationId: true,
-        createdAt: true,
-      },
-    })
-    if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    const rows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+      `SELECT id, email, name, role, active, mfaEnabled, defaultLocationId FROM StaffUser WHERE id=? LIMIT 1`,
+      id
+    )
+    if (!rows[0]) return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    const user = {
+      id: rows[0].id as string,
+      email: rows[0].email as string,
+      name: rows[0].name as string,
+      role: rows[0].role as string,
+      active: Boolean(rows[0].active),
+      mfaEnabled: Boolean(rows[0].mfaEnabled),
+      defaultLocationId: rows[0].defaultLocationId as string | null,
+    }
     return NextResponse.json(user)
   } catch (error) {
     console.error('GET /api/staff/[id] error:', error)
@@ -62,8 +62,11 @@ export async function PUT(
       defaultLocationId?: string | null
     }
 
-    const existing = await prisma.staffUser.findUnique({ where: { id } })
-    if (!existing) return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    const existingRows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+      `SELECT id, email, name, role, active, mfaEnabled, defaultLocationId FROM StaffUser WHERE id=? LIMIT 1`,
+      id
+    )
+    if (!existingRows[0]) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
     // Self-protection: cannot downgrade own role
     if (id === session.userId && body.role && body.role !== 'admin') {
@@ -75,33 +78,62 @@ export async function PUT(
       return NextResponse.json({ error: 'Cannot deactivate your own account' }, { status: 400 })
     }
 
-    const updateData: Record<string, unknown> = {}
-    if (body.name !== undefined) updateData.name = body.name
-    if (body.role !== undefined) updateData.role = body.role === 'admin' ? 'admin' : 'staff'
-    if (body.active !== undefined) updateData.active = body.active
-    if ('defaultLocationId' in body) updateData.defaultLocationId = body.defaultLocationId ?? null
+    const setClauses: string[] = []
+    const values: unknown[] = []
+    const updatedFields: string[] = []
 
-    const updated = await prisma.staffUser.update({
-      where: { id },
-      data: updateData,
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        active: true,
-        mfaEnabled: true,
-        defaultLocationId: true,
-        createdAt: true,
-      },
-    })
+    if (body.name !== undefined) {
+      setClauses.push('name=?')
+      values.push(body.name)
+      updatedFields.push('name')
+    }
+    if (body.role !== undefined) {
+      const role = body.role === 'admin' ? 'admin' : 'staff'
+      setClauses.push('role=?')
+      values.push(role)
+      updatedFields.push('role')
+    }
+    if (body.active !== undefined) {
+      setClauses.push('active=?')
+      values.push(body.active ? 1 : 0)
+      updatedFields.push('active')
+    }
+    if ('defaultLocationId' in body) {
+      setClauses.push('defaultLocationId=?')
+      values.push(body.defaultLocationId ?? null)
+      updatedFields.push('defaultLocationId')
+    }
+
+    if (setClauses.length > 0) {
+      setClauses.push('updatedAt=CURRENT_TIMESTAMP')
+      values.push(id)
+      await prisma.$executeRawUnsafe(
+        `UPDATE StaffUser SET ${setClauses.join(', ')} WHERE id=?`,
+        ...values
+      )
+    }
+
+    // Fetch updated user
+    const updatedRows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+      `SELECT id, email, name, role, active, mfaEnabled, defaultLocationId FROM StaffUser WHERE id=? LIMIT 1`,
+      id
+    )
+    const updated = updatedRows[0] ? {
+      id: updatedRows[0].id as string,
+      email: updatedRows[0].email as string,
+      name: updatedRows[0].name as string,
+      role: updatedRows[0].role as string,
+      active: Boolean(updatedRows[0].active),
+      mfaEnabled: Boolean(updatedRows[0].mfaEnabled),
+      defaultLocationId: updatedRows[0].defaultLocationId as string | null,
+    } : null
 
     await prisma.auditLog.create({
       data: {
         action: 'STAFF_UPDATED',
         entity: 'StaffUser',
         entityId: id,
-        details: `Updated by admin ${session.email as string}: ${Object.keys(updateData).join(', ')}`,
+        details: `Updated by admin ${session.email as string}: ${updatedFields.join(', ')}`,
       },
     })
 
@@ -127,10 +159,16 @@ export async function DELETE(
   }
 
   try {
-    const existing = await prisma.staffUser.findUnique({ where: { id } })
-    if (!existing) return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    const existingRows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+      `SELECT id, email FROM StaffUser WHERE id=? LIMIT 1`,
+      id
+    )
+    if (!existingRows[0]) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
-    await prisma.staffUser.update({ where: { id }, data: { active: false } })
+    await prisma.$executeRawUnsafe(
+      `UPDATE StaffUser SET active=0, updatedAt=CURRENT_TIMESTAMP WHERE id=?`,
+      id
+    )
 
     await prisma.auditLog.create({
       data: {

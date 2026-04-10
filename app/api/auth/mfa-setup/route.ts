@@ -16,19 +16,30 @@ import { log } from '@/lib/audit'
 
 export const dynamic = 'force-dynamic'
 
+async function findUserByTempToken(tempToken: string) {
+  const rows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+    `SELECT id, email, name, role, mfaEnabled, mfaSecret, defaultLocationId FROM StaffUser WHERE tempToken=? AND active=1 LIMIT 1`,
+    tempToken
+  )
+  if (!rows[0]) return null
+  return {
+    id: rows[0].id as string,
+    email: rows[0].email as string,
+    name: rows[0].name as string,
+    role: rows[0].role as string,
+    mfaEnabled: Boolean(rows[0].mfaEnabled),
+    mfaSecret: rows[0].mfaSecret as string | null,
+    defaultLocationId: rows[0].defaultLocationId as string | null,
+  }
+}
+
 export async function GET(req: NextRequest) {
   const tempToken = req.headers.get('x-temp-token')
   if (!tempToken) {
     return NextResponse.json({ error: 'Missing temp token' }, { status: 401 })
   }
 
-  const user = await prisma.staffUser.findFirst({
-    where: {
-      tempToken,
-      tempTokenExpiry: { gte: new Date() },
-      active: true,
-    },
-  })
+  const user = await findUserByTempToken(tempToken)
 
   if (!user) {
     return NextResponse.json({ error: 'Invalid or expired token' }, { status: 401 })
@@ -53,13 +64,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'tempToken, secret, and code are required' }, { status: 400 })
     }
 
-    const user = await prisma.staffUser.findFirst({
-      where: {
-        tempToken,
-        tempTokenExpiry: { gte: new Date() },
-        active: true,
-      },
-    })
+    const user = await findUserByTempToken(tempToken)
 
     if (!user) {
       return NextResponse.json({ error: 'Invalid or expired token' }, { status: 401 })
@@ -78,15 +83,10 @@ export async function POST(req: NextRequest) {
     }
 
     // Save MFA secret, enable MFA, clear temp token
-    await prisma.staffUser.update({
-      where: { id: user.id },
-      data: {
-        mfaSecret: secret,
-        mfaEnabled: true,
-        tempToken: null,
-        tempTokenExpiry: null,
-      },
-    })
+    await prisma.$executeRawUnsafe(
+      `UPDATE StaffUser SET mfaSecret=?, mfaEnabled=1, tempToken=NULL, tempTokenExpiry=NULL, updatedAt=CURRENT_TIMESTAMP WHERE id=?`,
+      secret, user.id
+    )
 
     // Issue session JWT
     const token = await signSession({

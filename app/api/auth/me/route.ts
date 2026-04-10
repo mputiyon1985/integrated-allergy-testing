@@ -22,10 +22,18 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const user = await prisma.staffUser.findUnique({
-      where: { id: session.userId as string },
-      select: { id: true, email: true, name: true, role: true, active: true, defaultLocationId: true },
-    })
+    const rows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+      `SELECT id, email, name, role, active, defaultLocationId FROM StaffUser WHERE id=? LIMIT 1`,
+      session.userId as string
+    )
+    const user = rows[0] ? {
+      id: rows[0].id as string,
+      email: rows[0].email as string,
+      name: rows[0].name as string,
+      role: rows[0].role as string,
+      active: Boolean(rows[0].active),
+      defaultLocationId: rows[0].defaultLocationId as string | null,
+    } : null
 
     if (!user || !user.active) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

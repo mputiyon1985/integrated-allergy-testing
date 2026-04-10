@@ -21,19 +21,35 @@ export async function GET(req: NextRequest) {
       return NextResponse.redirect(new URL('/login?error=unauthorized_domain', req.url))
     }
 
-    // Find or create staff user
-    let staffUser = await prisma.staffUser.findUnique({ where: { email }, })
+    // Find or create staff user using raw SQL
+    const existingRows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+      `SELECT id, email, name, role, active, mfaEnabled, defaultLocationId FROM StaffUser WHERE email=? LIMIT 1`,
+      email
+    )
+    let staffUser = existingRows[0] ? {
+      id: existingRows[0].id as string,
+      email: existingRows[0].email as string,
+      name: existingRows[0].name as string,
+      role: existingRows[0].role as string,
+      active: Boolean(existingRows[0].active),
+      defaultLocationId: existingRows[0].defaultLocationId as string | null,
+    } : null
+
     if (!staffUser) {
-      staffUser = await prisma.staffUser.create({
-        data: {
-          email,
-          name: session.user.name || email.split('@')[0],
-          passwordHash: 'sso-no-password', // SSO users don't use password
-          role: 'staff',
-          mfaEnabled: true, // Azure AD handles MFA
-          active: true,
-        },
-      })
+      const newId = crypto.randomUUID()
+      const newName = session.user.name || email.split('@')[0]
+      await prisma.$executeRawUnsafe(
+        `INSERT INTO StaffUser (id, email, passwordHash, name, role, active, mfaEnabled, updatedAt) VALUES (?,?,?,?,?,1,1,CURRENT_TIMESTAMP)`,
+        newId, email, 'sso-no-password', newName, 'staff'
+      )
+      staffUser = {
+        id: newId,
+        email,
+        name: newName,
+        role: 'staff',
+        active: true,
+        defaultLocationId: null,
+      }
     }
 
     if (!staffUser.active) {

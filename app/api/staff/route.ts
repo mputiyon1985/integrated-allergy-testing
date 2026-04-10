@@ -30,30 +30,51 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'email, name, and password are required' }, { status: 400 })
     }
 
-    // Check for existing user
-    const existing = await prisma.staffUser.findUnique({ where: { email } })
-    if (existing) {
+    // Check for existing user using raw SQL
+    const existingRows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+      `SELECT id FROM StaffUser WHERE email=? LIMIT 1`,
+      email
+    )
+    if (existingRows[0]) {
       return NextResponse.json({ error: 'A user with that email already exists' }, { status: 409 })
     }
 
     const passwordHash = await bcrypt.hash(password, 12)
+    const assignedRole = role === 'admin' ? 'admin' : 'staff'
+    const newId = crypto.randomUUID()
 
-    const user = await prisma.staffUser.create({
-      data: {
-        email,
-        name,
-        passwordHash,
-        role: role === 'admin' ? 'admin' : 'staff',
-        ...(defaultLocationId ? { defaultLocationId } : {}),
-      },
-      select: { id: true, email: true, name: true, role: true, active: true, mfaEnabled: true, defaultLocationId: true, createdAt: true },
-    })
+    if (defaultLocationId) {
+      await prisma.$executeRawUnsafe(
+        `INSERT INTO StaffUser (id, email, passwordHash, name, role, active, mfaEnabled, defaultLocationId, updatedAt) VALUES (?,?,?,?,?,1,0,?,CURRENT_TIMESTAMP)`,
+        newId, email, passwordHash, name, assignedRole, defaultLocationId
+      )
+    } else {
+      await prisma.$executeRawUnsafe(
+        `INSERT INTO StaffUser (id, email, passwordHash, name, role, active, mfaEnabled, updatedAt) VALUES (?,?,?,?,?,1,0,CURRENT_TIMESTAMP)`,
+        newId, email, passwordHash, name, assignedRole
+      )
+    }
+
+    // Fetch the newly created user
+    const newRows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+      `SELECT id, email, name, role, active, mfaEnabled, defaultLocationId FROM StaffUser WHERE id=? LIMIT 1`,
+      newId
+    )
+    const user = newRows[0] ? {
+      id: newRows[0].id as string,
+      email: newRows[0].email as string,
+      name: newRows[0].name as string,
+      role: newRows[0].role as string,
+      active: Boolean(newRows[0].active),
+      mfaEnabled: Boolean(newRows[0].mfaEnabled),
+      defaultLocationId: newRows[0].defaultLocationId as string | null,
+    } : { id: newId, email, name, role: assignedRole, active: true, mfaEnabled: false, defaultLocationId: defaultLocationId ?? null }
 
     await prisma.auditLog.create({
       data: {
         action: 'STAFF_CREATED',
         entity: 'StaffUser',
-        entityId: user.id,
+        entityId: newId,
         details: `Created by admin ${session.email as string}`,
       },
     })
@@ -75,19 +96,19 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const users = await prisma.staffUser.findMany({
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        active: true,
-        mfaEnabled: true,
-        defaultLocationId: true,
-        createdAt: true,
-      },
-      orderBy: { name: 'asc' },
-    })
+    const rawUsers = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+      `SELECT id, email, name, role, active, mfaEnabled, defaultLocationId FROM StaffUser ORDER BY name ASC`
+    )
+
+    const users = rawUsers.map(u => ({
+      id: u.id as string,
+      email: u.email as string,
+      name: u.name as string,
+      role: u.role as string,
+      active: Boolean(u.active),
+      mfaEnabled: Boolean(u.mfaEnabled),
+      defaultLocationId: u.defaultLocationId as string | null,
+    }))
 
     // Enrich with location names
     const locationIds = [...new Set(users.map(u => u.defaultLocationId).filter(Boolean))] as string[]

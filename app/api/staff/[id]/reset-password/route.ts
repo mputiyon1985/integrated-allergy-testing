@@ -28,15 +28,18 @@ export async function POST(
       return NextResponse.json({ error: 'Password must be at least 8 characters' }, { status: 400 })
     }
 
-    const existing = await prisma.staffUser.findUnique({ where: { id } })
-    if (!existing) return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    const existingRows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+      `SELECT id, email FROM StaffUser WHERE id=? LIMIT 1`,
+      id
+    )
+    if (!existingRows[0]) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
     const passwordHash = await bcrypt.hash(password, 12)
 
-    await prisma.staffUser.update({
-      where: { id },
-      data: { passwordHash },
-    })
+    await prisma.$executeRawUnsafe(
+      `UPDATE StaffUser SET passwordHash=?, updatedAt=CURRENT_TIMESTAMP WHERE id=?`,
+      passwordHash, id
+    )
 
     await prisma.auditLog.create({
       data: {

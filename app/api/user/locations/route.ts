@@ -39,12 +39,12 @@ export async function GET(req: NextRequest) {
       })
     }
 
-    // Get user's defaultLocationId
-    const user = await prisma.staffUser.findUnique({
-      where: { id: userId },
-      select: { defaultLocationId: true },
-    })
-    const defaultLocationId = user?.defaultLocationId ?? locations[0]?.id ?? 'loc-iat-001'
+    // Get user's defaultLocationId using raw SQL to avoid DateTime parsing issues
+    const userRows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+      `SELECT defaultLocationId FROM StaffUser WHERE id=? LIMIT 1`,
+      userId
+    )
+    const defaultLocationId = (userRows[0]?.defaultLocationId as string | null) ?? locations[0]?.id ?? 'loc-iat-001'
 
     // Derive practice from the default location (or first location)
     const defaultLoc = locations.find((l) => l.id === defaultLocationId) ?? locations[0]
