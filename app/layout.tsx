@@ -16,7 +16,6 @@ const navItems: NavItem[] = [
   { href: '/testing', label: 'Testing', icon: '🧪' },
   { href: '/calendar', label: 'Calendar', icon: '📅' },
   { href: '/insurance', label: 'Insurance Hub', icon: '🏥' },
-  { href: '/maintenance', label: 'Maintenance', icon: '💉' },
   { href: '/kiosk', label: 'Kiosk', icon: '📲' },
 ];
 
