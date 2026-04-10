@@ -72,6 +72,7 @@ interface TodayAppointment {
   status: string;
   notes?: string | null;
   reasonName?: string | null;
+  providerName?: string | null;
 }
 
 const APPT_TYPE_COLORS: Record<string, { bg: string; text: string }> = {
@@ -103,6 +104,7 @@ interface WaitingEntry {
 }
 
 interface Nurse { id: string; name: string; title?: string; }
+interface Doctor { id: string; name: string; title?: string; active?: boolean; locationId?: string | null; }
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -123,6 +125,7 @@ export default function DashboardPage() {
     }
   }
   const [nurses, setNurses] = useState<Nurse[]>([]);
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [editingNoteText, setEditingNoteText] = useState('');
@@ -153,6 +156,7 @@ export default function DashboardPage() {
   const [newApptTitle, setNewApptTitle] = useState('');
   const [newApptTime, setNewApptTime] = useState('09:00');
   const [newApptEndTime, setNewApptEndTime] = useState('10:00');
+  const [newApptProvider, setNewApptProvider] = useState('');
   const [addingAppt, setAddingAppt] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -226,7 +230,7 @@ export default function DashboardPage() {
         const practiceId = !locId ? getActivePractice() : '';
         const locParam = locId ? `&locationId=${locId}` : practiceId ? `&practiceId=${practiceId}` : '';
         const todayStr = new Date().toISOString().split('T')[0]
-        const [patientsRes, , nursesRes, meRes, encounterCountRes, reasonsRes, apptsRes] = await Promise.allSettled([
+        const [patientsRes, doctorsRes, nursesRes, meRes, encounterCountRes, reasonsRes, apptsRes] = await Promise.allSettled([
           fetch(`/api/patients${locId ? `?locationId=${locId}` : practiceId ? `?practiceId=${practiceId}` : ''}`),
           fetch(`/api/doctors?all=1${locId ? `&locationId=${locId}` : ''}`),
           fetch(`/api/nurses?all=1${locId ? `&locationId=${locId}` : ''}`),
@@ -238,6 +242,12 @@ export default function DashboardPage() {
         if (patientsRes.status === 'fulfilled' && patientsRes.value.ok) {
           const d = await patientsRes.value.json();
           setPatientCount((Array.isArray(d) ? d : d.patients ?? []).length);
+        }
+
+        if (doctorsRes.status === 'fulfilled' && doctorsRes.value.ok) {
+          const d = await doctorsRes.value.json();
+          const list: Doctor[] = Array.isArray(d) ? d : d.doctors ?? [];
+          setDoctors(list.filter(doc => doc.active !== false));
         }
 
         if (nursesRes.status === 'fulfilled' && nursesRes.value.ok) {
@@ -276,13 +286,38 @@ export default function DashboardPage() {
     loadData();
     loadWaiting();
     setGridLayouts(loadLayouts());
-    // Auto-refresh waiting room every 10s
-    const interval = setInterval(loadWaiting, 10000);
+
+    // SSE: real-time waiting room updates (replaces 10s polling)
+    const locId = getActiveLocation();
+    const practId = !locId ? getActivePractice() : '';
+    const sseParams = locId
+      ? `?locationId=${locId}`
+      : practId
+        ? `?practiceId=${practId}`
+        : '';
+    let evtSource: EventSource | null = null;
+    try {
+      evtSource = new EventSource(`/api/waiting-room/stream${sseParams}`);
+      evtSource.onmessage = (e) => {
+        try {
+          const entries = JSON.parse(e.data);
+          setWaiting(entries ?? []);
+        } catch {}
+      };
+      evtSource.onerror = () => {
+        // SSE error: fall back to manual refresh
+        evtSource?.close();
+        evtSource = null;
+      };
+    } catch {
+      // SSE not supported or failed — ignore, manual refresh still works
+    }
+
     // Also listen for manual dashboard reload trigger
     function onReload() { loadData(); }
     window.addEventListener('iat-reload-dashboard', onReload);
     return () => {
-      clearInterval(interval);
+      evtSource?.close();
       window.removeEventListener('iat-reload-dashboard', onReload);
     };
   }, [loadWaiting, getActiveLocation]);
@@ -299,7 +334,7 @@ export default function DashboardPage() {
       const res = await fetch('/api/iat-appointments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: newApptTitle, startTime: startIso, endTime: endIso, locationId: getActiveLocation() || undefined }),
+        body: JSON.stringify({ title: newApptTitle, startTime: startIso, endTime: endIso, providerName: newApptProvider || undefined, locationId: getActiveLocation() || undefined }),
       });
       if (res.ok) {
         const todayStr = new Date().toDateString();
@@ -311,6 +346,7 @@ export default function DashboardPage() {
         setNewApptTitle('');
         setNewApptTime('09:00');
         setNewApptEndTime('10:00');
+        setNewApptProvider('');
       }
     } catch {}
     setAddingAppt(false);
@@ -339,7 +375,7 @@ export default function DashboardPage() {
               chiefComplaint: `Visit - ${appt.reasonName ?? appt.title}`,
               status: 'open',
               nurseName: '',
-              doctorName: '',
+              doctorName: appt.providerName ?? '',
             }),
           });
         } catch {}
@@ -480,7 +516,18 @@ export default function DashboardPage() {
               const rowBorder = isNew && e.status === 'waiting' ? '2px solid #f59e0b' : '1px solid #f1f5f9';
               return (
               <tr key={e.id}
-                onClick={() => e.patientId && router.push(`/patients/${e.patientId}?action=encounter`)}
+                onClick={async () => {
+                  if (!e.patientId) return;
+                  try {
+                    const r = await fetch(`/api/encounters?patientId=${e.patientId}&status=open&limit=1`);
+                    if (r.ok) {
+                      const d = await r.json();
+                      const openEnc = (d.encounters ?? [])[0];
+                      if (openEnc?.id) { router.push(`/encounters/${openEnc.id}`); return; }
+                    }
+                  } catch {}
+                  router.push(`/patients/${e.patientId}?action=encounter`);
+                }}
                 style={{ borderBottom: rowBorder, background: rowBg, cursor: e.patientId ? 'pointer' : 'default', transition: 'background 0.15s' }}
                 onMouseEnter={ev => { if (e.patientId) ev.currentTarget.style.background = e.status === 'in-service' ? '#c8f5ef' : '#fef3c7'; }}
                 onMouseLeave={ev => ev.currentTarget.style.background = rowBg}
@@ -798,7 +845,7 @@ export default function DashboardPage() {
                 placeholder="e.g. Follow-up visit"
                 style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: 14, boxSizing: 'border-box' }} />
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 20 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
               <div>
                 <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 4 }}>Start</label>
                 <input type="time" value={newApptTime} onChange={e => setNewApptTime(e.target.value)}
@@ -809,6 +856,20 @@ export default function DashboardPage() {
                 <input type="time" value={newApptEndTime} onChange={e => setNewApptEndTime(e.target.value)}
                   style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: 14, boxSizing: 'border-box' }} />
               </div>
+            </div>
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 4 }}>Physician</label>
+              {doctors.length > 0 ? (
+                <select value={newApptProvider} onChange={e => setNewApptProvider(e.target.value)}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: 14, boxSizing: 'border-box' }}>
+                  <option value="">— Select Physician —</option>
+                  {doctors.map(d => <option key={d.id} value={d.name}>{d.title ? `${d.name}, ${d.title}` : d.name}</option>)}
+                </select>
+              ) : (
+                <input value={newApptProvider} onChange={e => setNewApptProvider(e.target.value)}
+                  placeholder="e.g. Dr. Smith"
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: 14, boxSizing: 'border-box' }} />
+              )}
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
               <button onClick={() => setShowAddApptModal(false)}

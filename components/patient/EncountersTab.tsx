@@ -368,10 +368,203 @@ function AddActivityModal({
 // ────────────────────────────────────────────────────────────
 //  Encounter Card
 // ────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────
+//  Claim Modal
+// ────────────────────────────────────────────────────────────
+interface ClaimData {
+  claimId: string;
+  encounterId: string;
+  patientName: string;
+  patientId: string;
+  dob: string;
+  insuranceProvider: string;
+  memberId: string;
+  groupNumber: string;
+  dateOfService: string;
+  renderingProvider: string;
+  renderingProviderNPI: string;
+  diagnosisCodes: string[];
+  cptCodes: { code: string; description: string; units: number; fee: number; total: number }[];
+  totalCharges: number;
+  placeOfService: string;
+  claimGeneratedAt: string;
+  status: string;
+}
+
+function ClaimModal({ encounterId, onClose }: { encounterId: string; onClose: () => void }) {
+  const [claim, setClaim] = useState<ClaimData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    fetch(`/api/encounters/${encounterId}/claim`, { method: 'POST' })
+      .then(async r => {
+        if (!r.ok) { const d = await r.json(); throw new Error(d.error ?? 'Failed'); }
+        return r.json();
+      })
+      .then(d => { setClaim(d); setLoading(false); })
+      .catch(e => { setError(e.message); setLoading(false); });
+  }, [encounterId]);
+
+  function handleCopy() {
+    if (!claim) return;
+    navigator.clipboard.writeText(JSON.stringify(claim, null, 2)).then(() => {
+      setCopied(true); setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
+  function handleDownload() {
+    if (!claim) return;
+    const blob = new Blob([JSON.stringify(claim, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `claim-${claim.claimId}-${claim.dateOfService.replace(/\//g, '-')}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1300 }}>
+      <div style={{ background: '#fff', borderRadius: 16, width: 620, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+        <div style={{ padding: '16px 24px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc' }}>
+          <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>🧾 Claim Summary</h2>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#64748b' }}>✕</button>
+        </div>
+        <div style={{ padding: 24 }}>
+          {loading && <div style={{ textAlign: 'center', padding: 32, color: '#64748b' }}>⏳ Generating claim…</div>}
+          {error && <div style={{ color: '#b91c1c', background: '#fef2f2', borderRadius: 8, padding: 12 }}>❌ {error}</div>}
+          {claim && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#0d9488', background: '#e8f9f7', padding: '2px 10px', borderRadius: 999 }}>Claim ID: {claim.claimId}</span>
+                <span style={{ fontSize: 12, color: '#64748b' }}>Generated {new Date(claim.claimGeneratedAt).toLocaleString('en-US')}</span>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                {/* Patient Info */}
+                <div style={{ background: '#f8fafc', borderRadius: 10, padding: 14 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#0d9488', textTransform: 'uppercase', marginBottom: 8 }}>Patient</div>
+                  {[
+                    ['Name', claim.patientName],
+                    ['Patient ID', claim.patientId],
+                    ['Date of Birth', claim.dob],
+                  ].map(([l, v]) => (
+                    <div key={l} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '3px 0', borderBottom: '1px solid #e2e8f0' }}>
+                      <span style={{ color: '#64748b' }}>{l}</span>
+                      <span style={{ fontWeight: 600, color: '#1a2233' }}>{v}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Insurance */}
+                <div style={{ background: '#f8fafc', borderRadius: 10, padding: 14 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#7c3aed', textTransform: 'uppercase', marginBottom: 8 }}>Insurance</div>
+                  {[
+                    ['Provider', claim.insuranceProvider],
+                    ['Member ID', claim.memberId],
+                    ['Group #', claim.groupNumber],
+                  ].map(([l, v]) => (
+                    <div key={l} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '3px 0', borderBottom: '1px solid #e2e8f0' }}>
+                      <span style={{ color: '#64748b' }}>{l}</span>
+                      <span style={{ fontWeight: 600, color: '#1a2233' }}>{v}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Service */}
+                <div style={{ background: '#f8fafc', borderRadius: 10, padding: 14 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#1d4ed8', textTransform: 'uppercase', marginBottom: 8 }}>Service</div>
+                  {[
+                    ['Date of Service', claim.dateOfService],
+                    ['Place of Service', claim.placeOfService],
+                    ['Provider', claim.renderingProvider],
+                    ['NPI', claim.renderingProviderNPI],
+                  ].map(([l, v]) => (
+                    <div key={l} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, padding: '3px 0', borderBottom: '1px solid #e2e8f0' }}>
+                      <span style={{ color: '#64748b' }}>{l}</span>
+                      <span style={{ fontWeight: 600, color: '#1a2233' }}>{v}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Diagnosis */}
+                <div style={{ background: '#f8fafc', borderRadius: 10, padding: 14 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#ea580c', textTransform: 'uppercase', marginBottom: 8 }}>Diagnosis</div>
+                  {claim.diagnosisCodes.length > 0
+                    ? claim.diagnosisCodes.map(c => (
+                        <div key={c} style={{ fontSize: 13, fontWeight: 600, color: '#1a2233', fontFamily: 'monospace', padding: '3px 0' }}>{c}</div>
+                      ))
+                    : <div style={{ fontSize: 13, color: '#94a3b8' }}>No diagnosis codes</div>
+                  }
+                </div>
+              </div>
+
+              {/* CPT Codes */}
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#374151', textTransform: 'uppercase', marginBottom: 8 }}>CPT Codes</div>
+                {claim.cptCodes.length === 0
+                  ? <div style={{ color: '#94a3b8', fontSize: 13 }}>No CPT codes</div>
+                  : (
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                      <thead>
+                        <tr style={{ background: '#f1f5f9' }}>
+                          {['Code', 'Description', 'Units', 'Fee', 'Total'].map(h => (
+                            <th key={h} style={{ padding: '6px 10px', textAlign: 'left', fontWeight: 700, color: '#374151', fontSize: 11, textTransform: 'uppercase' }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {claim.cptCodes.map(c => (
+                          <tr key={c.code} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                            <td style={{ padding: '6px 10px', fontFamily: 'monospace', fontWeight: 700, color: '#0d9488' }}>{c.code}</td>
+                            <td style={{ padding: '6px 10px', color: '#374151' }}>{c.description}</td>
+                            <td style={{ padding: '6px 10px', color: '#64748b' }}>{c.units}</td>
+                            <td style={{ padding: '6px 10px', color: '#64748b' }}>${c.fee.toFixed(2)}</td>
+                            <td style={{ padding: '6px 10px', fontWeight: 700, color: '#1a2233' }}>${c.total.toFixed(2)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr style={{ borderTop: '2px solid #0d9488' }}>
+                          <td colSpan={4} style={{ padding: '8px 10px', fontWeight: 700, color: '#374151', textAlign: 'right' }}>Total Charges:</td>
+                          <td style={{ padding: '8px 10px', fontWeight: 800, color: '#0d9488', fontSize: 15 }}>${claim.totalCharges.toFixed(2)}</td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  )
+                }
+              </div>
+            </div>
+          )}
+        </div>
+        {claim && (
+          <div style={{ padding: '14px 24px', borderTop: '1px solid #e2e8f0', display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+            <button onClick={handleCopy}
+              style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #e2e8f0', background: copied ? '#dcfce7' : '#fff', color: copied ? '#15803d' : '#374151', cursor: 'pointer', fontWeight: 700, fontSize: 13 }}>
+              {copied ? '✅ Copied!' : '📋 Copy'}
+            </button>
+            <button onClick={handleDownload}
+              style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: '#0d9488', color: '#fff', cursor: 'pointer', fontWeight: 700, fontSize: 13 }}>
+              ⬇️ Download JSON
+            </button>
+            <button onClick={onClose}
+              style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', color: '#374151', cursor: 'pointer', fontWeight: 600, fontSize: 13 }}>
+              Close
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function EncounterCard({
   enc, patientId, onRefresh,
 }: { enc: EncounterRecord; patientId: string; onRefresh: () => void }) {
   const [showAdd, setShowAdd] = useState(false);
+  const [showClaim, setShowClaim] = useState(false);
   const s = ENC_STATUS[enc.status] ?? ENC_STATUS.open;
   const activities = (enc.activities ?? []).slice().sort(
     (a, b) => new Date(a.performedAt ?? a.createdAt ?? 0).getTime() - new Date(b.performedAt ?? b.createdAt ?? 0).getTime()
@@ -398,11 +591,17 @@ function EncounterCard({
         </div>
       </Link>
       {/* Actions row */}
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '8px 16px', borderBottom: '1px solid #f1f5f9' }}>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '8px 16px', borderBottom: '1px solid #f1f5f9', flexWrap: 'wrap' }}>
         <a href={`/api/encounters/${enc.id}/pdf`} target="_blank" rel="noopener noreferrer"
           style={{ padding: '4px 10px', borderRadius: 7, border: 'none', background: '#64748b', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', textDecoration: 'none', display: 'inline-block' }}>
           📄 PDF
         </a>
+        {(enc.status === 'signed' || enc.status === 'billed') && (
+          <button onClick={() => setShowClaim(true)}
+            style={{ padding: '4px 10px', borderRadius: 7, border: 'none', background: '#7c3aed', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+            🧾 Generate Claim
+          </button>
+        )}
         <button onClick={() => setShowAdd(true)}
           style={{ padding: '4px 10px', borderRadius: 7, border: 'none', background: '#0d9488', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
           + Add Activity
@@ -425,6 +624,9 @@ function EncounterCard({
           onClose={() => setShowAdd(false)}
           onSaved={() => { setShowAdd(false); onRefresh(); }}
         />
+      )}
+      {showClaim && (
+        <ClaimModal encounterId={enc.id} onClose={() => setShowClaim(false)} />
       )}
     </div>
   );

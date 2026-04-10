@@ -20,6 +20,7 @@ const createSchema = z.object({
   endTime: z.string().datetime(),
   type: z.string().optional(),
   notes: z.string().max(1000).optional(),
+  providerName: z.string().max(200).optional(),
   createdBy: z.string().max(200).optional(),
 })
 
@@ -104,7 +105,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: result.error.issues[0].message }, { status: 400 })
     }
 
-    const { title, patientId, patientName, startTime, endTime, type, notes, createdBy } = result.data
+    const { title, patientId, patientName, startTime, endTime, type, notes, providerName, createdBy } = result.data
 
     // Validate time order
     if (new Date(startTime) >= new Date(endTime)) {
@@ -120,6 +121,7 @@ export async function POST(request: NextRequest) {
         endTime: new Date(endTime),
         type: type ?? 'allergy-test',
         notes: notes ?? null,
+        providerName: providerName ?? null,
         createdBy: createdBy ?? null,
       },
     })

@@ -360,6 +360,7 @@ model IATAppointment {
   endTime     DateTime
   type        String    @default("allergy-test")
   notes       String?
+  providerName String?
   status      String    @default("scheduled")
   createdBy   String?
   locationId  String    @default("loc-iat-001")

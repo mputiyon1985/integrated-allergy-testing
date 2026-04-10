@@ -55,9 +55,52 @@ function fmtTime(iso: string) {
   } catch { return ''; }
 }
 
+function QuickClaimButton({ encounterId }: { encounterId: string }) {
+  const [loading, setLoading] = useState(false);
+  const [claim, setClaim] = useState<Record<string, unknown> | null>(null);
+  const [error, setError] = useState('');
+
+  function handleGenerate(e: React.MouseEvent) {
+    e.stopPropagation();
+    setLoading(true);
+    fetch(`/api/encounters/${encounterId}/claim`, { method: 'POST' })
+      .then(async r => {
+        if (!r.ok) { const d = await r.json(); throw new Error(d.error ?? 'Failed'); }
+        return r.json();
+      })
+      .then(d => { setClaim(d); setLoading(false); })
+      .catch(err => { setError(err.message); setLoading(false); });
+  }
+
+  function handleDownload(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!claim) return;
+    const blob = new Blob([JSON.stringify(claim, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `claim-${claim.claimId}-${(claim.dateOfService as string)?.replace(/\//g, '-') ?? 'unknown'}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  if (error) return <span style={{ fontSize: 11, color: '#b91c1c' }}>❌ {error}</span>;
+  if (claim) return (
+    <button onClick={handleDownload}
+      style={{ fontSize: 11, padding: '3px 10px', borderRadius: 6, border: 'none', background: '#7c3aed', color: '#fff', textDecoration: 'none', fontWeight: 700, whiteSpace: 'nowrap', cursor: 'pointer' }}>
+      ⬇️ Download
+    </button>
+  );
+  return (
+    <button onClick={handleGenerate} disabled={loading}
+      style={{ fontSize: 11, padding: '3px 10px', borderRadius: 6, border: 'none', background: '#7c3aed', color: '#fff', fontWeight: 700, whiteSpace: 'nowrap', cursor: 'pointer' }}>
+      {loading ? '⏳' : '📋 Claim'}
+    </button>
+  );
+}
+
 export default function EncountersPage() {
   const router = useRouter();
-
   const [encounters, setEncounters] = useState<Encounter[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -379,11 +422,14 @@ export default function EncountersPage() {
                                 </Link>
                               )}
                               {(e.status === 'signed' || e.status === 'billed') && (
-                                <a href={`/api/encounters/${e.id}/pdf`} target="_blank" rel="noopener noreferrer"
-                                  style={{ fontSize: 11, padding: '3px 10px', borderRadius: 6, border: 'none',
-                                    background: '#15803d', color: '#fff', textDecoration: 'none', fontWeight: 700, whiteSpace: 'nowrap' }}>
-                                  🧾 Superbill
-                                </a>
+                                <>
+                                  <a href={`/api/encounters/${e.id}/pdf`} target="_blank" rel="noopener noreferrer"
+                                    style={{ fontSize: 11, padding: '3px 10px', borderRadius: 6, border: 'none',
+                                      background: '#15803d', color: '#fff', textDecoration: 'none', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                                    🧾 Superbill
+                                  </a>
+                                  <QuickClaimButton encounterId={e.id} />
+                                </>
                               )}
                             </div>
                           </td>
