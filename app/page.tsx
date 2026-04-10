@@ -356,8 +356,15 @@ export default function DashboardPage() {
           const encId = openEncs[0]?.id;
           if (encId) {
             if (status === 'in-service') {
-              // Log "Patient brought to exam room" activity
+              // Log "Patient brought to exam room" activity AND update encounter with nurse name
               const nurseLabel = nurseName ?? entry.nurseName ?? 'Staff';
+              // Update the encounter with the nurse name
+              fetch(`/api/encounters/${encId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ nurseName: nurseLabel }),
+              }).catch(() => {});
+              // Log the activity
               fetch('/api/encounter-activities', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
