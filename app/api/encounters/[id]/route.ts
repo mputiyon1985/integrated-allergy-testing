@@ -17,7 +17,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       id
     )
     const encounter = rows[0] ?? null
-    if (!encounter) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    if (!encounter) return NextResponse.json({ error: 'Encounter not found' }, { status: 404 })
 
     // Fetch activities for this encounter
     const activities = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
@@ -39,7 +39,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     encounter.activities = activities
 
     return NextResponse.json(encounter, { headers: HIPAA_HEADERS })
-  } catch (err) { console.error(err); return NextResponse.json({ error: 'Failed' }, { status: 500 }) }
+  } catch (err) { console.error(err); return NextResponse.json({ error: 'Failed to fetch encounter' }, { status: 500 }) }
 }
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -92,7 +92,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
     prisma.auditLog.create({ data: { action: 'ENCOUNTER_UPDATED', entity: 'Encounter', entityId: id, patientId: encounter?.patientId as string ?? '' }}).catch(()=>{})
     return NextResponse.json({ encounter }, { headers: HIPAA_HEADERS })
-  } catch (err) { console.error(err); return NextResponse.json({ error: 'Failed' }, { status: 500 }) }
+  } catch (err) { console.error(err); return NextResponse.json({ error: 'Failed to update encounter' }, { status: 500 }) }
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -109,5 +109,5 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     )
     prisma.auditLog.create({ data: { action: 'ENCOUNTER_DELETED', entity: 'Encounter', entityId: id, patientId }}).catch(()=>{})
     return NextResponse.json({ ok: true })
-  } catch (err) { console.error(err); return NextResponse.json({ error: 'Failed' }, { status: 500 }) }
+  } catch (err) { console.error(err); return NextResponse.json({ error: 'Failed to delete encounter' }, { status: 500 }) }
 }

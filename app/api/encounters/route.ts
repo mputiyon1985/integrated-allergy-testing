@@ -46,6 +46,10 @@ export async function GET(req: NextRequest) {
     if (nurseName) { sql += ' AND e.nurseName=?'; values.push(nurseName) }
     if (dateFrom) { sql += ' AND date(e.encounterDate) >= ?'; values.push(dateFrom) }
     if (dateTo) { sql += ' AND date(e.encounterDate) <= ?'; values.push(dateTo) }
+    const insuranceProvider = searchParams.get('insuranceProvider')
+    const chiefComplaint = searchParams.get('chiefComplaint')
+    if (insuranceProvider) { sql += ' AND p.insuranceProvider LIKE ?'; values.push(`%${insuranceProvider}%`) }
+    if (chiefComplaint) { sql += ' AND e.chiefComplaint = ?'; values.push(chiefComplaint) }
     if (search) {
       sql += ' AND (p.name LIKE ? OR e.chiefComplaint LIKE ? OR e.diagnosisCode LIKE ? OR e.doctorName LIKE ? OR e.nurseName LIKE ?)'
       const s = `%${search}%`
@@ -57,7 +61,7 @@ export async function GET(req: NextRequest) {
 
     const encounters = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(sql, ...values)
     return NextResponse.json({ encounters }, { headers: HIPAA_HEADERS })
-  } catch (err) { console.error(err); return NextResponse.json({ encounters: [] }) }
+  } catch (err) { console.error(err); return NextResponse.json({ error: 'Failed to fetch encounters', encounters: [] }, { status: 500 }) }
 }
 
 export async function POST(req: NextRequest) {

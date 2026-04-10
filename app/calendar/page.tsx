@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { getLocationParam } from '@/lib/location-params';
 
 interface Appointment {
   id: string;
@@ -158,9 +159,7 @@ function CalendarInner() {
         ? new Date(weekStart.getFullYear(), weekStart.getMonth(), 1)
         : weekStart;
       // Filter by active location from sidebar selector
-      let locId = '';
-      try { locId = localStorage.getItem('iat_active_location') ?? ''; } catch {}
-      const locParam = locId ? `&locationId=${locId}` : '';
+      const locParam = getLocationParam('&');
       const res = await fetch(`/api/iat-appointments?date=${isoDate(refDate)}&range=${view}${locParam}`);
       if (res.ok) {
         const data = await res.json();
@@ -182,7 +181,7 @@ function CalendarInner() {
   }, [loadAppointments]);
 
   useEffect(() => {
-    (() => { let lp = ''; try { const l = localStorage.getItem('iat_active_location'); const p = !l ? localStorage.getItem('iat_active_practice_filter') ?? '' : ''; if (l) lp = `?locationId=${l}`; else if (p) lp = `?practiceId=${p}`; } catch {} return fetch(`/api/patients${lp}`); })()
+    fetch(`/api/patients${getLocationParam()}`)
       .then(r => r.ok ? r.json() : [])
       .then(d => setPatients(Array.isArray(d) ? d : d.patients ?? []))
       .catch(() => {});
@@ -196,7 +195,7 @@ function CalendarInner() {
   }, []);
 
   useEffect(() => {
-    (() => { let lp = ''; try { const l = localStorage.getItem('iat_active_location'); const p = !l ? localStorage.getItem('iat_active_practice_filter') ?? '' : ''; if (l) lp = `&locationId=${l}`; else if (p) lp = `&practiceId=${p}`; } catch {} return fetch(`/api/doctors?all=1${lp}`); })()
+    fetch(`/api/doctors?all=1${getLocationParam('&')}`)
       .then(r => r.ok ? r.json() : [])
       .then(d => setDoctors(Array.isArray(d) ? d : d.doctors ?? []))
       .catch(() => {});

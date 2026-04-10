@@ -94,6 +94,7 @@ async function getClinical(
 async function getBilling(
   from: string, to: string,
   locationId: string | null, practiceId: string | null,
+  readyToBillLimit = 50,
 ) {
   const loc = locFilter(locationId, practiceId)
   const base = [from, to, ...loc.vals]
@@ -124,7 +125,7 @@ async function getBilling(
      LEFT JOIN Patient p ON e.patientId = p.id
      WHERE e.deletedAt IS NULL AND e.status='signed'
        AND date(e.encounterDate)>=? AND date(e.encounterDate)<=?${loc.sql}
-     ORDER BY e.encounterDate ASC LIMIT 100`,
+     ORDER BY e.encounterDate ASC LIMIT ${readyToBillLimit}`,
     ...base,
   )
 
@@ -234,11 +235,12 @@ export async function GET(req: NextRequest) {
   const locationId = searchParams.get('locationId') || null
   const practiceId = searchParams.get('practiceId') || null
   const physicianName = searchParams.get('physicianName') || null
+  const readyToBillLimit = Math.min(parseInt(searchParams.get('limit') || '50'), 200)
 
   try {
     let data: Record<string, unknown> = {}
     if (type === 'clinical') data = await getClinical(from, to, locationId, practiceId, physicianName)
-    else if (type === 'billing') data = await getBilling(from, to, locationId, practiceId)
+    else if (type === 'billing') data = await getBilling(from, to, locationId, practiceId, readyToBillLimit)
     else if (type === 'staff') data = await getStaff(from, to, locationId, practiceId)
     else if (type === 'testing') data = await getTesting(from, to)
 

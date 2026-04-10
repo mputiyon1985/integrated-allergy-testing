@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { getLocationParam } from '@/lib/location-params';
 
 interface Nurse {
   id: string;
@@ -28,14 +29,7 @@ export default function NursesTab() {
   async function loadNurses() {
     setLoading(true); setLoadError(null);
     try {
-      let locParam = '';
-      try {
-        const l = localStorage.getItem('iat_active_location');
-        const p = !l ? localStorage.getItem('iat_active_practice_filter') : '';
-        if (l) locParam = `&locationId=${l}`;
-        else if (p) locParam = `&practiceId=${p}`;
-      } catch {}
-      const res = await fetch(`/api/nurses?all=1${locParam}`);
+      const res = await fetch(`/api/nurses?all=1${getLocationParam('&')}`);
       if (!res.ok) throw new Error(res.status === 401 ? 'session_expired' : `HTTP ${res.status}`);
       const data = await res.json();
       setNurses(Array.isArray(data) ? data : (data.nurses ?? []));

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { getLocationParam } from '@/lib/location-params';
 
 interface Doctor {
   id: string; name: string; title?: string; specialty?: string;
@@ -34,16 +35,7 @@ export default function DoctorsTab() {
     setLoading(true); setLoadError(null);
     try {
       const [docRes, practiceRes, locRes] = await Promise.all([
-        (() => {
-          let lp = '';
-          try {
-            const l = localStorage.getItem('iat_active_location');
-            const p = !l ? localStorage.getItem('iat_active_practice_filter') : '';
-            if (l) lp = `&locationId=${l}`;
-            else if (p) lp = `&practiceId=${p}`;
-          } catch {}
-          return fetch(`/api/doctors?all=1${lp}`);
-        })(),
+        fetch(`/api/doctors?all=1${getLocationParam('&')}`),
         fetch('/api/practices'),
         fetch('/api/locations?all=1'),
       ]);

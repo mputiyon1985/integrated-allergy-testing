@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { getLocationParam } from '@/lib/location-params';
 
 interface Encounter {
   id: string;
@@ -144,32 +145,25 @@ export default function EncountersPage() {
   const loadEncounters = useCallback(async () => {
     setLoading(true); setError(null);
     try {
-      let locId = '';
-      try { locId = localStorage.getItem('iat_active_location') ?? ''; } catch {}
-      let practiceId = '';
-      if (!locId) { try { practiceId = localStorage.getItem('iat_active_practice_filter') ?? ''; } catch {} }
-
+      const locationSuffix = getLocationParam('&');
       const params = new URLSearchParams({ limit: '200', from: dateFrom, to: dateTo });
-      if (locId) params.set('locationId', locId);
-      else if (practiceId) params.set('practiceId', practiceId);
+      if (locationSuffix) {
+        const [key, val] = locationSuffix.slice(1).split('=');
+        params.set(key, decodeURIComponent(val));
+      }
       if (statusFilter !== 'all') params.set('status', statusFilter);
       if (doctorFilter) params.set('doctorName', doctorFilter);
       if (nurseFilter) params.set('nurseName', nurseFilter);
       if (search) params.set('search', search);
+      if (insuranceFilter) params.set('insuranceProvider', insuranceFilter);
+      if (serviceFilter) params.set('chiefComplaint', serviceFilter);
 
       const res = await fetch(`/api/encounters?${params}`);
       if (!res.ok) throw new Error(res.status === 401 ? 'session_expired' : `HTTP ${res.status}`);
       const data = await res.json();
       const all: Encounter[] = data.encounters ?? [];
 
-      // Client-side insurance filter (insurance data is on patient)
-      const filtered = all.filter(e => {
-        if (insuranceFilter && !e.insuranceProvider?.toLowerCase().includes(insuranceFilter.toLowerCase())) return false;
-        if (serviceFilter && e.chiefComplaint !== serviceFilter) return false;
-        return true;
-      });
-
-      setEncounters(filtered);
+      setEncounters(all);
       setTotalCount(all.length);
 
       // Build dropdown options from data

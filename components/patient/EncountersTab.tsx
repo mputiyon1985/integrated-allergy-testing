@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { getLocationParam } from '@/lib/location-params';
 
 // ────────────────────────────────────────────────────────────
 //  Encounter Activity constants
@@ -269,10 +270,9 @@ function AddActivityModal({
   const showSoap = SOAP_TYPES.has(form.activityType);
 
   useEffect(() => {
-    let locId = '';
-    try { locId = localStorage.getItem('iat_active_location') ?? ''; } catch {}
+    const locId = (() => { try { return localStorage.getItem('iat_active_location') ?? ''; } catch { return ''; } })();
 
-    (() => { let lp = ''; try { const l = localStorage.getItem('iat_active_location'); const p = !l ? localStorage.getItem('iat_active_practice_filter') ?? '' : ''; if (l) lp = `&locationId=${l}`; else if (p) lp = `&practiceId=${p}`; } catch {} return fetch(`/api/nurses?all=1${lp}`); })().then(r => r.ok ? r.json() : []).then(d => {
+    fetch(`/api/nurses?all=1${getLocationParam('&')}`).then(r => r.ok ? r.json() : []).then(d => {
       const all: { id: string; name: string; title?: string; locationId?: string | null; active?: boolean }[] =
         Array.isArray(d) ? d : (d.nurses ?? []);
       const filtered = locId ? all.filter(n => !n.locationId || n.locationId === locId) : all;
@@ -714,12 +714,12 @@ function NewEncounterModal({
   const [nurses, setNurses] = useState<NurseOption[]>([]);
 
   useEffect(() => {
-    let locId = '';
-    try { locId = localStorage.getItem('iat_active_location') ?? ''; } catch {}
+    const locId = (() => { try { return localStorage.getItem('iat_active_location') ?? ''; } catch { return ''; } })();
+    const lp = getLocationParam('&');
 
     Promise.all([
-      (() => { let lp = ''; try { const l = localStorage.getItem('iat_active_location'); const p = !l ? localStorage.getItem('iat_active_practice_filter') ?? '' : ''; if (l) lp = `&locationId=${l}`; else if (p) lp = `&practiceId=${p}`; } catch {} return fetch(`/api/doctors?all=1${lp}`); })().then(r => r.ok ? r.json() : { doctors: [] }),
-      (() => { let lp = ''; try { const l = localStorage.getItem('iat_active_location'); const p = !l ? localStorage.getItem('iat_active_practice_filter') ?? '' : ''; if (l) lp = `&locationId=${l}`; else if (p) lp = `&practiceId=${p}`; } catch {} return fetch(`/api/nurses?all=1${lp}`); })().then(r => r.ok ? r.json() : []),
+      fetch(`/api/doctors?all=1${lp}`).then(r => r.ok ? r.json() : { doctors: [] }),
+      fetch(`/api/nurses?all=1${lp}`).then(r => r.ok ? r.json() : []),
     ]).then(([docData, nurseData]) => {
       const allDocs: DoctorOption[] = Array.isArray(docData) ? docData : (docData.doctors ?? []);
       const allNurses: NurseOption[] = Array.isArray(nurseData) ? nurseData : (nurseData.nurses ?? []);

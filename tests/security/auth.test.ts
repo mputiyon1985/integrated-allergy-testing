@@ -72,6 +72,7 @@ beforeEach(async () => {
   const speakeasy = await import('speakeasy')
 
   LOGIN_POST = loginRoute.POST as unknown as typeof LOGIN_POST
+  loginRoute.loginAttempts.clear() // reset rate limiter between tests
   LOGOUT_POST = logoutRoute.POST as unknown as typeof LOGOUT_POST
   MFA_VERIFY_POST = mfaRoute.POST as unknown as typeof MFA_VERIFY_POST
   mockPrisma = db.default as unknown as typeof mockPrisma

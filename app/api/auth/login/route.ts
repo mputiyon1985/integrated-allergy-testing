@@ -14,7 +14,29 @@ import { signSession } from '@/lib/auth/session'
 
 export const dynamic = 'force-dynamic'
 
+// Simple in-memory rate limiter (resets on server restart — good enough for edge)
+export const loginAttempts = new Map<string, { count: number; resetAt: number }>()
+const MAX_ATTEMPTS = 5
+const WINDOW_MS = 15 * 60 * 1000 // 15 minutes
+
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now()
+  const entry = loginAttempts.get(ip)
+  if (!entry || now > entry.resetAt) {
+    loginAttempts.set(ip, { count: 1, resetAt: now + WINDOW_MS })
+    return true // allowed
+  }
+  if (entry.count >= MAX_ATTEMPTS) return false // blocked
+  entry.count++
+  return true
+}
+
 export async function POST(req: NextRequest) {
+  const ip = req.headers.get('x-forwarded-for') || 'unknown'
+  if (!checkRateLimit(ip)) {
+    return NextResponse.json({ error: 'Too many login attempts. Try again in 15 minutes.' }, { status: 429 })
+  }
+
   try {
     const body = await req.json() as { email?: string; password?: string }
     const { email, password } = body
@@ -53,6 +75,7 @@ export async function POST(req: NextRequest) {
 
     // If MFA is explicitly disabled for this user — issue session directly
     if (!user.mfaEnabled) {
+      loginAttempts.delete(ip) // clear rate limit on successful login
       await log({ action: 'LOGIN_SUCCESS', entity: 'StaffUser', entityId: user.id, performedBy: user.name, details: `${user.name} (${user.email}) logged in (MFA disabled)` })
       const token = await signSession({
         userId: user.id,
@@ -72,7 +95,8 @@ export async function POST(req: NextRequest) {
       return response
     }
 
-    // Issue temp token for MFA flow
+    // Issue temp token for MFA flow — clear rate limit since password was valid
+    loginAttempts.delete(ip)
     const tempToken = randomUUID()
     const tempTokenExpiry = new Date(Date.now() + 10 * 60 * 1000) // 10 min
 

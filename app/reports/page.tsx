@@ -638,8 +638,14 @@ function ReportsPageInner() {
       {/* ── Content ── */}
       <div className="rpt-content" style={{ padding: '24px' }}>
         {error && (
-          <div style={{ padding: 16, background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 10, color: '#dc2626', marginBottom: 20 }}>
-            ⚠️ {error}
+          <div style={{ padding: 16, background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 10, color: '#dc2626', marginBottom: 20, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            <span>⚠️ Failed to load report data. Please try again.</span>
+            <button
+              onClick={fetchData}
+              style={{ background: '#dc2626', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 14px', cursor: 'pointer', fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap' }}
+            >
+              Retry
+            </button>
           </div>
         )}
 

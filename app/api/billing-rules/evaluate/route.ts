@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
+import { requirePermission } from '@/lib/api-permissions'
 
 interface EvaluateBody {
   patientId?: string
@@ -20,6 +21,8 @@ interface RuleResult {
 }
 
 export async function POST(req: NextRequest) {
+  const denied = await requirePermission(req, 'billing_rules_view')
+  if (denied) return denied
   try {
     const body: EvaluateBody = await req.json()
     const { insuranceType, cptCodes, icd10Code } = body

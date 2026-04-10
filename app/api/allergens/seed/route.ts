@@ -6,6 +6,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
+import { requirePermission } from '@/lib/api-permissions'
 
 export const dynamic = 'force-dynamic'
 
@@ -44,11 +45,8 @@ const ALLERGENS: { name: string; category: string }[] = [
 ]
 
 export async function POST(req: NextRequest) {
-  // Admin-only guard
-  const userRole = req.headers.get('x-user-role')
-  if (userRole !== 'admin') {
-    return NextResponse.json({ error: 'Forbidden — admin only' }, { status: 403 })
-  }
+  const denied = await requirePermission(req, 'allergens_manage')
+  if (denied) return denied
 
   // Block in production — seed endpoints must not be accessible publicly
   if (process.env.NODE_ENV === 'production') {

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { getLocationParam } from '@/lib/location-params';
 
 interface Patient {
   id: string;
@@ -32,7 +33,7 @@ export default function PatientsPage() {
 
   function loadPatients() {
     setLoading(true);
-    (() => { let lp = ''; try { const l = localStorage.getItem('iat_active_location'); const p = !l ? localStorage.getItem('iat_active_practice_filter') ?? '' : ''; if (l) lp = `?locationId=${l}`; else if (p) lp = `?practiceId=${p}`; } catch {} return fetch(`/api/patients${lp}`); })()
+    fetch(`/api/patients${getLocationParam()}`)
       .then((r) => {
         if (!r.ok) throw new Error('Failed to load patients');
         return r.json();

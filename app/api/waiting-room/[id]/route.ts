@@ -87,7 +87,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     return NextResponse.json({ entry }, { headers: HIPAA_HEADERS })
   } catch (err) {
     console.error('PUT /api/waiting-room/[id] error:', err)
-    return NextResponse.json({ error: 'Failed to update' }, { status: 500 })
+    return NextResponse.json({ error: 'Failed to update waiting room entry' }, { status: 500 })
   }
 }
 
@@ -106,6 +106,6 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     return NextResponse.json({ ok: true, entry: rows[0] ?? null }, { headers: HIPAA_HEADERS })
   } catch (err) {
     console.error('DELETE /api/waiting-room/[id] error:', err)
-    return NextResponse.json({ error: 'Failed to delete' }, { status: 500 })
+    return NextResponse.json({ error: 'Failed to remove waiting room entry' }, { status: 500 })
   }
 }
