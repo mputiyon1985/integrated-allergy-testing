@@ -23,14 +23,25 @@ export async function GET(req: NextRequest) {
     const end = new Date(targetDate)
     end.setHours(23, 59, 59, 999)
 
-    const count = await prisma.encounter.count({
-      where: {
-        deletedAt: null,
-        encounterDate: { gte: start, lte: end },
-        ...(patientId ? { patientId } : {}),
-        ...(locationId ? { locationId } : {}),
-      },
-    })
+    const startISO = start.toISOString()
+    const endISO = end.toISOString()
+
+    let sql = `SELECT COUNT(*) as count FROM Encounter
+               WHERE deletedAt IS NULL
+               AND encounterDate >= ? AND encounterDate <= ?`
+    const values: unknown[] = [startISO, endISO]
+
+    if (patientId) {
+      sql += ' AND patientId=?'
+      values.push(patientId)
+    }
+    if (locationId) {
+      sql += ' AND locationId=?'
+      values.push(locationId)
+    }
+
+    const rows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(sql, ...values)
+    const count = Number(rows[0]?.count ?? 0)
 
     return NextResponse.json({ count, date: start.toISOString().split('T')[0] }, { headers: HIPAA_HEADERS })
   } catch (err) {

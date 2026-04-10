@@ -7,6 +7,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { randomUUID } from 'crypto'
 import prisma from '@/lib/db'
 import { HIPAA_HEADERS } from '@/lib/hipaaHeaders'
 import { requirePermission } from '@/lib/api-permissions'
@@ -48,43 +49,63 @@ export async function POST(request: NextRequest) {
     const tomorrow = new Date(today)
     tomorrow.setDate(tomorrow.getDate() + 1)
 
-    let encounter = await prisma.encounter.findFirst({
-      where: {
-        patientId,
-        deletedAt: null,
-        status: 'open',
-        encounterDate: { gte: today, lt: tomorrow },
-      },
-    })
+    const todayISO = today.toISOString()
+    const tomorrowISO = tomorrow.toISOString()
 
-    if (!encounter) {
-      encounter = await prisma.encounter.create({
-        data: {
-          patientId,
-          status: 'open',
-          chiefComplaint: `Visit - ${new Date().toLocaleDateString()}`,
-        },
-      })
+    let encounterId: string
+
+    const encounterRows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+      `SELECT id FROM Encounter
+       WHERE patientId=? AND deletedAt IS NULL AND status='open'
+       AND encounterDate >= ? AND encounterDate < ?
+       ORDER BY encounterDate DESC LIMIT 1`,
+      patientId, todayISO, tomorrowISO
+    )
+
+    if (encounterRows.length > 0) {
+      encounterId = encounterRows[0].id as string
+    } else {
+      // Create new encounter
+      encounterId = randomUUID()
+      const chiefComplaint = `Visit - ${new Date().toLocaleDateString()}`
+      await prisma.$executeRawUnsafe(
+        `INSERT INTO Encounter
+          (id, patientId, chiefComplaint, status, encounterDate, createdAt, updatedAt)
+         VALUES (?,?,?,'open',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)`,
+        encounterId, patientId, chiefComplaint
+      )
     }
 
-    const activity = await prisma.encounterActivity.create({
-      data: {
-        encounterId: encounter.id,
-        patientId,
-        type,
-        performedBy: performedBy ?? null,
-        notes: notes ?? null,
-        subjectiveNotes: subjectiveNotes ?? null,
-        objectiveNotes: objectiveNotes ?? null,
-        assessment: assessment ?? null,
-        plan: plan ?? null,
-        linkedTestResultId: linkedTestResultId ?? null,
-        linkedConsentId: linkedConsentId ?? null,
-        linkedAppointmentId: linkedAppointmentId ?? null,
-      },
-    })
+    const activityId = randomUUID()
+    await prisma.$executeRawUnsafe(
+      `INSERT INTO EncounterActivity
+        (id, encounterId, patientId, type, timestamp, performedBy, notes,
+         subjectiveNotes, objectiveNotes, assessment, plan,
+         linkedTestResultId, linkedConsentId, linkedAppointmentId,
+         createdAt, updatedAt)
+       VALUES (?,?,?,?,CURRENT_TIMESTAMP,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)`,
+      activityId,
+      encounterId,
+      patientId,
+      type,
+      performedBy ?? null,
+      notes ?? null,
+      subjectiveNotes ?? null,
+      objectiveNotes ?? null,
+      assessment ?? null,
+      plan ?? null,
+      linkedTestResultId ?? null,
+      linkedConsentId ?? null,
+      linkedAppointmentId ?? null
+    )
 
-    return NextResponse.json({ ok: true, activity, encounterId: encounter.id }, { status: 201, headers: HIPAA_HEADERS })
+    const activityRows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+      `SELECT * FROM EncounterActivity WHERE id=? LIMIT 1`,
+      activityId
+    )
+    const activity = activityRows[0] ?? { id: activityId }
+
+    return NextResponse.json({ ok: true, activity, encounterId }, { status: 201, headers: HIPAA_HEADERS })
   } catch (error) {
     console.error('POST /api/encounter-activities error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

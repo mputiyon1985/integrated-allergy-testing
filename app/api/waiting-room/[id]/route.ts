@@ -40,23 +40,32 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     // When completing, calculate timing and store on any linked encounter
     if (body.status === 'complete') {
       try {
-        const wr = await prisma.waitingRoom.findUnique({ where: { id } })
+        const wrRows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+          `SELECT patientId, checkedInAt, calledAt FROM WaitingRoom WHERE id=? LIMIT 1`, id
+        )
+        const wr = wrRows[0] ?? null
         if (wr?.patientId && wr.checkedInAt) {
-          const calledAt = wr.calledAt ?? new Date()
+          const calledAtRaw = wr.calledAt ? new Date(wr.calledAt as string | number) : new Date()
           const completedAt = new Date()
-          const waitMins = Math.round((calledAt.getTime() - new Date(wr.checkedInAt).getTime()) / 60000)
-          const inServiceMins = Math.round((completedAt.getTime() - calledAt.getTime()) / 60000)
+          const waitMins = Math.round((calledAtRaw.getTime() - new Date(wr.checkedInAt as string | number).getTime()) / 60000)
+          const inServiceMins = Math.round((completedAt.getTime() - calledAtRaw.getTime()) / 60000)
 
           // Find the most recent open encounter for this patient
-          const encounter = await prisma.encounter.findFirst({
-            where: { patientId: wr.patientId, deletedAt: null, status: { not: 'closed' } },
-            orderBy: { createdAt: 'desc' },
-          })
+          const encounterRows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+            `SELECT id FROM Encounter
+             WHERE patientId=? AND deletedAt IS NULL AND status != 'closed'
+             ORDER BY createdAt DESC LIMIT 1`,
+            wr.patientId as string
+          )
+          const encounter = encounterRows[0] ?? null
           if (encounter) {
-            await prisma.encounter.update({
-              where: { id: encounter.id },
-              data: { waitMinutes: waitMins > 0 ? waitMins : 0, inServiceMinutes: inServiceMins > 0 ? inServiceMins : 0, waitingRoomId: id },
-            })
+            await prisma.$executeRawUnsafe(
+              `UPDATE Encounter SET waitMinutes=?, inServiceMinutes=?, waitingRoomId=?, updatedAt=CURRENT_TIMESTAMP WHERE id=?`,
+              waitMins > 0 ? waitMins : 0,
+              inServiceMins > 0 ? inServiceMins : 0,
+              id,
+              encounter.id as string
+            )
           }
         }
       } catch { /* non-fatal */ }
