@@ -357,24 +357,25 @@ export default function DashboardPage() {
           if (encId) {
             if (status === 'in-service') {
               // Log "Patient brought to exam room" activity
-              await fetch('/api/encounter-activities', {
+              const nurseLabel = nurseName ?? entry.nurseName ?? 'Staff';
+              fetch('/api/encounter-activities', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                   encounterId: encId,
                   patientId: entry.patientId,
                   activityType: 'note',
-                  performedBy: nurseName ?? entry.nurseName ?? '',
-                  notes: 'Patient brought to exam room',
+                  performedBy: nurseLabel,
+                  notes: `Patient brought to exam room by ${nurseLabel}`,
                 }),
-              });
+              }).catch(() => {});
             } else if (status === 'complete') {
               // Close the open encounter
-              await fetch(`/api/encounters/${encId}`, {
+              fetch(`/api/encounters/${encId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status: 'complete' }),
-              });
+              }).catch(() => {});
             }
           }
         }
@@ -552,7 +553,19 @@ export default function DashboardPage() {
                   <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                     {e.patientId && (
                       <button
-                        onClick={ev => { ev.stopPropagation(); router.push(`/patients/${e.patientId}?action=encounter`); }}
+                        onClick={async ev => {
+                          ev.stopPropagation();
+                          // Try to jump directly to an open encounter for this patient
+                          try {
+                            const r = await fetch(`/api/encounters?patientId=${e.patientId}&status=open&limit=1`);
+                            if (r.ok) {
+                              const d = await r.json();
+                              const openEnc = (d.encounters ?? [])[0];
+                              if (openEnc?.id) { router.push(`/encounters/${openEnc.id}`); return; }
+                            }
+                          } catch {}
+                          router.push(`/patients/${e.patientId}?action=encounter`);
+                        }}
                         style={{ padding: '3px 9px', borderRadius: 6, border: '1px solid #6366f1', background: '#eef2ff', color: '#4f46e5', fontSize: 11, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
                         🏥 Encounter
                       </button>

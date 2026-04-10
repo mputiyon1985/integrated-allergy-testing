@@ -12,7 +12,7 @@ import { HIPAA_HEADERS } from '@/lib/hipaaHeaders'
 export const dynamic = 'force-dynamic'
 
 // Only these fields can be updated from the kiosk (strict allowlist)
-const ALLOWED_FIELDS = ['phone', 'email', 'insuranceId', 'notes'] as const
+const ALLOWED_FIELDS = ['phone', 'email', 'insuranceId', 'insuranceProvider', 'insuranceGroup', 'emergencyName', 'emergencyPhone', 'emergencyRelation', 'notes'] as const
 type AllowedField = typeof ALLOWED_FIELDS[number]
 
 export async function PUT(req: NextRequest) {

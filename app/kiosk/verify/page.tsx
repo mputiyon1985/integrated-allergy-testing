@@ -90,7 +90,16 @@ function VerifyContent() {
           // (verify API only returns id/firstName for privacy — need separate fetch)
           try {
             const fullPatient = await fetch(`/api/patients/${patientData.id}`).then(r => r.ok ? r.json() : null);
-            const missingInfo = fullPatient && (!fullPatient.phone || !fullPatient.email || !fullPatient.insuranceId);
+            const missingInfo = fullPatient && (
+              !fullPatient.phone ||
+              !fullPatient.email ||
+              !fullPatient.insuranceId ||
+              !fullPatient.insuranceGroup ||
+              !fullPatient.insuranceProvider ||
+              !fullPatient.emergencyName ||
+              !fullPatient.emergencyPhone ||
+              !fullPatient.emergencyRelation
+            );
             if (missingInfo) {
               router.push('/kiosk/update-info');
             } else {

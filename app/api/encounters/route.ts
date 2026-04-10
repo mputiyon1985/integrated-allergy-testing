@@ -11,6 +11,7 @@ export async function GET(req: NextRequest) {
   const locationId = searchParams.get('locationId')
   const limit = Math.min(parseInt(searchParams.get('limit') || '50'), 200)
   try {
+    const status = searchParams.get('status')
     let sql = `SELECT id, patientId, encounterDate, doctorId, doctorName, nurseId, nurseName,
                       chiefComplaint, status, waitMinutes, inServiceMinutes, locationId,
                       signedBy, signedAt, billedAt, cptSummary, diagnosisCode, createdAt
@@ -25,6 +26,10 @@ export async function GET(req: NextRequest) {
     if (locationId) {
       sql += ' AND locationId=?'
       values.push(locationId)
+    }
+    if (status) {
+      sql += ' AND status=?'
+      values.push(status)
     }
     sql += ' ORDER BY encounterDate DESC'
     sql += ` LIMIT ${limit}`

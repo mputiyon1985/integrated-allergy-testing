@@ -43,6 +43,11 @@ interface PatientData {
   email?: string;
   notes?: string;
   insuranceId?: string;
+  insuranceProvider?: string;
+  insuranceGroup?: string;
+  emergencyName?: string;
+  emergencyPhone?: string;
+  emergencyRelation?: string;
   [key: string]: unknown;
 }
 
@@ -71,12 +76,19 @@ export default function UpdateInfoPage() {
   const [zip, setZip] = useState('');
   const [insuranceProvider, setInsuranceProvider] = useState('');
   const [memberId, setMemberId] = useState('');
+  const [groupNumber, setGroupNumber] = useState('');
+
+  // Emergency contact
+  const [emergencyName, setEmergencyName] = useState('');
+  const [emergencyPhone, setEmergencyPhone] = useState('');
+  const [emergencyRelation, setEmergencyRelation] = useState('');
 
   // What's missing
   const [needPhone, setNeedPhone] = useState(false);
   const [needEmail, setNeedEmail] = useState(false);
   const [needAddress, setNeedAddress] = useState(false);
   const [needInsurance, setNeedInsurance] = useState(false);
+  const [needEmergency, setNeedEmergency] = useState(false);
 
   const nextStep = typeof window !== 'undefined'
     ? sessionStorage.getItem('kiosk_next_step') || 'videos'
@@ -103,15 +115,17 @@ export default function UpdateInfoPage() {
           phone: !p.phone,
           email: !p.email,
           address: !hasAddress(p.notes),
-          insurance: !hasInsurance(p.notes, p.insuranceId),
+          insurance: !hasInsurance(p.notes, p.insuranceId) || !p.insuranceGroup || !p.insuranceProvider,
+          emergency: !p.emergencyName || !p.emergencyPhone || !p.emergencyRelation,
         };
 
         setNeedPhone(missing.phone);
         setNeedEmail(missing.email);
         setNeedAddress(missing.address);
         setNeedInsurance(missing.insurance);
+        setNeedEmergency(missing.emergency);
 
-        const anyMissing = missing.phone || missing.email || missing.address || missing.insurance;
+        const anyMissing = missing.phone || missing.email || missing.address || missing.insurance || missing.emergency;
         if (!anyMissing) {
           // All good — skip straight to next step
           router.push(`/kiosk/${nextStep}`);
@@ -156,9 +170,21 @@ export default function UpdateInfoPage() {
         notes = addressLine + (notes ? '\n' + notes : '');
       }
 
-      if (needInsurance && (insuranceProvider.trim() || memberId.trim())) {
-        const insuranceLine = `Insurance: ${insuranceProvider.trim()} ID: ${memberId.trim()}`;
-        notes = notes ? notes + '\n' + insuranceLine : insuranceLine;
+      if (needInsurance) {
+        if (insuranceProvider.trim()) updates.insuranceProvider = insuranceProvider.trim();
+        if (memberId.trim()) updates.insuranceId = memberId.trim();
+        if (groupNumber.trim()) updates.insuranceGroup = groupNumber.trim();
+        // Legacy notes line (kept for backward compat)
+        if (insuranceProvider.trim() || memberId.trim()) {
+          const insuranceLine = `Insurance: ${insuranceProvider.trim()} ID: ${memberId.trim()}`;
+          notes = notes ? notes + '\n' + insuranceLine : insuranceLine;
+        }
+      }
+
+      if (needEmergency) {
+        if (emergencyName.trim()) updates.emergencyName = emergencyName.trim();
+        if (emergencyPhone.trim()) updates.emergencyPhone = emergencyPhone.trim();
+        if (emergencyRelation.trim()) updates.emergencyRelation = emergencyRelation.trim();
       }
 
       if (notes !== patient.notes) {
@@ -351,7 +377,10 @@ export default function UpdateInfoPage() {
         {/* Insurance */}
         {needInsurance && (
           <div>
-            <label style={labelStyle}>🏥 Insurance Provider</label>
+            <div style={{ marginTop: 28, marginBottom: 12, paddingTop: 16, borderTop: '2px solid #f1f5f9' }}>
+              <h2 style={{ fontSize: 20, fontWeight: 800, color: '#0055A5', margin: 0 }}>🏥 Insurance Information</h2>
+            </div>
+            <label style={labelStyle}>Insurance Company</label>
             <InsuranceDropdown value={insuranceProvider} onChange={setInsuranceProvider} inputStyle={inputStyle} />
             <label style={labelStyle}>Member ID / Policy Number</label>
             <input
@@ -363,6 +392,59 @@ export default function UpdateInfoPage() {
               onFocus={e => (e.target.style.borderColor = '#0d9488')}
               onBlur={e => (e.target.style.borderColor = '#cbd5e1')}
             />
+            <label style={labelStyle}>Group Number</label>
+            <input
+              type="text"
+              value={groupNumber}
+              onChange={e => setGroupNumber(e.target.value)}
+              placeholder="GRP-123456"
+              style={inputStyle}
+              onFocus={e => (e.target.style.borderColor = '#0d9488')}
+              onBlur={e => (e.target.style.borderColor = '#cbd5e1')}
+            />
+          </div>
+        )}
+
+        {/* Emergency Contact */}
+        {needEmergency && (
+          <div>
+            <div style={{ marginTop: 28, marginBottom: 12, paddingTop: 16, borderTop: '2px solid #f1f5f9' }}>
+              <h2 style={{ fontSize: 20, fontWeight: 800, color: '#0055A5', margin: 0 }}>🚨 Emergency Contact</h2>
+            </div>
+            <label style={labelStyle}>Emergency Contact Name</label>
+            <input
+              type="text"
+              value={emergencyName}
+              onChange={e => setEmergencyName(e.target.value)}
+              placeholder="Jane Doe"
+              style={inputStyle}
+              onFocus={e => (e.target.style.borderColor = '#0d9488')}
+              onBlur={e => (e.target.style.borderColor = '#cbd5e1')}
+            />
+            <label style={labelStyle}>Emergency Contact Phone</label>
+            <input
+              type="tel"
+              value={emergencyPhone}
+              onChange={e => setEmergencyPhone(e.target.value)}
+              placeholder="(555) 555-5555"
+              style={inputStyle}
+              onFocus={e => (e.target.style.borderColor = '#0d9488')}
+              onBlur={e => (e.target.style.borderColor = '#cbd5e1')}
+            />
+            <label style={labelStyle}>Relationship to Patient</label>
+            <select
+              value={emergencyRelation}
+              onChange={e => setEmergencyRelation(e.target.value)}
+              style={{ ...inputStyle, cursor: 'pointer', color: emergencyRelation ? '#1e293b' : '#94a3b8' }}
+            >
+              <option value="" disabled>— Select relationship —</option>
+              <option value="Spouse">Spouse</option>
+              <option value="Parent">Parent</option>
+              <option value="Child">Child</option>
+              <option value="Sibling">Sibling</option>
+              <option value="Friend">Friend</option>
+              <option value="Other">Other</option>
+            </select>
           </div>
         )}
       </div>

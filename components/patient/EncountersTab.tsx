@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 
 // ────────────────────────────────────────────────────────────
 //  Encounter Activity constants
@@ -22,6 +23,7 @@ const ACTIVITY_TYPES: { value: string; label: string; icon: string }[] = [
   { value: 'lab_order',                label: 'Lab Order',                 icon: '🔬' },
   { value: 'referral',                 label: 'Referral',                  icon: '🔗' },
   { value: 'prescription',             label: 'Prescription',              icon: '📃' },
+  { value: 'kiosk_checkin',            label: 'Kiosk Check-in',            icon: '🖥️' },
 ];
 
 const ACTIVITY_ICON: Record<string, string> = Object.fromEntries(
@@ -58,9 +60,12 @@ interface EncounterRecord {
 }
 
 const ENC_STATUS = {
-  open:      { bg: '#fef9c3', color: '#b45309' },
-  complete:  { bg: '#dcfce7', color: '#15803d' },
-  cancelled: { bg: '#f3f4f6', color: '#64748b' },
+  open:        { bg: '#fef9c3', color: '#b45309' },
+  complete:    { bg: '#dcfce7', color: '#15803d' },
+  awaiting_md: { bg: '#eff6ff', color: '#1d4ed8' },
+  signed:      { bg: '#f5f3ff', color: '#7c3aed' },
+  billed:      { bg: '#ecfdf5', color: '#065f46' },
+  cancelled:   { bg: '#f3f4f6', color: '#64748b' },
 } as Record<string, { bg: string; color: string }>;
 
 function fmtTime(iso?: string) {
@@ -84,51 +89,197 @@ function fmtDateLabel(iso: string) {
 }
 
 // ────────────────────────────────────────────────────────────
-//  Shared types for doctor/nurse dropdowns
+//  Activity Item (with inline edit)
 // ────────────────────────────────────────────────────────────
-interface DoctorOption { id: string; name: string; title?: string; locationId?: string | null; practiceId?: string | null; }
-interface NurseOption  { id: string; name: string; title?: string; locationId?: string | null; }
+function ActivityItem({
+  act,
+  onUpdated,
+}: {
+  act: EncounterActivity;
+  onUpdated: () => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const [soapOpen, setSoapOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [editForm, setEditForm] = useState({
+    activityType: act.activityType,
+    performedBy: act.performedBy ?? '',
+    notes: act.notes ?? '',
+    soapSubjective: act.soapSubjective ?? '',
+    soapObjective: act.soapObjective ?? '',
+    soapAssessment: act.soapAssessment ?? '',
+    soapPlan: act.soapPlan ?? '',
+  });
+
+  const icon = ACTIVITY_ICON[act.activityType] ?? '📝';
+  const label = ACTIVITY_LABEL[act.activityType] ?? act.activityType;
+  const ts = act.performedAt ?? act.createdAt;
+  const truncNote = act.notes && act.notes.length > 100 ? act.notes.slice(0, 100) + '…' : act.notes;
+  const hasFullNote = (act.notes?.length ?? 0) > 100;
+  const hasSoap = act.soapSubjective || act.soapObjective || act.soapAssessment || act.soapPlan;
+  const showSoap = SOAP_TYPES.has(editForm.activityType);
+
+  async function saveEdit() {
+    setSaving(true);
+    try {
+      await fetch(`/api/encounter-activities/${act.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editForm),
+      });
+      onUpdated();
+      setEditing(false);
+    } catch {}
+    setSaving(false);
+  }
+
+  if (editing) {
+    return (
+      <div style={{ padding: '10px 0', borderBottom: '1px solid #f1f5f9' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, background: '#f8fafc', borderRadius: 10, padding: 12 }}>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <select
+              value={editForm.activityType}
+              onChange={e => setEditForm(p => ({ ...p, activityType: e.target.value }))}
+              style={{ fontSize: 12, padding: '4px 8px', borderRadius: 6, border: '1px solid #e2e8f0', flex: 1 }}
+            >
+              {ACTIVITY_TYPES.map(t => (
+                <option key={t.value} value={t.value}>{t.icon} {t.label}</option>
+              ))}
+            </select>
+            <input
+              value={editForm.performedBy}
+              onChange={e => setEditForm(p => ({ ...p, performedBy: e.target.value }))}
+              placeholder="Performed by"
+              style={{ fontSize: 12, padding: '4px 8px', borderRadius: 6, border: '1px solid #e2e8f0', flex: 1 }}
+            />
+          </div>
+          <textarea
+            value={editForm.notes}
+            onChange={e => setEditForm(p => ({ ...p, notes: e.target.value }))}
+            rows={2}
+            placeholder="Notes"
+            style={{ fontSize: 12, padding: '6px 8px', borderRadius: 6, border: '1px solid #e2e8f0', resize: 'vertical' }}
+          />
+          {showSoap && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {([
+                ['soapSubjective', 'Subjective'],
+                ['soapObjective', 'Objective'],
+                ['soapAssessment', 'Assessment'],
+                ['soapPlan', 'Plan'],
+              ] as [keyof typeof editForm, string][]).map(([key, lbl]) => (
+                <textarea
+                  key={key}
+                  value={editForm[key]}
+                  onChange={e => setEditForm(p => ({ ...p, [key]: e.target.value }))}
+                  rows={2}
+                  placeholder={lbl}
+                  style={{ fontSize: 12, padding: '6px 8px', borderRadius: 6, border: '1px solid #e2e8f0', resize: 'vertical' }}
+                />
+              ))}
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+            <button
+              onClick={() => setEditing(false)}
+              style={{ padding: '4px 12px', borderRadius: 6, border: '1px solid #e2e8f0', background: '#fff', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}
+            >Cancel</button>
+            <button
+              onClick={saveEdit}
+              disabled={saving}
+              style={{ padding: '4px 12px', borderRadius: 6, border: 'none', background: '#0d9488', color: '#fff', fontSize: 12, cursor: 'pointer', fontWeight: 700 }}
+            >{saving ? '⏳' : '💾 Save'}</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', gap: 10, padding: '8px 0', borderBottom: '1px solid #f1f5f9' }}>
+      <div style={{ fontSize: 18, lineHeight: 1, paddingTop: 2, minWidth: 24, textAlign: 'center' }}>{icon}</div>
+      <div style={{ flex: 1 }}>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 12, color: '#94a3b8', minWidth: 72, fontVariantNumeric: 'tabular-nums' }}>{fmtTime(ts)}</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#1a2233' }}>{label}</span>
+          {act.performedBy && <span style={{ fontSize: 12, color: '#64748b' }}>— {act.performedBy}</span>}
+          <button
+            onClick={() => setEditing(true)}
+            title="Edit activity"
+            style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#94a3b8', fontSize: 13, cursor: 'pointer', padding: '0 2px', lineHeight: 1 }}
+          >✏️</button>
+        </div>
+        {act.notes && (
+          <div style={{ fontSize: 13, color: '#374151', marginTop: 3 }}>
+            {expanded ? act.notes : truncNote}
+            {hasFullNote && (
+              <button onClick={() => setExpanded(v => !v)} style={{ marginLeft: 6, background: 'none', border: 'none', color: '#0d9488', fontSize: 12, cursor: 'pointer', fontWeight: 600, padding: 0 }}>
+                {expanded ? 'Show less' : 'Read more'}
+              </button>
+            )}
+          </div>
+        )}
+        {hasSoap && (
+          <div style={{ marginTop: 6 }}>
+            <button onClick={() => setSoapOpen(v => !v)} style={{ background: 'none', border: 'none', color: '#7c3aed', fontSize: 12, cursor: 'pointer', fontWeight: 600, padding: 0 }}>
+              {soapOpen ? '▼ Hide SOAP' : '▶ SOAP Notes'}
+            </button>
+            {soapOpen && (
+              <div style={{ marginTop: 8, background: '#f5f3ff', borderRadius: 8, padding: '10px 12px', fontSize: 12 }}>
+                {act.soapSubjective && <div style={{ marginBottom: 6 }}><strong style={{ color: '#7c3aed' }}>S:</strong> {act.soapSubjective}</div>}
+                {act.soapObjective  && <div style={{ marginBottom: 6 }}><strong style={{ color: '#7c3aed' }}>O:</strong> {act.soapObjective}</div>}
+                {act.soapAssessment && <div style={{ marginBottom: 6 }}><strong style={{ color: '#7c3aed' }}>A:</strong> {act.soapAssessment}</div>}
+                {act.soapPlan       && <div><strong style={{ color: '#7c3aed' }}>P:</strong> {act.soapPlan}</div>}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 // ────────────────────────────────────────────────────────────
 //  Add Activity Modal
 // ────────────────────────────────────────────────────────────
 function AddActivityModal({
-  encounterId, patientId, onClose, onSaved, nurseName,
+  encounterId, patientId, nurseName: defaultNurseName, onClose, onSaved,
 }: {
   encounterId: string;
   patientId: string;
+  nurseName?: string;
   onClose: () => void;
   onSaved: () => void;
-  nurseName?: string;
 }) {
-  const [nurses, setNurses] = useState<NurseOption[]>([]);
   const [form, setForm] = useState({
     activityType: 'note',
-    performedBy: nurseName ?? '',
+    performedBy: defaultNurseName ?? '',
     notes: '',
     soapSubjective: '',
     soapObjective: '',
     soapAssessment: '',
     soapPlan: '',
   });
-  const [cptCodes, setCptCodes] = useState<{ id: string; code: string; description: string; defaultFee?: number }[]>([]);
+  const [nurses, setNurses] = useState<{ id: string; name: string; title?: string; locationId?: string | null }[]>([]);
+  const [cptCodes, setCptCodes] = useState<{ id: string; code: string; description: string }[]>([]);
   const [cptInput, setCptInput] = useState('');
   const [saving, setSaving] = useState(false);
   const showSoap = SOAP_TYPES.has(form.activityType);
 
   useEffect(() => {
-    fetch('/api/cpt-codes').then(r => r.ok ? r.json() : { codes: [] }).then(d => setCptCodes(d.codes ?? [])).catch(() => {});
-
     let locId = '';
     try { locId = localStorage.getItem('iat_active_location') ?? ''; } catch {}
-    fetch('/api/nurses?all=1')
-      .then(r => r.ok ? r.json() : [])
-      .then(d => {
-        const all: NurseOption[] = Array.isArray(d) ? d : (d.nurses ?? []);
-        const filtered = locId ? all.filter(n => n.locationId === locId || !n.locationId) : all;
-        setNurses(filtered.filter(n => (n as unknown as { active?: boolean }).active !== false));
-      })
-      .catch(() => {});
+
+    fetch('/api/nurses?all=1').then(r => r.ok ? r.json() : []).then(d => {
+      const all: { id: string; name: string; title?: string; locationId?: string | null; active?: boolean }[] =
+        Array.isArray(d) ? d : (d.nurses ?? []);
+      const filtered = locId ? all.filter(n => !n.locationId || n.locationId === locId) : all;
+      setNurses(filtered.filter(n => n.active !== false));
+    }).catch(() => {});
+
+    fetch('/api/cpt-codes').then(r => r.ok ? r.json() : { codes: [] }).then(d => setCptCodes(d.codes ?? [])).catch(() => {});
   }, []);
 
   async function submit() {
@@ -163,15 +314,14 @@ function AddActivityModal({
           </div>
           <div>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Performed By</label>
-            <select className="form-input" value={form.performedBy} onChange={e => setForm(p => ({ ...p, performedBy: e.target.value }))}>
-              <option value="">— Select Nurse / Tech —</option>
-              {nurses.map(n => (
-                <option key={n.id} value={n.name}>{n.title ? `${n.name}, ${n.title}` : n.name}</option>
-              ))}
-              {nurseName && !nurses.find(n => n.name === nurseName) && (
-                <option value={nurseName}>{nurseName}</option>
-              )}
-            </select>
+            {nurses.length > 0 ? (
+              <select className="form-input" value={form.performedBy} onChange={e => setForm(p => ({ ...p, performedBy: e.target.value }))}>
+                <option value="">— Select Nurse / Tech —</option>
+                {nurses.map(n => <option key={n.id} value={n.name}>{n.title ? `${n.name}, ${n.title}` : n.name}</option>)}
+              </select>
+            ) : (
+              <input className="form-input" value={form.performedBy} placeholder="e.g. RN Michelle Roman" onChange={e => setForm(p => ({ ...p, performedBy: e.target.value }))} />
+            )}
           </div>
           <div>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Notes</label>
@@ -185,7 +335,7 @@ function AddActivityModal({
             <datalist id="cpt-list-modal">
               {cptCodes.map(c => <option key={c.id} value={c.code}>{c.code} — {c.description}</option>)}
             </datalist>
-            <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>Comma-separated. Will be appended to notes as &quot;CPT: ...&quot;</div>
+            <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>Comma-separated. Appended to notes as &quot;CPT: …&quot;</div>
           </div>
           {showSoap && (
             <>
@@ -198,7 +348,7 @@ function AddActivityModal({
               ].map(f => (
                 <div key={f.key}>
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>{f.label}</label>
-                  <textarea className="form-input" rows={2} value={(form as Record<string,string>)[f.key]} onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))} style={{ resize: 'vertical' }} />
+                  <textarea className="form-input" rows={2} value={(form as Record<string, string>)[f.key]} onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))} style={{ resize: 'vertical' }} />
                 </div>
               ))}
             </>
@@ -210,137 +360,6 @@ function AddActivityModal({
             {saving ? '⏳ Saving…' : '💾 Save Activity'}
           </button>
         </div>
-      </div>
-    </div>
-  );
-}
-
-// ────────────────────────────────────────────────────────────
-//  Activity Item
-// ────────────────────────────────────────────────────────────
-function ActivityItem({ act, onRefresh }: { act: EncounterActivity; onRefresh: () => void }) {
-  const [expanded, setExpanded] = useState(false);
-  const [soapOpen, setSoapOpen] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editSaving, setEditSaving] = useState(false);
-  const [editForm, setEditForm] = useState({
-    activityType: act.activityType,
-    performedBy: act.performedBy ?? '',
-    notes: act.notes ?? '',
-    soapSubjective: act.soapSubjective ?? '',
-    soapObjective: act.soapObjective ?? '',
-    soapAssessment: act.soapAssessment ?? '',
-    soapPlan: act.soapPlan ?? '',
-  });
-  const editShowSoap = SOAP_TYPES.has(editForm.activityType);
-
-  const icon = ACTIVITY_ICON[act.activityType] ?? '📝';
-  const label = ACTIVITY_LABEL[act.activityType] ?? act.activityType;
-  const ts = act.performedAt ?? act.createdAt;
-  const truncNote = act.notes && act.notes.length > 100 ? act.notes.slice(0, 100) + '…' : act.notes;
-  const hasFullNote = (act.notes?.length ?? 0) > 100;
-  const hasSoap = act.soapSubjective || act.soapObjective || act.soapAssessment || act.soapPlan;
-
-  async function saveEdit() {
-    setEditSaving(true);
-    await fetch(`/api/encounter-activities/${act.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(editForm),
-    });
-    setEditSaving(false);
-    setIsEditing(false);
-    onRefresh();
-  }
-
-  if (isEditing) {
-    return (
-      <div style={{ padding: '10px 0', borderBottom: '1px solid #f1f5f9', display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontSize: 12, fontWeight: 700, color: '#7c3aed', textTransform: 'uppercase' }}>✏️ Editing Activity</span>
-          <button onClick={() => setIsEditing(false)} style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: 18, cursor: 'pointer', lineHeight: 1 }}>✕</button>
-        </div>
-        <div>
-          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 3, textTransform: 'uppercase' }}>Activity Type</label>
-          <select className="form-input" style={{ fontSize: 13 }} value={editForm.activityType} onChange={e => setEditForm(p => ({ ...p, activityType: e.target.value }))}>
-            {ACTIVITY_TYPES.map(t => <option key={t.value} value={t.value}>{t.icon} {t.label}</option>)}
-          </select>
-        </div>
-        <div>
-          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 3, textTransform: 'uppercase' }}>Performed By</label>
-          <input className="form-input" style={{ fontSize: 13 }} value={editForm.performedBy} onChange={e => setEditForm(p => ({ ...p, performedBy: e.target.value }))} placeholder="e.g. RN Michelle Roman" />
-        </div>
-        <div>
-          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 3, textTransform: 'uppercase' }}>Notes</label>
-          <textarea className="form-input" style={{ fontSize: 13, resize: 'vertical' }} rows={4} value={editForm.notes} onChange={e => setEditForm(p => ({ ...p, notes: e.target.value }))} />
-        </div>
-        {editShowSoap && (
-          <>
-            <div style={{ fontWeight: 700, fontSize: 11, color: '#7c3aed', textTransform: 'uppercase', borderTop: '1px solid #e2e8f0', paddingTop: 6 }}>SOAP Notes</div>
-            {[
-              { label: 'Subjective', key: 'soapSubjective' },
-              { label: 'Objective', key: 'soapObjective' },
-              { label: 'Assessment', key: 'soapAssessment' },
-              { label: 'Plan', key: 'soapPlan' },
-            ].map(f => (
-              <div key={f.key}>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 3, textTransform: 'uppercase' }}>{f.label}</label>
-                <textarea className="form-input" style={{ fontSize: 13, resize: 'vertical' }} rows={2} value={(editForm as Record<string, string>)[f.key]} onChange={e => setEditForm(p => ({ ...p, [f.key]: e.target.value }))} />
-              </div>
-            ))}
-          </>
-        )}
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <button onClick={() => setIsEditing(false)} style={{ padding: '6px 14px', borderRadius: 7, border: '1px solid #e2e8f0', background: '#fff', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>Cancel</button>
-          <button onClick={saveEdit} disabled={editSaving} style={{ padding: '6px 14px', borderRadius: 7, border: 'none', background: '#0d9488', color: '#fff', cursor: 'pointer', fontSize: 12, fontWeight: 700 }}>
-            {editSaving ? '⏳ Saving…' : '💾 Save'}
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div style={{ display: 'flex', gap: 10, padding: '8px 0', borderBottom: '1px solid #f1f5f9' }}>
-      <div style={{ fontSize: 18, lineHeight: 1, paddingTop: 2, minWidth: 24, textAlign: 'center' }}>{icon}</div>
-      <div style={{ flex: 1 }}>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 12, color: '#94a3b8', minWidth: 72, fontVariantNumeric: 'tabular-nums' }}>{fmtTime(ts)}</span>
-          <span style={{ fontSize: 13, fontWeight: 700, color: '#1a2233' }}>{label}</span>
-          {act.performedBy && <span style={{ fontSize: 12, color: '#64748b' }}>— {act.performedBy}</span>}
-          <button
-            onClick={() => setIsEditing(true)}
-            title="Edit activity"
-            style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 12, padding: '2px 6px', borderRadius: 5, lineHeight: 1 }}
-            onMouseEnter={e => (e.currentTarget.style.color = '#0d9488')}
-            onMouseLeave={e => (e.currentTarget.style.color = '#94a3b8')}
-          >✏️</button>
-        </div>
-        {act.notes && (
-          <div style={{ fontSize: 13, color: '#374151', marginTop: 3 }}>
-            {expanded ? act.notes : truncNote}
-            {hasFullNote && (
-              <button onClick={() => setExpanded(v => !v)} style={{ marginLeft: 6, background: 'none', border: 'none', color: '#0d9488', fontSize: 12, cursor: 'pointer', fontWeight: 600, padding: 0 }}>
-                {expanded ? 'Show less' : 'Read more'}
-              </button>
-            )}
-          </div>
-        )}
-        {hasSoap && (
-          <div style={{ marginTop: 6 }}>
-            <button onClick={() => setSoapOpen(v => !v)} style={{ background: 'none', border: 'none', color: '#7c3aed', fontSize: 12, cursor: 'pointer', fontWeight: 600, padding: 0 }}>
-              {soapOpen ? '▼ Hide SOAP' : '▶ SOAP Notes'}
-            </button>
-            {soapOpen && (
-              <div style={{ marginTop: 8, background: '#f5f3ff', borderRadius: 8, padding: '10px 12px', fontSize: 12 }}>
-                {act.soapSubjective && <div style={{ marginBottom: 6 }}><strong style={{ color: '#7c3aed' }}>S:</strong> {act.soapSubjective}</div>}
-                {act.soapObjective  && <div style={{ marginBottom: 6 }}><strong style={{ color: '#7c3aed' }}>O:</strong> {act.soapObjective}</div>}
-                {act.soapAssessment && <div style={{ marginBottom: 6 }}><strong style={{ color: '#7c3aed' }}>A:</strong> {act.soapAssessment}</div>}
-                {act.soapPlan       && <div><strong style={{ color: '#7c3aed' }}>P:</strong> {act.soapPlan}</div>}
-              </div>
-            )}
-          </div>
-        )}
       </div>
     </div>
   );
@@ -360,34 +379,41 @@ function EncounterCard({
 
   return (
     <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-        <div>
-          <div style={{ fontWeight: 700, fontSize: 15, color: '#1a2233', marginBottom: 2 }}>{enc.chiefComplaint}</div>
-          <div style={{ fontSize: 12, color: '#64748b', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            <span>📅 {fmtDateLabel(enc.encounterDate)}</span>
-            {enc.doctorName && <span>👨‍⚕️ {enc.doctorName}</span>}
-            {enc.nurseName && <span>👩‍⚕️ {enc.nurseName}</span>}
+      {/* Header — clickable to full encounter view */}
+      <Link href={`/encounters/${enc.id}`} style={{ textDecoration: 'none', display: 'block' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', cursor: 'pointer', transition: 'background 0.15s' }}
+          onMouseEnter={e => (e.currentTarget.style.background = '#e8f9f7')}
+          onMouseLeave={e => (e.currentTarget.style.background = '#f8fafc')}
+        >
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 15, color: '#1a2233', marginBottom: 2 }}>{enc.chiefComplaint}</div>
+            <div style={{ fontSize: 12, color: '#64748b', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+              <span>📅 {fmtDateLabel(enc.encounterDate)}</span>
+              {enc.doctorName && <span>👨‍⚕️ {enc.doctorName}</span>}
+              {enc.nurseName && <span>👩‍⚕️ {enc.nurseName}</span>}
+              <span style={{ color: '#0d9488', fontWeight: 600 }}>View Full Encounter →</span>
+            </div>
           </div>
+          <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 10px', borderRadius: 999, ...s, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{enc.status}</span>
         </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 10px', borderRadius: 999, ...s, textTransform: 'uppercase' }}>{enc.status}</span>
-          <a href={`/api/encounters/${enc.id}/pdf`} target="_blank" rel="noopener noreferrer"
-            style={{ padding: '5px 12px', borderRadius: 7, border: 'none', background: '#64748b', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', textDecoration: 'none', display: 'inline-block' }}>
-            📄 PDF
-          </a>
-          <button onClick={() => setShowAdd(true)}
-            style={{ padding: '5px 14px', borderRadius: 7, border: 'none', background: '#0d9488', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-            ➕ Add Note
-          </button>
-        </div>
+      </Link>
+      {/* Actions row */}
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '8px 16px', borderBottom: '1px solid #f1f5f9' }}>
+        <a href={`/api/encounters/${enc.id}/pdf`} target="_blank" rel="noopener noreferrer"
+          style={{ padding: '4px 10px', borderRadius: 7, border: 'none', background: '#64748b', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', textDecoration: 'none', display: 'inline-block' }}>
+          📄 PDF
+        </a>
+        <button onClick={() => setShowAdd(true)}
+          style={{ padding: '4px 10px', borderRadius: 7, border: 'none', background: '#0d9488', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+          + Add Activity
+        </button>
       </div>
       {/* Activities */}
       <div style={{ padding: '0 16px' }}>
         {activities.length === 0 ? (
           <div style={{ padding: '16px 0', textAlign: 'center', color: '#94a3b8', fontSize: 13 }}>No activities recorded yet</div>
         ) : (
-          activities.map(a => <ActivityItem key={a.id} act={a} onRefresh={onRefresh} />)
+          activities.map(a => <ActivityItem key={a.id} act={a} onUpdated={onRefresh} />)
         )}
       </div>
 
@@ -436,7 +462,7 @@ function PatientTimeline({ encounters }: { encounters: EncounterRecord[] }) {
           </div>
           {items
             .slice()
-            .sort((a, b) => new Date(b.performedAt ?? b.createdAt ?? 0).getTime() - new Date(a.performedAt ?? a.createdAt ?? 0).getTime())
+            .sort((a, b) => new Date(a.performedAt ?? a.createdAt ?? 0).getTime() - new Date(b.performedAt ?? b.createdAt ?? 0).getTime())
             .map(act => {
               const icon = ACTIVITY_ICON[act.activityType] ?? '📝';
               const label = ACTIVITY_LABEL[act.activityType] ?? act.activityType;
@@ -459,6 +485,8 @@ function PatientTimeline({ encounters }: { encounters: EncounterRecord[] }) {
 // ────────────────────────────────────────────────────────────
 //  New Encounter + First Activity Modal
 // ────────────────────────────────────────────────────────────
+interface DoctorOption { id: string; name: string; title?: string; locationId?: string | null; }
+interface NurseOption  { id: string; name: string; title?: string; locationId?: string | null; }
 
 function NewEncounterModal({
   patientId, patientName, onClose, onSaved,
@@ -471,11 +499,15 @@ function NewEncounterModal({
     chiefComplaint: '', doctorName: '', nurseName: '', status: 'open',
   });
   const [actForm, setActForm] = useState({
-    activityType: 'note', performedBy: '', notes: '',
-    soapSubjective: '', soapObjective: '', soapAssessment: '', soapPlan: '',
+    activityType: 'in_person_visit',
+    performedBy: '',
+    notes: '',
+    soapSubjective: '',
+    soapObjective: '',
+    soapAssessment: '',
+    soapPlan: '',
   });
 
-  // Load doctors + nurses filtered by active location
   const [doctors, setDoctors] = useState<DoctorOption[]>([]);
   const [nurses, setNurses] = useState<NurseOption[]>([]);
 
@@ -490,18 +522,28 @@ function NewEncounterModal({
       const allDocs: DoctorOption[] = Array.isArray(docData) ? docData : (docData.doctors ?? []);
       const allNurses: NurseOption[] = Array.isArray(nurseData) ? nurseData : (nurseData.nurses ?? []);
 
-      // Filter by location if one is selected — fallback to all active
-      const filteredDocs = locId
-        ? allDocs.filter(d => d.locationId === locId || !d.locationId)
-        : allDocs;
-      const filteredNurses = locId
-        ? allNurses.filter(n => n.locationId === locId || !n.locationId)
-        : allNurses;
+      const filteredDocs   = locId ? allDocs.filter(d => !d.locationId || d.locationId === locId) : allDocs;
+      const filteredNurses = locId ? allNurses.filter(n => !n.locationId || n.locationId === locId) : allNurses;
 
       setDoctors(filteredDocs.filter(d => (d as unknown as { active?: boolean }).active !== false));
       setNurses(filteredNurses.filter(n => (n as unknown as { active?: boolean }).active !== false));
     }).catch(() => {});
   }, []);
+
+  // When step advances, pre-fill actForm from encForm
+  function advanceToActivity(encounterId: string) {
+    const nurseLabel = encForm.nurseName ?? '';
+    setActForm(p => ({
+      ...p,
+      activityType: 'in_person_visit',
+      performedBy: nurseLabel,
+      notes: nurseLabel
+        ? `Patient seen by ${nurseLabel}. ${encForm.chiefComplaint ? 'Chief complaint: ' + encForm.chiefComplaint + '.' : ''}`.trim()
+        : (encForm.chiefComplaint ? `Chief complaint: ${encForm.chiefComplaint}.` : ''),
+    }));
+    setEncId(encounterId);
+    setStep('activity');
+  }
 
   const showSoap = SOAP_TYPES.has(actForm.activityType);
 
@@ -515,20 +557,7 @@ function NewEncounterModal({
     const data = await res.json();
     const id = data.id ?? data.encounter?.id;
     setSaving(false);
-    if (id) {
-      setEncId(id);
-      // Pre-fill the activity step with nurse + SOAP note template
-      setActForm({
-        activityType: 'in_person_visit',
-        performedBy: encForm.nurseName,
-        notes: `Chief Complaint: ${encForm.chiefComplaint}\n\nSubjective: Patient presents with ${encForm.chiefComplaint}. \n\nObjective: Vital signs stable. \n\nAssessment: \n\nPlan: `,
-        soapSubjective: '',
-        soapObjective: '',
-        soapAssessment: '',
-        soapPlan: '',
-      });
-      setStep('activity');
-    }
+    if (id) { advanceToActivity(id); }
     else { onSaved(); }
   }
 
@@ -555,41 +584,30 @@ function NewEncounterModal({
 
         {step === 'encounter' ? (
           <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {/* Chief Complaint */}
             <div>
               <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Chief Complaint *</label>
               <input className="form-input" value={encForm.chiefComplaint} onChange={e => setEncForm(p => ({ ...p, chiefComplaint: e.target.value }))} placeholder="Reason for visit" />
             </div>
-
-            {/* Physician dropdown */}
             <div>
               <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Physician</label>
               <select className="form-input" value={encForm.doctorName} onChange={e => setEncForm(p => ({ ...p, doctorName: e.target.value }))}>
                 <option value="">— Select Physician —</option>
                 {doctors.map(d => (
-                  <option key={d.id} value={d.name}>
-                    {d.title ? `${d.name}, ${d.title}` : d.name}
-                  </option>
+                  <option key={d.id} value={d.name}>{d.title ? `${d.name}, ${d.title}` : d.name}</option>
                 ))}
                 {doctors.length === 0 && <option disabled>No physicians at this location</option>}
               </select>
             </div>
-
-            {/* Nurse dropdown */}
             <div>
               <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Nurse / Tech</label>
               <select className="form-input" value={encForm.nurseName} onChange={e => setEncForm(p => ({ ...p, nurseName: e.target.value }))}>
                 <option value="">— Select Nurse / Tech —</option>
                 {nurses.map(n => (
-                  <option key={n.id} value={n.name}>
-                    {n.title ? `${n.name}, ${n.title}` : n.name}
-                  </option>
+                  <option key={n.id} value={n.name}>{n.title ? `${n.name}, ${n.title}` : n.name}</option>
                 ))}
                 {nurses.length === 0 && <option disabled>No nurses at this location</option>}
               </select>
             </div>
-
-            {/* Status */}
             <div>
               <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Status</label>
               <select className="form-input" value={encForm.status} onChange={e => setEncForm(p => ({ ...p, status: e.target.value }))}>
@@ -608,16 +626,18 @@ function NewEncounterModal({
             </div>
             <div>
               <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Performed By</label>
-              <select className="form-input" value={actForm.performedBy} onChange={e => setActForm(p => ({ ...p, performedBy: e.target.value }))}>
-                <option value="">— Select Nurse / Tech —</option>
-                {nurses.map(n => (
-                  <option key={n.id} value={n.name}>{n.title ? `${n.name}, ${n.title}` : n.name}</option>
-                ))}
-              </select>
+              {nurses.length > 0 ? (
+                <select className="form-input" value={actForm.performedBy} onChange={e => setActForm(p => ({ ...p, performedBy: e.target.value }))}>
+                  <option value="">— Select Nurse / Tech —</option>
+                  {nurses.map(n => <option key={n.id} value={n.name}>{n.title ? `${n.name}, ${n.title}` : n.name}</option>)}
+                </select>
+              ) : (
+                <input className="form-input" value={actForm.performedBy} placeholder="e.g. RN Michelle Roman" onChange={e => setActForm(p => ({ ...p, performedBy: e.target.value }))} />
+              )}
             </div>
             <div>
               <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Notes</label>
-              <textarea className="form-input" rows={6} value={actForm.notes} onChange={e => setActForm(p => ({ ...p, notes: e.target.value }))} style={{ resize: 'vertical', fontFamily: 'monospace', fontSize: 13 }} />
+              <textarea className="form-input" rows={3} value={actForm.notes} onChange={e => setActForm(p => ({ ...p, notes: e.target.value }))} style={{ resize: 'vertical' }} />
             </div>
             {showSoap && (
               <>
@@ -630,7 +650,7 @@ function NewEncounterModal({
                 ].map(f => (
                   <div key={f.key}>
                     <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>{f.label}</label>
-                    <textarea className="form-input" rows={2} value={(actForm as Record<string,string>)[f.key]} onChange={e => setActForm(p => ({ ...p, [f.key]: e.target.value }))} style={{ resize: 'vertical' }} />
+                    <textarea className="form-input" rows={2} value={(actForm as Record<string, string>)[f.key]} onChange={e => setActForm(p => ({ ...p, [f.key]: e.target.value }))} style={{ resize: 'vertical' }} />
                   </div>
                 ))}
               </>
@@ -676,7 +696,6 @@ export function EncountersTab({ patientId, patientName, autoOpen = false }: { pa
       })
       .then(d => { setEncounters(d.encounters ?? []); setLoading(false); })
       .catch(err => {
-        console.error('[PatientDetail] encounters fetch error:', err.message);
         setLoadError(err.message === 'session_expired' ? 'Session expired — please refresh and log in again' : `Failed to load encounters: ${err.message}`);
         setLoading(false);
       });
@@ -699,9 +718,9 @@ export function EncountersTab({ patientId, patientName, autoOpen = false }: { pa
       </div>
 
       {loadError && (
-        <div style={{background:'#fef2f2',border:'1px solid #fecaca',borderRadius:8,padding:'12px 16px',marginBottom:16,color:'#b91c1c',fontSize:13}}>
+        <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '12px 16px', marginBottom: 16, color: '#b91c1c', fontSize: 13 }}>
           🔐 {loadError}
-          <button onClick={() => load()} style={{marginLeft:12,padding:'2px 10px',borderRadius:6,border:'1px solid #fecaca',background:'#fff',color:'#b91c1c',fontSize:12,cursor:'pointer',fontWeight:600}}>↻ Retry</button>
+          <button onClick={() => load()} style={{ marginLeft: 12, padding: '2px 10px', borderRadius: 6, border: '1px solid #fecaca', background: '#fff', color: '#b91c1c', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>↻ Retry</button>
         </div>
       )}
       {loading ? (

@@ -18,6 +18,26 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     )
     const encounter = rows[0] ?? null
     if (!encounter) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+    // Fetch activities for this encounter
+    const activities = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+      `SELECT id, encounterId, patientId,
+              type            as activityType,
+              timestamp       as performedAt,
+              performedBy, notes,
+              subjectiveNotes as soapSubjective,
+              objectiveNotes  as soapObjective,
+              assessment      as soapAssessment,
+              plan            as soapPlan,
+              linkedTestResultId, linkedConsentId, linkedAppointmentId,
+              createdAt, updatedAt
+       FROM EncounterActivity
+       WHERE encounterId=? AND deletedAt IS NULL
+       ORDER BY timestamp ASC`,
+      id
+    )
+    encounter.activities = activities
+
     return NextResponse.json(encounter, { headers: HIPAA_HEADERS })
   } catch (err) { console.error(err); return NextResponse.json({ error: 'Failed' }, { status: 500 }) }
 }
