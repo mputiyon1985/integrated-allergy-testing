@@ -23,13 +23,20 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url)
     const locationId = searchParams.get('locationId')
 
-    const entries = await prisma.waitingRoom.findMany({
-      where: {
-        status: { in: ['waiting', 'in-service'] },
-        ...(locationId ? { locationId } : {}),
-      },
-      orderBy: { checkedInAt: 'asc' },
-    })
+    let entries
+    if (locationId) {
+      entries = await prisma.$queryRaw`
+        SELECT * FROM WaitingRoom
+        WHERE status IN ('waiting','in-service') AND locationId = ${locationId}
+        ORDER BY checkedInAt ASC
+      `
+    } else {
+      entries = await prisma.$queryRaw`
+        SELECT * FROM WaitingRoom
+        WHERE status IN ('waiting','in-service')
+        ORDER BY checkedInAt ASC
+      `
+    }
     return NextResponse.json({ entries }, { headers: HIPAA_HEADERS })
   } catch (err) {
     console.error('GET /api/waiting-room error:', err)
