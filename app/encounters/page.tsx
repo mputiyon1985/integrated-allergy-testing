@@ -101,9 +101,12 @@ export default function EncountersPage() {
     try {
       let locId = '';
       try { locId = localStorage.getItem('iat_active_location') ?? ''; } catch {}
+      let practiceId = '';
+      if (!locId) { try { practiceId = localStorage.getItem('iat_active_practice_filter') ?? ''; } catch {} }
 
       const params = new URLSearchParams({ limit: '200', from: dateFrom, to: dateTo });
       if (locId) params.set('locationId', locId);
+      else if (practiceId) params.set('practiceId', practiceId);
       if (statusFilter !== 'all') params.set('status', statusFilter);
       if (doctorFilter) params.set('doctorName', doctorFilter);
       if (nurseFilter) params.set('nurseName', nurseFilter);

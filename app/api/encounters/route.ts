@@ -9,6 +9,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const patientId = searchParams.get('patientId')
   const locationId = searchParams.get('locationId')
+  const practiceId = searchParams.get('practiceId')
   const status = searchParams.get('status')
   const dateFrom = searchParams.get('from')
   const dateTo = searchParams.get('to')
@@ -28,7 +29,12 @@ export async function GET(req: NextRequest) {
     const values: unknown[] = []
 
     if (patientId) { sql += ' AND e.patientId=?'; values.push(patientId) }
-    if (locationId) { sql += ' AND e.locationId=?'; values.push(locationId) }
+    if (locationId) {
+      sql += ' AND e.locationId=?'; values.push(locationId)
+    } else if (practiceId) {
+      sql += ' AND e.locationId IN (SELECT id FROM Location WHERE practiceId=? AND deletedAt IS NULL)'
+      values.push(practiceId)
+    }
     if (status) { sql += ' AND e.status=?'; values.push(status) }
     if (doctorName) { sql += ' AND e.doctorName=?'; values.push(doctorName) }
     if (nurseName) { sql += ' AND e.nurseName=?'; values.push(nurseName) }

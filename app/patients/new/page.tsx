@@ -39,7 +39,7 @@ export default function NewPatientPage() {
   });
 
   useEffect(() => {
-    (() => { let lp = ''; try { const l = localStorage.getItem('iat_active_location'); if (l) lp = `?locationId=${l}`; } catch {} return fetch(`/api/doctors${lp}`); })()
+    (() => { let lp = ''; try { const l = localStorage.getItem('iat_active_location'); const p = !l ? localStorage.getItem('iat_active_practice_filter') ?? '' : ''; if (l) lp = `?locationId=${l}`; else if (p) lp = `?practiceId=${p}`; } catch {} return fetch(`/api/doctors${lp}`); })()
       .then(r => r.ok ? r.json() : [])
       .then((d: Doctor[] | { doctors?: Doctor[] }) => setDoctors(Array.isArray(d) ? d : (d.doctors ?? [])))
       .catch(() => {});

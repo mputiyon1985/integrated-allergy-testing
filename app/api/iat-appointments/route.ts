@@ -48,6 +48,7 @@ export async function GET(request: NextRequest) {
     const dateParam = searchParams.get('date')
     const rangeParam = searchParams.get('range') // 'week' | 'month'
     const locationId = searchParams.get('locationId')
+    const practiceId = searchParams.get('practiceId')
     const base = dateParam ? new Date(dateParam) : new Date()
 
     const { start, end } = rangeParam === 'month'
@@ -65,6 +66,15 @@ export async function GET(request: NextRequest) {
           AND startTime >= ${startStr}
           AND startTime <= ${endStr}
           AND locationId = ${locationId}
+        ORDER BY startTime ASC
+      `
+    } else if (practiceId) {
+      appointments = await prisma.$queryRaw`
+        SELECT * FROM IatAppointment
+        WHERE deletedAt IS NULL
+          AND startTime >= ${startStr}
+          AND startTime <= ${endStr}
+          AND locationId IN (SELECT id FROM Location WHERE practiceId = ${practiceId} AND deletedAt IS NULL)
         ORDER BY startTime ASC
       `
     } else {

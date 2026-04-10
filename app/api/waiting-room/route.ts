@@ -22,12 +22,20 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url)
     const locationId = searchParams.get('locationId')
+    const practiceId = searchParams.get('practiceId')
 
     let entries
     if (locationId) {
       entries = await prisma.$queryRaw`
         SELECT * FROM WaitingRoom
         WHERE status IN ('waiting','in-service') AND locationId = ${locationId}
+        ORDER BY checkedInAt ASC
+      `
+    } else if (practiceId) {
+      entries = await prisma.$queryRaw`
+        SELECT * FROM WaitingRoom
+        WHERE status IN ('waiting','in-service')
+          AND locationId IN (SELECT id FROM Location WHERE practiceId = ${practiceId} AND deletedAt IS NULL)
         ORDER BY checkedInAt ASC
       `
     } else {

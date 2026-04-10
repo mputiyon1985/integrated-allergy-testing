@@ -31,7 +31,7 @@ export default function PatientsPage() {
 
   function loadPatients() {
     setLoading(true);
-    (() => { let lp = ''; try { const l = localStorage.getItem('iat_active_location'); if (l) lp = `?locationId=${l}`; } catch {} return fetch(`/api/patients${lp}`); })()
+    (() => { let lp = ''; try { const l = localStorage.getItem('iat_active_location'); const p = !l ? localStorage.getItem('iat_active_practice_filter') ?? '' : ''; if (l) lp = `?locationId=${l}`; else if (p) lp = `?practiceId=${p}`; } catch {} return fetch(`/api/patients${lp}`); })()
       .then((r) => {
         if (!r.ok) throw new Error('Failed to load patients');
         return r.json();

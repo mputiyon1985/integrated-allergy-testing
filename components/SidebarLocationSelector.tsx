@@ -76,25 +76,31 @@ export function SidebarLocationSelector() {
     setActivePracticeId(practiceId);
     localStorage.setItem(ACTIVE_PRACTICE_KEY, practiceId);
 
-    // Auto-select first location in new practice
-    const practice = practices.find(p => p.id === practiceId);
-    if (practice?.locations?.[0]) {
-      const locId = practice.locations[0].id;
-      setActiveLocationId(locId);
-      localStorage.setItem(ACTIVE_LOC_KEY, locId);
-      window.dispatchEvent(new CustomEvent('locationchange', { detail: { locationId: locId } }));
-    }
+    // Auto-select "All Locations" for the new practice
+    const allKey = `ALL:${practiceId}`;
+    setActiveLocationId(allKey);
+    localStorage.setItem(ACTIVE_LOC_KEY, ''); // empty = all locations in practice
+    localStorage.setItem('iat_active_practice_filter', practiceId);
+    window.dispatchEvent(new CustomEvent('locationchange', { detail: { locationId: '', practiceId } }));
   }
 
   function switchLocation(locId: string) {
     setActiveLocationId(locId);
-    localStorage.setItem(ACTIVE_LOC_KEY, locId);
-    fetch('/api/user/locations/default', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ locationId: locId }),
-    }).catch(() => {});
-    window.dispatchEvent(new CustomEvent('locationchange', { detail: { locationId: locId } }));
+    if (locId === `ALL:${activePracticeId}`) {
+      // "All Locations" selected — clear location filter, keep practice filter
+      localStorage.setItem(ACTIVE_LOC_KEY, '');
+      localStorage.setItem('iat_active_practice_filter', activePracticeId);
+      window.dispatchEvent(new CustomEvent('locationchange', { detail: { locationId: '', practiceId: activePracticeId } }));
+    } else {
+      localStorage.setItem(ACTIVE_LOC_KEY, locId);
+      localStorage.removeItem('iat_active_practice_filter');
+      fetch('/api/user/locations/default', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ locationId: locId }),
+      }).catch(() => {});
+      window.dispatchEvent(new CustomEvent('locationchange', { detail: { locationId: locId } }));
+    }
   }
 
   if (!practices.length) return null;
@@ -146,21 +152,16 @@ export function SidebarLocationSelector() {
         <div style={{ fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
           📍 Location
         </div>
-        {availableLocations.length > 1 ? (
-          <select
-            value={activeLocationId}
-            onChange={e => switchLocation(e.target.value)}
-            style={selectStyle}
-          >
-            {availableLocations.map(l => (
-              <option key={l.id} value={l.id}>{l.name}</option>
-            ))}
-          </select>
-        ) : (
-          <div style={{ fontSize: 12, fontWeight: 600, color: '#0d9488', padding: '6px 10px', background: '#f0fdf9', border: '1px solid rgba(13,148,136,0.2)', borderRadius: 7 }}>
-            {availableLocations[0]?.name ?? '—'}
-          </div>
-        )}
+        <select
+          value={activeLocationId}
+          onChange={e => switchLocation(e.target.value)}
+          style={selectStyle}
+        >
+          <option value={`ALL:${activePractice?.id ?? ''}`}>— All Locations —</option>
+          {availableLocations.map(l => (
+            <option key={l.id} value={l.id}>{l.name}</option>
+          ))}
+        </select>
       </div>
     </div>
   );

@@ -195,7 +195,7 @@ function AddActivityModal({
   useEffect(() => {
     let locId = '';
     try { locId = localStorage.getItem('iat_active_location') ?? ''; } catch {}
-    (() => { let lp = ''; try { const l = localStorage.getItem('iat_active_location'); if (l) lp = `&locationId=${l}`; } catch {} return fetch(`/api/nurses?all=1${lp}`); })().then(r => r.ok ? r.json() : []).then(d => {
+    (() => { let lp = ''; try { const l = localStorage.getItem('iat_active_location'); const p = !l ? localStorage.getItem('iat_active_practice_filter') ?? '' : ''; if (l) lp = `&locationId=${l}`; else if (p) lp = `&practiceId=${p}`; } catch {} return fetch(`/api/nurses?all=1${lp}`); })().then(r => r.ok ? r.json() : []).then(d => {
       const all: (NurseOption & { active?: boolean; locationId?: string | null })[] =
         Array.isArray(d) ? d : (d.nurses ?? []);
       const filtered = locId ? all.filter(n => !n.locationId || n.locationId === locId) : all;
@@ -439,14 +439,14 @@ export default function EncounterDetailPage() {
     let locId = '';
     try { locId = localStorage.getItem('iat_active_location') ?? ''; } catch {}
 
-    (() => { let lp = ''; try { const l = localStorage.getItem('iat_active_location'); if (l) lp = `&locationId=${l}`; } catch {} return fetch(`/api/doctors?all=1${lp}`); })().then(r => r.ok ? r.json() : { doctors: [] }).then(d => {
+    (() => { let lp = ''; try { const l = localStorage.getItem('iat_active_location'); const p = !l ? localStorage.getItem('iat_active_practice_filter') ?? '' : ''; if (l) lp = `&locationId=${l}`; else if (p) lp = `&practiceId=${p}`; } catch {} return fetch(`/api/doctors?all=1${lp}`); })().then(r => r.ok ? r.json() : { doctors: [] }).then(d => {
       const all: (DoctorOption & { active?: boolean; locationId?: string | null })[] =
         Array.isArray(d) ? d : (d.doctors ?? []);
       const filtered = locId ? all.filter(x => !x.locationId || x.locationId === locId) : all;
       setDoctors(filtered.filter(x => x.active !== false));
     }).catch(() => {});
 
-    (() => { let lp = ''; try { const l = localStorage.getItem('iat_active_location'); if (l) lp = `&locationId=${l}`; } catch {} return fetch(`/api/nurses?all=1${lp}`); })().then(r => r.ok ? r.json() : []).then(d => {
+    (() => { let lp = ''; try { const l = localStorage.getItem('iat_active_location'); const p = !l ? localStorage.getItem('iat_active_practice_filter') ?? '' : ''; if (l) lp = `&locationId=${l}`; else if (p) lp = `&practiceId=${p}`; } catch {} return fetch(`/api/nurses?all=1${lp}`); })().then(r => r.ok ? r.json() : []).then(d => {
       const all: (NurseOption & { active?: boolean; locationId?: string | null })[] =
         Array.isArray(d) ? d : (d.nurses ?? []);
       const filtered = locId ? all.filter(x => !x.locationId || x.locationId === locId) : all;

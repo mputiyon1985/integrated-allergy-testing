@@ -32,11 +32,23 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const search = searchParams.get('search')
     const locationId = searchParams.get('locationId')
+    const practiceId = searchParams.get('practiceId')
+
+    // Build location filter: specific location > all locations in practice > all
+    let locationFilter = {}
+    if (locationId) {
+      locationFilter = { locationId }
+    } else if (practiceId) {
+      // Get all location IDs for this practice via raw SQL
+      const locs = await prisma.$queryRaw<Array<{id: string}>>`SELECT id FROM Location WHERE practiceId = ${practiceId} AND deletedAt IS NULL`
+      const locIds = locs.map(l => l.id)
+      locationFilter = locIds.length > 0 ? { locationId: { in: locIds } } : {}
+    }
 
     const patients = await prisma.patient.findMany({
       where: {
         deletedAt: null,
-        ...(locationId ? { locationId } : {}),
+        ...locationFilter,
         ...(search
           ? {
               OR: [

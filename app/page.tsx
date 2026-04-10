@@ -159,11 +159,15 @@ export default function DashboardPage() {
   const getActiveLocation = useCallback(() => {
     try { return localStorage.getItem('iat_active_location') ?? ''; } catch { return ''; }
   }, []);
+  const getActivePractice = useCallback(() => {
+    try { return localStorage.getItem('iat_active_practice_filter') ?? ''; } catch { return ''; }
+  }, []);
 
   const loadWaiting = useCallback(async () => {
     try {
       const locId = getActiveLocation();
-      const url = locId ? `/api/waiting-room?locationId=${locId}` : '/api/waiting-room';
+      const practId = !locId ? getActivePractice() : '';
+      const url = locId ? `/api/waiting-room?locationId=${locId}` : practId ? `/api/waiting-room?practiceId=${practId}` : '/api/waiting-room';
       const r = await fetch(url);
       if (!r.ok) throw new Error(r.status === 401 ? 'session_expired' : `HTTP ${r.status}`);
       const d = await r.json();
@@ -191,10 +195,11 @@ export default function DashboardPage() {
     async function loadData() {
       try {
         const locId = getActiveLocation();
-        const locParam = locId ? `&locationId=${locId}` : '';
+        const practiceId = !locId ? getActivePractice() : '';
+        const locParam = locId ? `&locationId=${locId}` : practiceId ? `&practiceId=${practiceId}` : '';
         const todayStr = new Date().toISOString().split('T')[0]
         const [patientsRes, , nursesRes, meRes, encounterCountRes, reasonsRes, apptsRes] = await Promise.allSettled([
-          fetch(`/api/patients${locId ? `?locationId=${locId}` : ''}`),
+          fetch(`/api/patients${locId ? `?locationId=${locId}` : practiceId ? `?practiceId=${practiceId}` : ''}`),
           fetch(`/api/doctors?all=1${locId ? `&locationId=${locId}` : ''}`),
           fetch(`/api/nurses?all=1${locId ? `&locationId=${locId}` : ''}`),
           fetch('/api/auth/me'),

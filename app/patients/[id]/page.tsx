@@ -129,7 +129,7 @@ export default function PatientDetailPage() {
       fetch('/api/insurance-companies').then(r => r.ok ? r.json() : { companies: [] }).then(d => setInsurerOptions((d as { companies?: { id: string; name: string; type: string }[] }).companies ?? [])).catch(() => {});
       Promise.allSettled([
         fetch('/api/locations').then(r => r.ok ? r.json() : []),
-        (() => { let lp = ''; try { const l = localStorage.getItem('iat_active_location'); if (l) lp = `?locationId=${l}`; } catch {} return fetch(`/api/doctors${lp}`); })().then(r => r.ok ? r.json() : []),
+        (() => { let lp = ''; try { const l = localStorage.getItem('iat_active_location'); const p = !l ? localStorage.getItem('iat_active_practice_filter') ?? '' : ''; if (l) lp = `?locationId=${l}`; else if (p) lp = `?practiceId=${p}`; } catch {} return fetch(`/api/doctors${lp}`); })().then(r => r.ok ? r.json() : []),
       ]).then(([locRes, docRes]) => {
         if (locRes.status === 'fulfilled') {
           const d = locRes.value as LocationOption[] | { locations?: LocationOption[] };
@@ -145,7 +145,7 @@ export default function PatientDetailPage() {
 
   // Load nurses once
   useEffect(() => {
-    (() => { let lp = ''; try { const l = localStorage.getItem('iat_active_location'); if (l) lp = `?locationId=${l}`; } catch {} return fetch(`/api/nurses${lp}`); })()
+    (() => { let lp = ''; try { const l = localStorage.getItem('iat_active_location'); const p = !l ? localStorage.getItem('iat_active_practice_filter') ?? '' : ''; if (l) lp = `?locationId=${l}`; else if (p) lp = `?practiceId=${p}`; } catch {} return fetch(`/api/nurses${lp}`); })()
       .then(r => r.ok ? r.json() : [])
       .then((d: { id: string; name: string; title?: string }[] | { nurses?: { id: string; name: string; title?: string }[] }) => {
         setNurses(Array.isArray(d) ? d : (d.nurses ?? []));

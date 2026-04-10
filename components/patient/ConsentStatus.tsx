@@ -15,7 +15,7 @@ export function ConsentStatus({ patientId }: { patientId: string }) {
         if (!r.ok) throw new Error(r.status === 401 ? 'session_expired' : `HTTP ${r.status}`);
         return r.json();
       }),
-      (() => { let lp = ''; try { const l = localStorage.getItem('iat_active_location'); if (l) lp = `?locationId=${l}`; } catch {} return fetch(`/api/nurses${lp}`); })().then(async r => {
+      (() => { let lp = ''; try { const l = localStorage.getItem('iat_active_location'); const p = !l ? localStorage.getItem('iat_active_practice_filter') ?? '' : ''; if (l) lp = `?locationId=${l}`; else if (p) lp = `?practiceId=${p}`; } catch {} return fetch(`/api/nurses${lp}`); })().then(async r => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json();
       }),
