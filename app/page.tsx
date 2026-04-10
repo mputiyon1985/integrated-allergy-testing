@@ -129,6 +129,8 @@ export default function DashboardPage() {
   const [quickLogForm, setQuickLogForm] = useState({ activityType: 'note', notes: '' });
   const [quickLogSaving, setQuickLogSaving] = useState(false);
   const [todayAppts, setTodayAppts] = useState<TodayAppointment[]>([]);
+  const [checkingInApptId, setCheckingInApptId] = useState<string | null>(null);
+  const [checkedInApptIds, setCheckedInApptIds] = useState<Set<string>>(new Set());
   const [selectedAppt, setSelectedAppt] = useState<TodayAppointment | null>(null);
   const [editingAppt, setEditingAppt] = useState<TodayAppointment | null>(null);
   const [editApptTitle, setEditApptTitle] = useState('');
@@ -278,6 +280,24 @@ export default function DashboardPage() {
       }
     } catch {}
     setAddingAppt(false);
+  }
+
+  async function handleCheckIn(appt: TodayAppointment, e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!appt.patientId || !appt.patientName) return;
+    setCheckingInApptId(appt.id);
+    try {
+      const res = await fetch('/api/waiting-room', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ patientId: appt.patientId, patientName: appt.patientName }),
+      });
+      if (res.ok) {
+        setCheckedInApptIds(prev => new Set([...prev, appt.id]));
+        await loadWaiting();
+      }
+    } catch {}
+    setCheckingInApptId(null);
   }
 
   async function handleQuickLog() {
@@ -541,6 +561,28 @@ export default function DashboardPage() {
                 <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 10px', borderRadius: 999, background: color, color: '#fff', border: `1px solid ${color}` }}>
                   {appt.reasonName ?? appt.type}
                 </span>
+                {appt.patientId && appt.status !== 'checked-in' && appt.status !== 'complete' && (
+                  <button
+                    onClick={(e) => handleCheckIn(appt, e)}
+                    disabled={checkingInApptId === appt.id}
+                    style={{
+                      padding: '3px 10px',
+                      borderRadius: 999,
+                      border: 'none',
+                      background: checkedInApptIds.has(appt.id) ? '#16a34a' : '#0d9488',
+                      color: '#fff',
+                      fontSize: 11,
+                      fontWeight: 700,
+                      cursor: checkingInApptId === appt.id ? 'wait' : 'pointer',
+                      whiteSpace: 'nowrap',
+                      flexShrink: 0,
+                      opacity: checkingInApptId === appt.id ? 0.7 : 1,
+                      transition: 'background 0.2s',
+                    }}
+                  >
+                    {checkingInApptId === appt.id ? '⏳' : checkedInApptIds.has(appt.id) ? '✓ Checked In' : '✓ Check In'}
+                  </button>
+                )}
               </div>
             );
           })}
