@@ -195,8 +195,8 @@ export default function DashboardPage() {
         const todayStr = new Date().toISOString().split('T')[0]
         const [patientsRes, , nursesRes, meRes, encounterCountRes, reasonsRes, apptsRes] = await Promise.allSettled([
           fetch(`/api/patients${locId ? `?locationId=${locId}` : ''}`),
-          fetch('/api/doctors'),
-          fetch('/api/nurses'),
+          fetch(`/api/doctors?all=1${locId ? `&locationId=${locId}` : ''}`),
+          fetch(`/api/nurses?all=1${locId ? `&locationId=${locId}` : ''}`),
           fetch('/api/auth/me'),
           fetch(`/api/encounters/count?date=${todayStr}${locParam}`),
           fetch('/api/appointment-reasons'),
@@ -266,7 +266,7 @@ export default function DashboardPage() {
       const res = await fetch('/api/iat-appointments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: newApptTitle, startTime: startIso, endTime: endIso }),
+        body: JSON.stringify({ title: newApptTitle, startTime: startIso, endTime: endIso, locationId: getActiveLocation() || undefined }),
       });
       if (res.ok) {
         const todayStr = new Date().toDateString();
