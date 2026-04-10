@@ -35,23 +35,14 @@ function UserCard({ userName }: { userName: string }) {
   const displayName = user?.name ?? userName;
 
   return (
-    <div style={{ margin: '0 8px 8px', padding: '10px 12px', background: 'linear-gradient(135deg, #e8f9f7, #d0f4ef)', border: '1.5px solid #2ec4b6', borderRadius: 12 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#2ec4b6', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 14 }}>
-          {displayName.charAt(0).toUpperCase()}
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 700, fontSize: 13, color: '#0d9488', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{displayName}</div>
-          <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'capitalize' }}>{user?.role ?? ''}</div>
-        </div>
-      </div>
+    <div style={{ margin: '0 8px 8px' }}>
       <button onClick={async () => {
           try { localStorage.removeItem('iat_user'); localStorage.removeItem('iat_active_location'); } catch {}
           await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
           window.location.href = '/api/auth/signout?callbackUrl=/login';
         }}
-        style={{ marginTop: 8, width: '100%', padding: '4px 0', fontSize: 11, color: '#dc2626', background: 'transparent', border: '1px solid #fca5a5', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }}>
-        Sign Out
+        style={{ width: '100%', padding: '7px 0', fontSize: 12, color: '#dc2626', background: 'transparent', border: '1px solid #fca5a5', borderRadius: 8, cursor: 'pointer', fontWeight: 700 }}>
+        🚪 Sign Out
       </button>
     </div>
   );
