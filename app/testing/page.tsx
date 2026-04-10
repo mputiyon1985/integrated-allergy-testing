@@ -331,6 +331,20 @@ function TestingPageInner() {
       if (failed > 0 && succeeded === 0) throw new Error('All saves failed — check connection.');
       if (failed > 0) throw new Error(`${failed} result(s) failed to save. ${succeeded} saved successfully.`);
       setSaved(true);
+
+      // Auto-link to today's open encounter (fire and forget)
+      const prickCount = toSave.filter(i => i.testType === 'scratch').length;
+      const intradermalCount = toSave.filter(i => i.testType === 'intradermal').length;
+      fetch('/api/encounters/auto-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          patientId: patient.id,
+          activityType: 'allergy_test',
+          notes: `${prickCount} prick + ${intradermalCount} intradermal results recorded`,
+          performedBy: testedBy || undefined,
+        }),
+      }).catch(() => {}); // silent fail — don't block the test save
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Save failed');
     } finally {

@@ -395,11 +395,18 @@ model Encounter {
   assessment          String?
   plan                String?
   followUpDays        Int?
-  status              String    @default("open")
+  status              String    @default("open") // open | awaiting_md | signed | billed
   createdBy           String?
   waitMinutes         Int?      // Minutes from check-in to nurse calling patient
   inServiceMinutes    Int?      // Minutes from nurse call to encounter complete
   waitingRoomId       String?   // Link back to WaitingRoom entry
+  // MD sign-off + billing
+  signedBy            String?   // MD name who signed
+  signedAt            DateTime? // When MD signed
+  billedAt            DateTime? // When submitted to insurance
+  mdAttestation       String?   // MD attestation text
+  cptSummary          String?   // JSON: [{code, units, fee, description}]
+  diagnosisCode       String?   // Primary ICD-10 for billing
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
   deletedAt           DateTime?
