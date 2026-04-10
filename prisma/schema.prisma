@@ -589,6 +589,35 @@ model PracticeHours {
   @@index([practiceId])
 }
 
+model EmailTemplate {
+  id        String   @id @default(cuid())
+  name      String
+  subject   String
+  body      String
+  category  String?
+  active    Int      @default(1)
+  createdAt String   @default("")
+  updatedAt String   @default("")
+}
+
+model EmailLog {
+  id           String  @id @default(cuid())
+  patientId    String?
+  patientEmail String
+  subject      String
+  templateId   String?
+  status       String  @default("pending")
+  errorMessage String?
+  sentAt       String?
+  createdAt    String  @default("")
+}
+
+model SystemSetting {
+  key       String @id
+  value     String?
+  updatedAt String @default("")
+}
+
 model BillingRule {
   id                    String   @id @default(cuid())
   name                  String
