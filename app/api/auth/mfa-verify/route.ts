@@ -21,13 +21,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'tempToken and code are required' }, { status: 400 })
     }
 
-    const user = await prisma.staffUser.findFirst({
-      where: {
-        tempToken,
-        tempTokenExpiry: { gte: new Date() },
-        active: true,
-      },
-    })
+    const now = new Date().toISOString()
+    const users = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+      `SELECT * FROM StaffUser WHERE tempToken=? AND tempTokenExpiry > ? AND active=1 LIMIT 1`,
+      tempToken, now
+    )
+    const user = users[0] ? {
+      id: users[0].id as string,
+      email: users[0].email as string,
+      name: users[0].name as string,
+      role: users[0].role as string,
+      mfaSecret: users[0].mfaSecret as string | null,
+      defaultLocationId: users[0].defaultLocationId as string | null,
+    } : null
 
     if (!user) {
       return NextResponse.json({ error: 'Invalid or expired token' }, { status: 401 })
@@ -51,13 +57,10 @@ export async function POST(req: NextRequest) {
     }
 
     // Clear temp token
-    await prisma.staffUser.update({
-      where: { id: user.id },
-      data: {
-        tempToken: null,
-        tempTokenExpiry: null,
-      },
-    })
+    await prisma.$executeRawUnsafe(
+      `UPDATE StaffUser SET tempToken=NULL, tempTokenExpiry=NULL, updatedAt=CURRENT_TIMESTAMP WHERE id=?`,
+      user.id
+    )
 
     // Issue session JWT
     const token = await signSession({

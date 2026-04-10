@@ -62,10 +62,11 @@ export async function POST(req: NextRequest) {
     const tempToken = randomUUID()
     const tempTokenExpiry = new Date(Date.now() + 10 * 60 * 1000) // 10 min
 
-    await prisma.staffUser.update({
-      where: { id: user.id },
-      data: { tempToken, tempTokenExpiry },
-    })
+    const expiry = new Date(Date.now() + 10 * 60 * 1000).toISOString()
+    await prisma.$executeRawUnsafe(
+      `UPDATE StaffUser SET tempToken=?, tempTokenExpiry=?, updatedAt=CURRENT_TIMESTAMP WHERE id=?`,
+      tempToken, expiry, user.id
+    )
 
     if (!user.mfaSecret) {
       // MFA enabled but not yet configured — send to setup flow
