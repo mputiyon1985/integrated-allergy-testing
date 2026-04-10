@@ -25,10 +25,19 @@ interface EmailLog {
 }
 
 interface EmailSettings {
+  // Resend
   apiKey: string;
   apiKeyConfigured: boolean;
   fromEmail: string;
   fromName: string;
+  // Provider
+  emailProvider: string;
+  // O365
+  o365ClientId: string;
+  o365ClientSecret: string;
+  o365ClientSecretConfigured: boolean;
+  o365TenantId: string;
+  o365Mailbox: string;
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -61,8 +70,17 @@ export default function EmailTab() {
   const [subTab, setSubTab] = useState<'settings' | 'templates' | 'logs'>('settings');
 
   // Settings state
-  const [settings, setSettings] = useState<EmailSettings>({ apiKey: '', apiKeyConfigured: false, fromEmail: '', fromName: '' });
-  const [settingsForm, setSettingsForm] = useState({ apiKey: '', fromEmail: '', fromName: '' });
+  const [settings, setSettings] = useState<EmailSettings>({
+    apiKey: '', apiKeyConfigured: false, fromEmail: '', fromName: '',
+    emailProvider: 'resend',
+    o365ClientId: '', o365ClientSecret: '', o365ClientSecretConfigured: false,
+    o365TenantId: '', o365Mailbox: '',
+  });
+  const [settingsForm, setSettingsForm] = useState({
+    apiKey: '', fromEmail: '', fromName: '',
+    emailProvider: 'resend',
+    o365ClientId: '', o365ClientSecret: '', o365TenantId: '', o365Mailbox: '',
+  });
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [settingsMsg, setSettingsMsg] = useState('');
   const [testingSending, setTestingSending] = useState(false);
@@ -88,13 +106,21 @@ export default function EmailTab() {
     if (r.ok) {
       const d = await r.json() as EmailSettings;
       setSettings(d);
-      setSettingsForm({ apiKey: '', fromEmail: d.fromEmail, fromName: d.fromName });
+      setSettingsForm({
+        apiKey: '',
+        fromEmail: d.fromEmail,
+        fromName: d.fromName,
+        emailProvider: d.emailProvider ?? 'resend',
+        o365ClientId: d.o365ClientId ?? '',
+        o365ClientSecret: '',   // never pre-fill password fields from server
+        o365TenantId: d.o365TenantId ?? '',
+        o365Mailbox: d.o365Mailbox ?? '',
+      });
     }
   }, []);
 
   const loadTemplates = useCallback(async () => {
     setTplLoading(true);
-    // Seed defaults first
     await fetch('/api/email/seed', { method: 'POST' }).catch(() => {});
     const r = await fetch('/api/email/templates?all=1');
     if (r.ok) {
@@ -128,8 +154,17 @@ export default function EmailTab() {
   async function saveSettings() {
     setSettingsSaving(true);
     setSettingsMsg('');
-    const payload: Record<string, string> = { fromEmail: settingsForm.fromEmail, fromName: settingsForm.fromName };
+    const payload: Record<string, string> = {
+      fromEmail: settingsForm.fromEmail,
+      fromName: settingsForm.fromName,
+      emailProvider: settingsForm.emailProvider,
+      o365ClientId: settingsForm.o365ClientId,
+      o365TenantId: settingsForm.o365TenantId,
+      o365Mailbox: settingsForm.o365Mailbox,
+    };
     if (settingsForm.apiKey) payload.apiKey = settingsForm.apiKey;
+    if (settingsForm.o365ClientSecret) payload.o365ClientSecret = settingsForm.o365ClientSecret;
+
     const r = await fetch('/api/email/settings', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -137,7 +172,7 @@ export default function EmailTab() {
     });
     if (r.ok) {
       setSettingsMsg('✅ Settings saved!');
-      setSettingsForm(f => ({ ...f, apiKey: '' }));
+      setSettingsForm(f => ({ ...f, apiKey: '', o365ClientSecret: '' }));
       await loadSettings();
     } else {
       setSettingsMsg('❌ Failed to save settings');
@@ -148,11 +183,12 @@ export default function EmailTab() {
   async function sendTestEmail() {
     setTestingSending(true);
     setSettingsMsg('');
+    const testTo = settings.fromEmail || settings.o365Mailbox || 'test@example.com';
     const r = await fetch('/api/email/send', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        to: settings.fromEmail || 'test@example.com',
+        to: testTo,
         subject: 'Test Email from IAT System',
         body: '<p>This is a test email from <strong>Integrated Allergy Testing</strong> email system. If you received this, your email provider is configured correctly!</p>',
       }),
@@ -219,6 +255,10 @@ export default function EmailTab() {
     loadTemplates();
   }
 
+  const isO365Ready = settings.emailProvider === 'o365' && (settings.o365ClientSecretConfigured || settingsForm.o365ClientSecret.length > 0);
+  const isResendReady = settings.emailProvider !== 'o365' && settings.apiKeyConfigured;
+  const canTest = isO365Ready || isResendReady;
+
   const SUB_TAB = (t: typeof subTab, label: string) => (
     <button
       onClick={() => setSubTab(t)}
@@ -243,51 +283,140 @@ export default function EmailTab() {
 
       {/* ── Provider Settings ── */}
       {subTab === 'settings' && (
-        <div style={{ maxWidth: 520 }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: '#1e293b', marginBottom: 16 }}>Email Provider — Resend</div>
-
-          {!settings.apiKeyConfigured && (
-            <div style={{ background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: 8, padding: '10px 14px', marginBottom: 16, fontSize: 13, color: '#92400e' }}>
-              ⚠️ No Resend API key configured. Get your free key at{' '}
-              <a href="https://resend.com" target="_blank" rel="noreferrer" style={{ color: '#0d9488' }}>resend.com</a>
+        <div style={{ maxWidth: 540 }}>
+          {/* Provider selector */}
+          <div style={{ marginBottom: 20 }}>
+            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 8, textTransform: 'uppercase' }}>
+              Email Provider
+            </label>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {(['resend', 'o365'] as const).map(p => (
+                <button
+                  key={p}
+                  onClick={() => setSettingsForm(f => ({ ...f, emailProvider: p }))}
+                  style={{
+                    padding: '10px 20px', borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: 'pointer',
+                    border: `2px solid ${settingsForm.emailProvider === p ? '#0d9488' : '#e2e8f0'}`,
+                    background: settingsForm.emailProvider === p ? '#f0fdfa' : '#f8fafc',
+                    color: settingsForm.emailProvider === p ? '#0d9488' : '#64748b',
+                  }}
+                >
+                  {p === 'resend' ? '📨 Resend' : '🏢 Microsoft 365 / Exchange'}
+                </button>
+              ))}
             </div>
+          </div>
+
+          {/* ── Resend fields ── */}
+          {settingsForm.emailProvider === 'resend' && (
+            <>
+              <div style={{ fontSize: 15, fontWeight: 700, color: '#1e293b', marginBottom: 14 }}>Resend Configuration</div>
+
+              {!settings.apiKeyConfigured && (
+                <div style={{ background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: 8, padding: '10px 14px', marginBottom: 16, fontSize: 13, color: '#92400e' }}>
+                  ⚠️ No Resend API key configured. Get your free key at{' '}
+                  <a href="https://resend.com" target="_blank" rel="noreferrer" style={{ color: '#0d9488' }}>resend.com</a>
+                </div>
+              )}
+
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>
+                  Resend API Key {settings.apiKeyConfigured ? '(configured ✅)' : '(not set)'}
+                </label>
+                <input
+                  type="password"
+                  className="form-input"
+                  placeholder={settings.apiKeyConfigured ? 'Enter new key to replace...' : 're_...'}
+                  value={settingsForm.apiKey}
+                  onChange={e => setSettingsForm(f => ({ ...f, apiKey: e.target.value }))}
+                />
+                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>Leave blank to keep existing key</div>
+              </div>
+
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>From Email</label>
+                <input
+                  type="email"
+                  className="form-input"
+                  placeholder="noreply@clinic.com"
+                  value={settingsForm.fromEmail}
+                  onChange={e => setSettingsForm(f => ({ ...f, fromEmail: e.target.value }))}
+                />
+              </div>
+
+              <div style={{ marginBottom: 20 }}>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>From Name</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="Integrated Allergy Testing"
+                  value={settingsForm.fromName}
+                  onChange={e => setSettingsForm(f => ({ ...f, fromName: e.target.value }))}
+                />
+              </div>
+            </>
           )}
 
-          <div style={{ marginBottom: 14 }}>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>
-              Resend API Key {settings.apiKeyConfigured ? '(configured ✅)' : '(not set)'}
-            </label>
-            <input
-              type="password"
-              className="form-input"
-              placeholder={settings.apiKeyConfigured ? 'Enter new key to replace...' : 're_...'}
-              value={settingsForm.apiKey}
-              onChange={e => setSettingsForm(f => ({ ...f, apiKey: e.target.value }))}
-            />
-            <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>Leave blank to keep existing key</div>
-          </div>
+          {/* ── O365 fields ── */}
+          {settingsForm.emailProvider === 'o365' && (
+            <>
+              <div style={{ fontSize: 15, fontWeight: 700, color: '#1e293b', marginBottom: 14 }}>Microsoft 365 / Exchange Configuration</div>
 
-          <div style={{ marginBottom: 14 }}>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>From Email</label>
-            <input
-              type="email"
-              className="form-input"
-              placeholder="noreply@clinic.com"
-              value={settingsForm.fromEmail}
-              onChange={e => setSettingsForm(f => ({ ...f, fromEmail: e.target.value }))}
-            />
-          </div>
+              <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 8, padding: '10px 14px', marginBottom: 16, fontSize: 13, color: '#1d4ed8' }}>
+                ℹ️ Uses Microsoft Graph API with app-only (client credentials) authentication. Ensure the Azure AD app has <strong>Mail.Send</strong> application permission.
+              </div>
 
-          <div style={{ marginBottom: 20 }}>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>From Name</label>
-            <input
-              type="text"
-              className="form-input"
-              placeholder="Integrated Allergy Testing"
-              value={settingsForm.fromName}
-              onChange={e => setSettingsForm(f => ({ ...f, fromName: e.target.value }))}
-            />
-          </div>
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Azure Client ID</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                  value={settingsForm.o365ClientId}
+                  onChange={e => setSettingsForm(f => ({ ...f, o365ClientId: e.target.value }))}
+                />
+              </div>
+
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>
+                  Azure Client Secret {settings.o365ClientSecretConfigured ? '(configured ✅)' : '(not set — will try Key Vault)'}
+                </label>
+                <input
+                  type="password"
+                  className="form-input"
+                  placeholder={settings.o365ClientSecretConfigured ? 'Enter new secret to replace...' : 'Paste client secret (or leave blank to use Key Vault)'}
+                  value={settingsForm.o365ClientSecret}
+                  onChange={e => setSettingsForm(f => ({ ...f, o365ClientSecret: e.target.value }))}
+                />
+                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>
+                  If left blank, the system will try to fetch from Azure Key Vault (<code>hivevault-swarm</code> → <code>mark-azure-ad-client-secret</code>)
+                </div>
+              </div>
+
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Azure Tenant ID</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+                  value={settingsForm.o365TenantId}
+                  onChange={e => setSettingsForm(f => ({ ...f, o365TenantId: e.target.value }))}
+                />
+              </div>
+
+              <div style={{ marginBottom: 20 }}>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Send-From Mailbox</label>
+                <input
+                  type="email"
+                  className="form-input"
+                  placeholder="allergy@tipinc.ai"
+                  value={settingsForm.o365Mailbox}
+                  onChange={e => setSettingsForm(f => ({ ...f, o365Mailbox: e.target.value }))}
+                />
+                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>The Exchange mailbox used to send emails (must be licensed)</div>
+              </div>
+            </>
+          )}
 
           <div style={{ display: 'flex', gap: 8 }}>
             <button
@@ -298,8 +427,8 @@ export default function EmailTab() {
 
             <button
               onClick={sendTestEmail}
-              disabled={testingSending || !settings.apiKeyConfigured}
-              style={{ padding: '8px 20px', borderRadius: 8, background: settings.apiKeyConfigured ? '#7c3aed' : '#94a3b8', color: '#fff', fontWeight: 700, fontSize: 14, border: 'none', cursor: settings.apiKeyConfigured ? 'pointer' : 'not-allowed' }}
+              disabled={testingSending || !canTest}
+              style={{ padding: '8px 20px', borderRadius: 8, background: canTest ? '#7c3aed' : '#94a3b8', color: '#fff', fontWeight: 700, fontSize: 14, border: 'none', cursor: canTest ? 'pointer' : 'not-allowed' }}
             >{testingSending ? 'Sending…' : '🧪 Send Test Email'}</button>
           </div>
 
@@ -494,7 +623,6 @@ export default function EmailTab() {
             </table>
           )}
 
-          {/* Expanded log row */}
           {selectedLog && (
             <div style={{ marginTop: 16, padding: 16, background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
               <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 8, color: '#1e293b' }}>Log Detail: {selectedLog.subject}</div>
