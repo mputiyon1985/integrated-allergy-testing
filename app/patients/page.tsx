@@ -29,8 +29,9 @@ export default function PatientsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    fetch('/api/patients')
+  function loadPatients() {
+    setLoading(true);
+    (() => { let lp = ''; try { const l = localStorage.getItem('iat_active_location'); if (l) lp = `?locationId=${l}`; } catch {} return fetch(`/api/patients${lp}`); })()
       .then((r) => {
         if (!r.ok) throw new Error('Failed to load patients');
         return r.json();
@@ -41,7 +42,14 @@ export default function PatientsPage() {
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, []);
+  }
+
+  useEffect(() => {
+    loadPatients();
+    const handler = () => loadPatients();
+    window.addEventListener('locationchange', handler);
+    return () => window.removeEventListener('locationchange', handler);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const filtered = patients.filter((p) => {
     const q = search.toLowerCase();

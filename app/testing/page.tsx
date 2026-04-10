@@ -52,7 +52,8 @@ function TestingSetup({ onStart }: {
   const search = useCallback((val: string) => {
     if (val.length < 2) { Promise.resolve().then(() => setResults([])); return; }
     void (async () => { try {
-      const r = await fetch(`/api/patients?search=${encodeURIComponent(val)}`);
+      let _locP = ''; try { const _l = localStorage.getItem('iat_active_location'); if (_l) _locP = `&locationId=${_l}`; } catch {}
+      const r = await fetch(`/api/patients?search=${encodeURIComponent(val)}${_locP}`);
       const d = await r.json();
       setResults((Array.isArray(d) ? d : d.patients ?? []).slice(0, 10));
     } catch { setResults([]); } })();

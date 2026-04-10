@@ -180,7 +180,7 @@ function CalendarInner() {
   }, [loadAppointments]);
 
   useEffect(() => {
-    fetch('/api/patients')
+    (() => { let lp = ''; try { const l = localStorage.getItem('iat_active_location'); if (l) lp = `?locationId=${l}`; } catch {} return fetch(`/api/patients${lp}`); })()
       .then(r => r.ok ? r.json() : [])
       .then(d => setPatients(Array.isArray(d) ? d : d.patients ?? []))
       .catch(() => {});

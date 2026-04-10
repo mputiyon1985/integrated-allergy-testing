@@ -836,7 +836,7 @@ export default function DashboardPage() {
                   setSelectedAppt(null);
                   // Load patients and reasons
                   const [pRes, rRes] = await Promise.allSettled([
-                    fetch('/api/patients').then(r => r.json()),
+                    (() => { let lp = ''; try { const l = localStorage.getItem('iat_active_location'); if (l) lp = `?locationId=${l}`; } catch {} return fetch(`/api/patients${lp}`); })().then(r => r.json()),
                     fetch('/api/appointment-reasons').then(r => r.json()),
                   ]);
                   if (pRes.status === 'fulfilled') setEditApptPatients(Array.isArray(pRes.value) ? pRes.value : pRes.value.patients ?? []);
