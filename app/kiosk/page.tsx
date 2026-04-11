@@ -6,23 +6,24 @@
  */
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
-export default function KioskHomePage() {
-  const router = useRouter();
+/** Captures ?locationId from the URL and stores it in sessionStorage for the kiosk flow. */
+function LocationCapture() {
   const searchParams = useSearchParams();
+  useEffect(() => {
+    const locId = searchParams.get('locationId');
+    if (locId) sessionStorage.setItem('kiosk_location_id', locId);
+  }, [searchParams]);
+  return null;
+}
+
+function KioskHomeContent() {
+  const router = useRouter();
   const [dob, setDob] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
-  // Capture locationId from URL and persist for entire kiosk session
-  useEffect(() => {
-    const locId = searchParams.get('locationId');
-    if (locId) {
-      sessionStorage.setItem('kiosk_location_id', locId);
-    }
-  }, [searchParams]);
 
   async function handleContinue() {
     if (!dob) return;
@@ -138,5 +139,16 @@ export default function KioskHomePage() {
         {loading ? 'Looking up…' : 'Continue →'}
       </button>
     </div>
+  );
+}
+
+export default function KioskHomePage() {
+  return (
+    <>
+      <Suspense fallback={null}>
+        <LocationCapture />
+      </Suspense>
+      <KioskHomeContent />
+    </>
   );
 }
