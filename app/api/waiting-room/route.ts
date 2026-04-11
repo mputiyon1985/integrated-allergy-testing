@@ -47,7 +47,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json() as { patientId?: string; patientName?: string; notes?: string; videosWatched?: number }
+    const body = await req.json() as { patientId?: string; patientName?: string; notes?: string; videosWatched?: number; locationId?: string }
 
     // Validate required fields
     if (!body.patientId || !body.patientName) {
@@ -79,9 +79,11 @@ export async function POST(req: NextRequest) {
     const id = `wr-${Date.now().toString(36)}`
     const now = new Date().toISOString()
     const notes = body.notes ? String(body.notes).slice(0, 500) : null
+    // Use locationId from request body, fall back to 'loc-iat-001'
+    const locationId = body.locationId ? String(body.locationId).slice(0, 50) : 'loc-iat-001'
 
-    await prisma.$executeRaw`INSERT INTO WaitingRoom (id, patientId, patientName, notes, videosWatched, status, checkedInAt)
-      VALUES (${id}, ${patient.id}, ${patient.name}, ${notes}, ${videosWatched}, 'waiting', ${now})`
+    await prisma.$executeRaw`INSERT INTO WaitingRoom (id, patientId, patientName, notes, videosWatched, status, locationId, checkedInAt)
+      VALUES (${id}, ${patient.id}, ${patient.name}, ${notes}, ${videosWatched}, 'waiting', ${locationId}, ${now})`
 
     const entryRows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
       `SELECT * FROM WaitingRoom WHERE id = ?`, id

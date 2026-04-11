@@ -14,6 +14,7 @@ import { useRouter } from 'next/navigation'
 /** All sessionStorage keys used by the kiosk flow. */
 const KIOSK_KEYS = [
   'kiosk_patient',
+  'kiosk_location_id',
   'kiosk_dob',
   'kiosk_lookup',
   'kiosk_watched_ids',
@@ -55,10 +56,11 @@ export default function DonePage() {
       const videosWatched = parseInt(watchedRaw, 10) || 0;
       const serviceReason = sessionStorage.getItem('kiosk_service_reason');
       const reasonName = serviceReason ? (() => { try { return JSON.parse(serviceReason).name; } catch { return null; } })() : null;
+      const locationId = sessionStorage.getItem('kiosk_location_id') || undefined;
       fetch('/api/waiting-room', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ patientId, patientName: name, videosWatched, notes: reasonName }),
+        body: JSON.stringify({ patientId, patientName: name, videosWatched, notes: reasonName, locationId }),
       }).catch(() => {})
     }
   }, [])
