@@ -215,7 +215,9 @@ export default function WaitingRoomTile({
                   </td>
                   <td style={{ padding: '5px 10px', color: '#64748b', fontSize: 12 }}>
                     {e.status === 'waiting' ? (
-                      <select onChange={ev => ev.target.value && updateStatus(e.id, 'in-service', ev.target.value)}
+                      <select
+                        onChange={ev => { ev.stopPropagation(); if (ev.target.value) updateStatus(e.id, 'in-service', ev.target.value); }}
+                        onClick={ev => ev.stopPropagation()}
                         defaultValue=""
                         style={{ fontSize: 12, padding: '2px 6px', borderRadius: 6, border: '1px solid #e2e8f0', cursor: 'pointer' }}>
                         <option value="">— Call Patient —</option>
