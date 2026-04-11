@@ -52,8 +52,10 @@ function TestingSetup({ onStart }: {
   const search = useCallback((val: string) => {
     if (val.length < 2) { Promise.resolve().then(() => setResults([])); return; }
     void (async () => { try {
-      let _locP = ''; try { const _l = localStorage.getItem('iat_active_location'); if (_l) _locP = `&locationId=${_l}`; } catch {}
-      const r = await fetch(`/api/patients?search=${encodeURIComponent(val)}${_locP}`);
+      // Search across all patients in the practice (not filtered by location)
+      // A nurse should be able to test any patient regardless of registered location
+      let practiceParam = ''; try { const _p = localStorage.getItem('iat_active_practice_filter'); if (_p) practiceParam = `&practiceId=${_p}`; } catch {}
+      const r = await fetch(`/api/patients?search=${encodeURIComponent(val)}${practiceParam}`);
       const d = await r.json();
       setResults((Array.isArray(d) ? d : d.patients ?? []).slice(0, 10));
     } catch { setResults([]); } })();
