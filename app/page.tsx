@@ -12,43 +12,43 @@ import AppointmentsTile from '@/components/dashboard/AppointmentsTile';
 
 const DashboardGrid = dynamic(() => import('@/components/DashboardGrid'), { ssr: false });
 
-const LAYOUT_KEY = 'iat-dashboard-layout-v8';
+const LAYOUT_KEY = 'iat-dashboard-layout-v9'; // v9: waiting room compact, schedule full height
 
 const DEFAULT_LAYOUTS: ResponsiveLayouts = {
   lg: [
     { i: 'kpi-patients',   x: 0,  y: 0,  w: 4, h: 4,  minW: 2, minH: 3 },
     { i: 'kpi-waiting',    x: 4,  y: 0,  w: 4, h: 4,  minW: 2, minH: 3 },
     { i: 'kpi-inservice',  x: 8,  y: 0,  w: 4, h: 4,  minW: 2, minH: 3 },
-    { i: 'waiting-room',   x: 0,  y: 4,  w: 8, h: 16, minW: 4, minH: 8 },
-    { i: 'appointments',   x: 8,  y: 4,  w: 4, h: 16, minW: 3, minH: 6 },
+    { i: 'waiting-room',   x: 0,  y: 4,  w: 4, h: 4,  minW: 3, minH: 4 },
+    { i: 'appointments',   x: 4,  y: 4,  w: 8, h: 20, minW: 3, minH: 6 },
   ],
   md: [
     { i: 'kpi-patients',   x: 0, y: 0,  w: 4,  h: 4 },
     { i: 'kpi-waiting',    x: 4, y: 0,  w: 3,  h: 4 },
     { i: 'kpi-inservice',  x: 7, y: 0,  w: 3,  h: 4 },
-    { i: 'waiting-room',   x: 0, y: 8,  w: 10, h: 14 },
-    { i: 'appointments',   x: 0, y: 22, w: 10, h: 10 },
+    { i: 'waiting-room',   x: 0, y: 4,  w: 4,  h: 4 },
+    { i: 'appointments',   x: 4, y: 4,  w: 6,  h: 20 },
   ],
   sm: [
     { i: 'kpi-patients',   x: 0, y: 0,  w: 2, h: 4 },
     { i: 'kpi-waiting',    x: 2, y: 0,  w: 2, h: 4 },
     { i: 'kpi-inservice',  x: 4, y: 0,  w: 2, h: 4 },
-    { i: 'waiting-room',   x: 0, y: 8,  w: 6, h: 14 },
-    { i: 'appointments',   x: 0, y: 22, w: 6, h: 10 },
+    { i: 'waiting-room',   x: 0, y: 4,  w: 3, h: 4 },
+    { i: 'appointments',   x: 3, y: 4,  w: 3, h: 20 },
   ],
   xs: [
     { i: 'kpi-patients',   x: 0, y: 0,  w: 2, h: 4 },
     { i: 'kpi-waiting',    x: 2, y: 0,  w: 2, h: 4 },
     { i: 'kpi-inservice',  x: 0, y: 4,  w: 4, h: 4 },
-    { i: 'waiting-room',   x: 0, y: 8,  w: 4, h: 14 },
-    { i: 'appointments',   x: 0, y: 22, w: 4, h: 10 },
+    { i: 'waiting-room',   x: 0, y: 8,  w: 4, h: 4 },
+    { i: 'appointments',   x: 0, y: 12, w: 4, h: 20 },
   ],
   xxs: [
     { i: 'kpi-patients',   x: 0, y: 0,  w: 2, h: 4 },
     { i: 'kpi-waiting',    x: 0, y: 4,  w: 2, h: 4 },
     { i: 'kpi-inservice',  x: 0, y: 8,  w: 2, h: 4 },
-    { i: 'waiting-room',   x: 0, y: 16, w: 2, h: 14 },
-    { i: 'appointments',   x: 0, y: 30, w: 2, h: 10 },
+    { i: 'waiting-room',   x: 0, y: 12, w: 2, h: 4 },
+    { i: 'appointments',   x: 0, y: 16, w: 2, h: 20 },
   ],
 };
 
