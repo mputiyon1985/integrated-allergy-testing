@@ -401,7 +401,7 @@ export default function EncountersPage() {
                       const ts = e.encounterDate || e.createdAt || '';
                       return (
                         <tr key={e.id}
-                          onClick={() => router.push(`/patients/${e.patientId}#encounters`)}
+                          onClick={() => router.push(`/encounters/${e.id}`)}
                           style={{ borderBottom: '1px solid #f1f5f9', cursor: 'pointer', transition: 'background 0.1s' }}
                           onMouseEnter={ev => ev.currentTarget.style.background = '#f8fafc'}
                           onMouseLeave={ev => ev.currentTarget.style.background = ''}
