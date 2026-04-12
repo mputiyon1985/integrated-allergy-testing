@@ -117,7 +117,9 @@ export default function DashboardPage() {
   const [encounterCount, setEncounterCount] = useState<number | null>(null);
   const [nurseCount, setNurseCount] = useState<number | null>(null);
   const [userName, setUserName] = useState('');
-  const [userRole, setUserRole] = useState(() => { try { const u = localStorage.getItem('iat_user'); return JSON.parse(u ?? '{}')?.role ?? ''; } catch { return ''; } });
+  // Read role immediately from localStorage (fast path), then confirmed by API
+  useEffect(() => { try { const u = localStorage.getItem('iat_user'); if (u) { const parsed = JSON.parse(u); if (parsed?.role) setUserRole(parsed.role); } } catch {} }, []);
+  const [userRole, setUserRole] = useState('');
   const [loading, setLoading] = useState(true);
   const [waiting, setWaiting] = useState<WaitingEntry[]>([]);
   const [editMode, setEditMode] = useState(false);
@@ -266,7 +268,7 @@ export default function DashboardPage() {
           const d = await meRes.value.json();
           const u = d?.user ?? d;
           setUserName(u?.name ?? '');
-          if (u?.role) setUserRole(u.role);
+          if (u?.role) { setUserRole(u.role); try { localStorage.setItem('iat_user', JSON.stringify(u)); } catch {} }
         }
         // Use fast count endpoint — no need to fetch 100 encounters client-side
         if (encounterCountRes.status === 'fulfilled' && encounterCountRes.value.ok) {
