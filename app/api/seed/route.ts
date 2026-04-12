@@ -11,16 +11,28 @@ import prisma from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 
-// Core hardcoded demo patients (always available before full-seed runs)
-const FALLBACK_PATIENTS = [
-  { id: 'pat-iat-001', name: 'James Thompson' },
-  { id: 'pat-iat-002', name: 'Maria Rodriguez' },
-  { id: 'pat-iat-003', name: 'Linda Chen' },
-  { id: 'pat-iat-004', name: 'David Patel' },
-  { id: 'pat-iat-005', name: 'Sarah Williams' },
-  { id: 'pat-iat-006', name: 'Michael Brown' },
-  { id: 'pat-iat-007', name: 'Mark Putiyon' },
+// 20 demo patient names — one pool per location, IDs become demo-pat-{locKey}-01 … -20
+const DEMO_NAMES = [
+  'James Thompson',    'Maria Rodriguez',   'Linda Chen',        'David Patel',
+  'Sarah Williams',    'Michael Brown',     'Jennifer Davis',    'Robert Wilson',
+  'Emily Martinez',    'William Anderson',  'Amanda Taylor',     'Christopher Thomas',
+  'Jessica Jackson',   'Daniel Harris',     'Ashley Lewis',      'Matthew Robinson',
+  'Brittany Walker',   'Joshua Hall',       'Stephanie Allen',   'Andrew Young',
 ]
+
+/** Derive a short alphanumeric key from a location ID for patient IDs */
+function locKey(locId: string): string {
+  return locId.replace(/[^a-z0-9]/gi, '').slice(-6).toLowerCase()
+}
+
+/** Per-location pool of 20 demo patients */
+function locPatients(locId: string) {
+  const key = locKey(locId)
+  return DEMO_NAMES.map((name, i) => ({
+    id: `demo-pat-${key}-${String(i + 1).padStart(2, '0')}`,
+    name,
+  }))
+}
 
 const APPOINTMENT_TEMPLATES = [
   { hour: 9,  min: 0,  duration: 30, reasonName: 'Allergy Shot',              pi: 0 },
@@ -42,9 +54,21 @@ function makeId(dateStr: string, idx: number, locId: string) {
   return `demo-${dateStr}-${idx}-${locId.slice(-3)}`
 }
 
-function toIso(year: number, month: number, day: number, hour: number, min: number) {
-  // EDT = UTC-4 (April); convert local hour to UTC
-  return new Date(Date.UTC(year, month, day, hour + 4, min, 0)).toISOString()
+/**
+ * Build a local-time ISO string (no timezone offset / Z suffix).
+ * Storing without Z means the time is treated as the practice's local time,
+ * and SQLite string comparison works correctly regardless of server TZ.
+ * month0 is 0-indexed (0 = January).
+ */
+function toLocalIso(year: number, month0: number, day: number, hour: number, min: number): string {
+  return [
+    `${year}`,
+    `-${String(month0 + 1).padStart(2, '0')}`,
+    `-${String(day).padStart(2, '0')}`,
+    `T${String(hour).padStart(2, '0')}`,
+    `:${String(min).padStart(2, '0')}`,
+    ':00',
+  ].join('')
 }
 
 export async function POST(request: NextRequest) {
@@ -70,24 +94,6 @@ export async function POST(request: NextRequest) {
     `
     const LOCATION_IDS = locationRows.map(r => r.id)
 
-    // Fetch all demo patients (from full-seed) plus fallback hardcoded patients
-    let corePatients = FALLBACK_PATIENTS
-    try {
-      const dbDemoPatients = await prisma.$queryRaw<{ id: string; name: string }[]>`
-        SELECT id, name FROM Patient WHERE id LIKE 'demo-pat-%' AND deletedAt IS NULL
-      `
-      if (dbDemoPatients.length > 0) {
-        // Merge: db demo patients first, then fallback for any gaps
-        const seen = new Set(dbDemoPatients.map(p => p.id))
-        corePatients = [
-          ...dbDemoPatients,
-          ...FALLBACK_PATIENTS.filter(p => !seen.has(p.id)),
-        ]
-      }
-    } catch {
-      // If Patient table query fails, fall through to hardcoded list
-    }
-
     for (let d = 0; d < daysToSeed; d++) {
       const date = new Date(today)
       date.setDate(today.getDate() + d)
@@ -101,14 +107,18 @@ export async function POST(request: NextRequest) {
       if (dow === 0 || dow === 6) continue
 
       for (const loc of LOCATION_IDS) {
+        // Per-location patient pool: 20 patients with location-scoped IDs
+        const patients = locPatients(loc)
         for (let i = 0; i < APPOINTMENT_TEMPLATES.length; i++) {
-          const tmpl   = APPOINTMENT_TEMPLATES[i]
-          const patient = corePatients[tmpl.pi % corePatients.length]
-          const id     = makeId(dateStr, i, loc)
+          const tmpl    = APPOINTMENT_TEMPLATES[i]
+          // Cycle through 20 patients (pi was 0-6, now wraps over 20)
+          const patient = patients[tmpl.pi % patients.length]
+          const id      = makeId(dateStr, i, loc)
           const [y2, mo, d2] = dateStr.split('-').map(Number)
-          const startTime = toIso(y2, mo - 1, d2, tmpl.hour, tmpl.min)
+          // Store as local ISO string (no Z) — timezone-safe
+          const startTime = toLocalIso(y2, mo - 1, d2, tmpl.hour, tmpl.min)
           const endMin    = tmpl.min + tmpl.duration
-          const endTime   = toIso(y2, mo - 1, d2, tmpl.hour + Math.floor(endMin / 60), endMin % 60)
+          const endTime   = toLocalIso(y2, mo - 1, d2, tmpl.hour + Math.floor(endMin / 60), endMin % 60)
           const title     = `${tmpl.reasonName} — ${patient.name}`
 
           try {

@@ -24,6 +24,21 @@ const createSchema = z.object({
   createdBy: z.string().max(200).optional(),
 })
 
+/**
+ * Build a local-timezone ISO string (no Z suffix) so SQLite string comparisons
+ * work correctly whether appointments are stored with or without a Z suffix.
+ */
+function toLocalIsoStr(d: Date): string {
+  const y  = d.getFullYear()
+  const mo = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  const h  = String(d.getHours()).padStart(2, '0')
+  const mi = String(d.getMinutes()).padStart(2, '0')
+  const s  = String(d.getSeconds()).padStart(2, '0')
+  const ms = String(d.getMilliseconds()).padStart(3, '0')
+  return `${y}-${mo}-${dd}T${h}:${mi}:${s}.${ms}`
+}
+
 function getWeekRange(date: Date) {
   const d = new Date(date)
   const day = d.getDay() // 0=Sun
@@ -50,7 +65,10 @@ export async function GET(request: NextRequest) {
     const rangeParam = searchParams.get('range') // 'week' | 'month'
     const locationId = searchParams.get('locationId')
     const practiceId = searchParams.get('practiceId')
-    const base = dateParam ? new Date(dateParam) : new Date()
+    // Parse YYYY-MM-DD as LOCAL date (not UTC midnight) to avoid off-by-one day bugs
+    const base = dateParam
+      ? (() => { const [y, m, d] = dateParam.split('-').map(Number); return new Date(y, m - 1, d) })()
+      : new Date()
 
     const { start, end } = rangeParam === 'month'
       ? getMonthRange(base)
@@ -58,13 +76,14 @@ export async function GET(request: NextRequest) {
         ? { start: new Date(base.getFullYear(), base.getMonth(), base.getDate(), 0, 0, 0, 0), end: new Date(base.getFullYear(), base.getMonth(), base.getDate(), 23, 59, 59, 999) }
         : getWeekRange(base)
 
-    const startStr = start.toISOString()
-    const endStr = end.toISOString()
+    // Use local ISO strings (no Z) so comparisons work regardless of how startTime is stored
+    const startStr = toLocalIsoStr(start)
+    const endStr = toLocalIsoStr(end)
 
     let appointments
     if (locationId) {
       appointments = await prisma.$queryRaw`
-        SELECT * FROM IatAppointment
+        SELECT * FROM IATAppointment
         WHERE deletedAt IS NULL
           AND startTime >= ${startStr}
           AND startTime <= ${endStr}
@@ -73,7 +92,7 @@ export async function GET(request: NextRequest) {
       `
     } else if (practiceId) {
       appointments = await prisma.$queryRaw`
-        SELECT * FROM IatAppointment
+        SELECT * FROM IATAppointment
         WHERE deletedAt IS NULL
           AND startTime >= ${startStr}
           AND startTime <= ${endStr}
@@ -82,7 +101,7 @@ export async function GET(request: NextRequest) {
       `
     } else {
       appointments = await prisma.$queryRaw`
-        SELECT * FROM IatAppointment
+        SELECT * FROM IATAppointment
         WHERE deletedAt IS NULL
           AND startTime >= ${startStr}
           AND startTime <= ${endStr}
