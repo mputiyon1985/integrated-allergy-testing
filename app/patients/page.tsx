@@ -34,8 +34,11 @@ export default function PatientsPage() {
   function loadPatients() {
     setLoading(true);
     fetch(`/api/patients${getLocationParam()}`)
-      .then((r) => {
-        if (!r.ok) throw new Error('Failed to load patients');
+      .then(async (r) => {
+        if (!r.ok) {
+          const d = await r.json().catch(() => ({}));
+          throw new Error(`${r.status}: ${d.error ?? 'Failed to load patients'}`);
+        }
         return r.json();
       })
       .then((data) => {
