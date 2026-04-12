@@ -109,10 +109,10 @@ export default function AppointmentsTile({
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                    <span style={{ fontWeight: 600, fontSize: 13, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{appt.patientName ?? appt.title}</span>
                     <span style={{ fontSize: 11, fontWeight: 700, padding: '1px 8px', borderRadius: 999, background: color, color: '#fff', flexShrink: 0 }}>
                       {appt.reasonName ?? appt.type}
                     </span>
-                    <span style={{ fontWeight: 600, fontSize: 13, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{appt.patientName ?? appt.title}</span>
                     {shouldShowLoc && appt.locationId && (
                       <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 999, background: '#f1f5f9', color: '#475569', border: '1px solid #e2e8f0', flexShrink: 0 }}>
                         📍 {LOC_SHORT[appt.locationId] ?? appt.locationId}
