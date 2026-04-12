@@ -94,33 +94,32 @@ export default function AppointmentsTile({
           </div>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           {todayAppts.map(appt => {
             const color = serviceColors[appt.reasonName ?? ''] ?? serviceColors[appt.type] ?? '#64748b';
             return (
               <div key={appt.id}
                 onClick={() => setSelectedAppt(appt)}
-                style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', background: '#fff', borderRadius: 10, borderLeft: `4px solid ${color}`, border: `1.5px solid ${color}20`, cursor: 'pointer', transition: 'box-shadow 0.15s' }}
-                onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.12)')}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 12px', background: '#fff', borderRadius: 8, borderLeft: `3px solid ${color}`, border: `1.5px solid ${color}20`, cursor: 'pointer', transition: 'box-shadow 0.15s' }}
+                onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.10)')}
                 onMouseLeave={e => (e.currentTarget.style.boxShadow = 'none')}
               >
-                <div style={{ fontWeight: 700, fontSize: 13, color, minWidth: 56 }}>
+                <div style={{ fontWeight: 700, fontSize: 12, color, minWidth: 48, flexShrink: 0 }}>
                   {formatApptTime(appt.startTime)}
                 </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 700, fontSize: 14, color: '#111827' }}>{appt.title}</div>
-                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 2, flexWrap: 'wrap' }}>
-                    {appt.patientName && <span style={{ fontSize: 12, color: '#64748b' }}>{appt.patientName}</span>}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, padding: '1px 8px', borderRadius: 999, background: color, color: '#fff', flexShrink: 0 }}>
+                      {appt.reasonName ?? appt.type}
+                    </span>
+                    <span style={{ fontWeight: 600, fontSize: 13, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{appt.patientName ?? appt.title}</span>
                     {shouldShowLoc && appt.locationId && (
-                      <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 7px', borderRadius: 999, background: '#f1f5f9', color: '#475569', border: '1px solid #e2e8f0' }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 999, background: '#f1f5f9', color: '#475569', border: '1px solid #e2e8f0', flexShrink: 0 }}>
                         📍 {LOC_SHORT[appt.locationId] ?? appt.locationId}
                       </span>
                     )}
                   </div>
                 </div>
-                <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 10px', borderRadius: 999, background: color, color: '#fff', border: `1px solid ${color}` }}>
-                  {appt.reasonName ?? appt.type}
-                </span>
                 {appt.patientId && appt.status !== 'checked-in' && appt.status !== 'complete' && (
                   <button
                     onClick={(e) => handleCheckInAppt(appt, e)}
