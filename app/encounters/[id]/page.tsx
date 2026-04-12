@@ -195,7 +195,8 @@ function AddActivityModal({
   useEffect(() => {
     let locId = '';
     try { locId = localStorage.getItem('iat_active_location') ?? ''; } catch {}
-    (() => { let lp = ''; try { const l = localStorage.getItem('iat_active_location'); const p = !l ? localStorage.getItem('iat_active_practice_filter') ?? '' : ''; if (l) lp = `&locationId=${l}`; else if (p) lp = `&practiceId=${p}`; } catch {} return fetch(`/api/nurses?all=1${lp}`); })().then(r => r.ok ? r.json() : []).then(d => {
+    // Use encounterId's location via prop (patientId context) — fallback to localStorage
+    (() => { let lp = ''; try { const l = localStorage.getItem('iat_active_location'); const p = !l ? localStorage.getItem('iat_active_practice_filter') ?? '' : ''; if (l) lp = `&locationId=${l}`; else if (p) lp = `&practiceId=${p}`; } catch {} return fetch(`/api/nurses?all=1${lp}&noLimit=1`); })().then(r => r.ok ? r.json() : []).then(d => {
       const all: (NurseOption & { active?: boolean; locationId?: string | null })[] =
         Array.isArray(d) ? d : (d.nurses ?? []);
       const filtered = locId ? all.filter(n => !n.locationId || n.locationId === locId) : all;
@@ -425,18 +426,22 @@ export default function EncounterDetailPage() {
       if (!r.ok) throw new Error(r.status === 401 ? 'session_expired' : `HTTP ${r.status}`);
       const data = await r.json();
       setEncounter(data);
+      // Use the encounter's own locationId for dropdowns — most accurate
+      if (data?.locationId) loadDropdowns(data.locationId);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       setError(msg === 'session_expired' ? 'Session expired — please log in again' : `Failed to load encounter: ${msg}`);
     }
     setLoading(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   useEffect(() => { loadEncounter(); }, [loadEncounter]);
 
-  // Load doctors, nurses, ICD-10 for dropdowns — location-scoped
+  // Load doctors, nurses, ICD-10 for dropdowns — scoped to encounter's locationId
   const loadDropdowns = useCallback((overrideLocId?: string) => {
     let locId = overrideLocId ?? '';
+    // Fall back to header-selected location only if encounter has no locationId
     if (!locId) try { locId = localStorage.getItem('iat_active_location') ?? ''; } catch {}
     let practiceId = '';
     if (!locId) try { practiceId = localStorage.getItem('iat_active_practice_filter') ?? ''; } catch {}
