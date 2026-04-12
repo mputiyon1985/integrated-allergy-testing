@@ -14,7 +14,7 @@ interface Nurse {
   active: boolean;
 }
 
-const NURSE_TITLE_OPTIONS = ['RN', 'LPN', 'CMA', 'MA'];
+const NURSE_TITLE_OPTIONS = ['RN', 'LPN', 'CMA', 'NP', 'MA'];
 const EMPTY_NURSE_FORM = { name: '', title: '', email: '', phone: '', clinicLocation: '' };
 
 export default function NursesTab() {
@@ -26,6 +26,10 @@ export default function NursesTab() {
   const [form, setForm] = useState({ ...EMPTY_NURSE_FORM });
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
+
+  // Search / filter state
+  const [nurseSearch, setNurseSearch] = useState('');
+  const [nurseTitle, setNurseTitle] = useState('all');
 
   async function loadNurses() {
     setLoading(true); setLoadError(null);
@@ -42,6 +46,16 @@ export default function NursesTab() {
 
   useEffect(() => { loadNurses(); }, []);
 
+  // Filtered list (client-side)
+  const filteredNurses = nurses.filter(n => {
+    const matchSearch = !nurseSearch ||
+      n.name.toLowerCase().includes(nurseSearch.toLowerCase()) ||
+      (n.title?.toLowerCase() ?? '').includes(nurseSearch.toLowerCase()) ||
+      (n.clinicLocation?.toLowerCase() ?? '').includes(nurseSearch.toLowerCase());
+    const matchTitle = nurseTitle === 'all' || n.title === nurseTitle;
+    return matchSearch && matchTitle;
+  });
+
   function openAdd() { setEditNurse(null); setForm({ ...EMPTY_NURSE_FORM }); setFormError(''); setShowModal(true); }
   function openEdit(nurse: Nurse) {
     setEditNurse(nurse);
@@ -54,11 +68,12 @@ export default function NursesTab() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault(); setFormError('');
     if (!form.name.trim()) { setFormError('Name is required'); return; }
+    if (!form.title) { setFormError('Title is required'); return; }
     setSaving(true);
     try {
       const url = editNurse ? `/api/nurses/${editNurse.id}` : '/api/nurses';
       const res = await apiFetch(url, { method: editNurse ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: form.name.trim(), title: form.title || undefined, email: form.email || undefined, phone: form.phone || undefined, clinicLocation: form.clinicLocation || undefined }) });
-      if (!res.ok) { const data = await res.json().catch(() => ({})); throw new Error(data.error ?? `Request failed: ${res.status}`); }
+      if (!res.ok) { const data = await res.json().catch(() => ({})); throw new Error((data as { error?: string }).error ?? `Request failed: ${res.status}`); }
       closeModal(); await loadNurses();
     } catch (e: unknown) { setFormError(e instanceof Error ? e.message : 'Failed to save'); }
     finally { setSaving(false); }
@@ -75,15 +90,59 @@ export default function NursesTab() {
         <div className="card-title" style={{ marginBottom: 0 }}>👩‍⚕️ Nurses</div>
         <button className="btn" onClick={openAdd}>+ Add Nurse</button>
       </div>
+
+      {/* Search + Filter Bar */}
+      <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
+        <input
+          type="text"
+          placeholder="Search by name, title, or location…"
+          value={nurseSearch}
+          onChange={e => setNurseSearch(e.target.value)}
+          style={{
+            flex: 1, minWidth: 180, padding: '7px 12px', fontSize: 13,
+            border: '1px solid #cbd5e1', borderRadius: 8, outline: 'none',
+            boxShadow: 'none', color: '#1e293b',
+          }}
+          onFocus={e => (e.target.style.borderColor = '#0d9488')}
+          onBlur={e => (e.target.style.borderColor = '#cbd5e1')}
+        />
+        <select
+          value={nurseTitle}
+          onChange={e => setNurseTitle(e.target.value)}
+          style={{
+            padding: '7px 12px', fontSize: 13, border: '1px solid #cbd5e1',
+            borderRadius: 8, outline: 'none', color: '#1e293b', background: '#fff',
+            cursor: 'pointer',
+          }}
+        >
+          <option value="all">All Titles</option>
+          {NURSE_TITLE_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
+        </select>
+        {(nurseSearch || nurseTitle !== 'all') && (
+          <button
+            onClick={() => { setNurseSearch(''); setNurseTitle('all'); }}
+            style={{ padding: '7px 12px', fontSize: 12, border: '1px solid #e2e8f0', borderRadius: 8, background: '#f8fafc', color: '#64748b', cursor: 'pointer' }}
+          >
+            Clear
+          </button>
+        )}
+      </div>
+
       {loadError && <div style={{background:'#fef2f2',border:'1px solid #fecaca',borderRadius:8,padding:'12px 16px',marginBottom:16,color:'#b91c1c',fontSize:13}}>🔐 {loadError} <button onClick={() => { setLoadError(null); loadNurses(); }} style={{marginLeft:12,padding:'3px 10px',background:'#b91c1c',color:'#fff',border:'none',borderRadius:6,cursor:'pointer',fontSize:12}}>Retry</button></div>}
       {loading ? (
         <div className="loading-center"><div className="spinner" /><span>Loading nurses…</span></div>
       ) : nurses.length === 0 ? (
         <div className="empty-state"><div className="empty-state-icon">👩‍⚕️</div><div className="empty-state-title">No nurses yet</div><div style={{ marginTop: 16 }}><button className="btn" onClick={openAdd}>Add First Nurse</button></div></div>
+      ) : filteredNurses.length === 0 ? (
+        <div className="empty-state">
+          <div className="empty-state-icon">🔍</div>
+          <div className="empty-state-title">No nurses match your filters</div>
+          <div style={{ marginTop: 12, fontSize: 13, color: '#64748b' }}>Try adjusting your search or filter</div>
+        </div>
       ) : (
         <div className="table-container">
           <table><thead><tr><th>Name</th><th>Title</th><th>Phone</th><th>Email</th><th>Location</th><th>Status</th><th>Actions</th></tr></thead>
-          <tbody>{nurses.map(nurse => (
+          <tbody>{filteredNurses.map(nurse => (
             <tr key={nurse.id}>
               <td><div style={{ fontWeight: 600 }}>{nurse.name}</div></td>
               <td>{nurse.title ?? '—'}</td><td>{nurse.phone ?? '—'}</td><td>{nurse.email ?? '—'}</td><td>{nurse.clinicLocation ?? '—'}</td>
@@ -91,8 +150,14 @@ export default function NursesTab() {
               <td><div className="flex gap-2"><button className="btn btn-sm btn-secondary" onClick={() => openEdit(nurse)}>Edit</button><button className={`btn btn-sm ${nurse.active ? 'btn-danger' : 'btn-secondary'}`} onClick={() => toggleActive(nurse)}>{nurse.active ? 'Deactivate' : 'Activate'}</button></div></td>
             </tr>
           ))}</tbody></table>
+          {(nurseSearch || nurseTitle !== 'all') && (
+            <div style={{ fontSize: 12, color: '#94a3b8', padding: '8px 4px' }}>
+              Showing {filteredNurses.length} of {nurses.length} nurse{nurses.length !== 1 ? 's' : ''}
+            </div>
+          )}
         </div>
       )}
+
       {showModal && (
         <div className="modal-overlay" onClick={closeModal}>
           <div className="modal" onClick={e => e.stopPropagation()}>
@@ -100,15 +165,38 @@ export default function NursesTab() {
             <form onSubmit={handleSubmit}>
               <div className="modal-body">
                 {formError && <div className="alert alert-error" style={{ marginBottom: 16 }}>⚠️ {formError}</div>}
-                <div className="form-group"><label className="form-label">Name <span className="required">*</span></label><input type="text" className="form-input" placeholder="Full name" value={form.name} onChange={e => setField('name', e.target.value)} required /></div>
-                <div className="form-group"><label className="form-label">Title</label><select className="form-input" value={form.title} onChange={e => setField('title', e.target.value)}><option value="">Select…</option>{NURSE_TITLE_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
+                <div className="form-group">
+                  <label className="form-label">Name <span className="required">*</span></label>
+                  <input type="text" className="form-input" placeholder="Full name" value={form.name} onChange={e => setField('name', e.target.value)} required />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Title <span className="required">*</span></label>
+                  <select
+                    className="form-input"
+                    value={form.title}
+                    onChange={e => setField('title', e.target.value)}
+                    required
+                    style={!form.title ? { borderColor: '#f87171' } : {}}
+                  >
+                    <option value="">Select…</option>
+                    {NURSE_TITLE_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                  {!form.title && form.name && (
+                    <div style={{ fontSize: 12, color: '#dc2626', marginTop: 3 }}>Title is required</div>
+                  )}
+                </div>
                 <div className="form-row form-row-2">
                   <div className="form-group"><label className="form-label">Email</label><input type="email" className="form-input" placeholder="nurse@clinic.com" value={form.email} onChange={e => setField('email', e.target.value)} /></div>
                   <div className="form-group"><label className="form-label">Phone</label><input type="tel" className="form-input" placeholder="(555) 555-0100" value={form.phone} onChange={e => setField('phone', e.target.value)} /></div>
                 </div>
                 <div className="form-group"><label className="form-label">Clinic Location</label><input type="text" className="form-input" placeholder="e.g. Main Street Clinic" value={form.clinicLocation} onChange={e => setField('clinicLocation', e.target.value)} /></div>
               </div>
-              <div className="modal-footer"><button type="button" className="btn btn-secondary" onClick={closeModal}>Cancel</button><button type="submit" className="btn" disabled={saving}>{saving ? 'Saving…' : editNurse ? 'Save Changes' : 'Add Nurse'}</button></div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={closeModal}>Cancel</button>
+                <button type="submit" className="btn" disabled={saving || !form.name.trim() || !form.title}>
+                  {saving ? 'Saving…' : editNurse ? 'Save Changes' : 'Add Nurse'}
+                </button>
+              </div>
             </form>
           </div>
         </div>

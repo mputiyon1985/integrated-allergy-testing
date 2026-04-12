@@ -26,10 +26,27 @@ export default function DoctorsTab() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState('');
 
+  // Search / filter state
+  const [doctorSearch, setDoctorSearch] = useState('');
+  const [doctorSpecialty, setDoctorSpecialty] = useState('all');
+
   // Filtered locations based on selected practice
   const filteredLocations = form.practiceId
     ? locations.filter(l => l.practiceId === form.practiceId && l.active)
     : locations.filter(l => l.active);
+
+  // Unique specialties from loaded doctors
+  const specialtyOptions = Array.from(new Set(doctors.map(d => d.specialty).filter(Boolean))) as string[];
+
+  // Filtered list (client-side)
+  const filteredDoctors = doctors.filter(d => {
+    const matchSearch = !doctorSearch ||
+      d.name.toLowerCase().includes(doctorSearch.toLowerCase()) ||
+      (d.specialty?.toLowerCase() ?? '').includes(doctorSearch.toLowerCase()) ||
+      (d.clinicLocation?.toLowerCase() ?? '').includes(doctorSearch.toLowerCase());
+    const matchSpecialty = doctorSpecialty === 'all' || d.specialty === doctorSpecialty;
+    return matchSearch && matchSpecialty;
+  });
 
   async function loadAll() {
     setLoading(true); setLoadError(null);
@@ -91,6 +108,7 @@ export default function DoctorsTab() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault(); setFormError('');
     if (!form.name.trim()) { setFormError('Name is required'); return; }
+    if (!form.specialty.trim()) { setFormError('Specialty is required'); return; }
     setSaving(true);
     try {
       const url = editDoctor ? `/api/doctors/${editDoctor.id}` : '/api/doctors';
@@ -133,6 +151,43 @@ export default function DoctorsTab() {
         <button className="btn" onClick={openAdd}>+ Add Doctor</button>
       </div>
 
+      {/* Search + Filter Bar */}
+      <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
+        <input
+          type="text"
+          placeholder="Search by name, specialty, or location…"
+          value={doctorSearch}
+          onChange={e => setDoctorSearch(e.target.value)}
+          style={{
+            flex: 1, minWidth: 180, padding: '7px 12px', fontSize: 13,
+            border: '1px solid #cbd5e1', borderRadius: 8, outline: 'none',
+            boxShadow: 'none', color: '#1e293b',
+          }}
+          onFocus={e => (e.target.style.borderColor = '#0d9488')}
+          onBlur={e => (e.target.style.borderColor = '#cbd5e1')}
+        />
+        <select
+          value={doctorSpecialty}
+          onChange={e => setDoctorSpecialty(e.target.value)}
+          style={{
+            padding: '7px 12px', fontSize: 13, border: '1px solid #cbd5e1',
+            borderRadius: 8, outline: 'none', color: '#1e293b', background: '#fff',
+            cursor: 'pointer',
+          }}
+        >
+          <option value="all">All Specialties</option>
+          {specialtyOptions.map(s => <option key={s} value={s}>{s}</option>)}
+        </select>
+        {(doctorSearch || doctorSpecialty !== 'all') && (
+          <button
+            onClick={() => { setDoctorSearch(''); setDoctorSpecialty('all'); }}
+            style={{ padding: '7px 12px', fontSize: 12, border: '1px solid #e2e8f0', borderRadius: 8, background: '#f8fafc', color: '#64748b', cursor: 'pointer' }}
+          >
+            Clear
+          </button>
+        )}
+      </div>
+
       {loadError && (
         <div style={{ background:'#fef2f2', border:'1px solid #fecaca', borderRadius:8, padding:'12px 16px', marginBottom:16, color:'#b91c1c', fontSize:13 }}>
           🔐 {loadError}
@@ -149,6 +204,12 @@ export default function DoctorsTab() {
           <div className="empty-state-title">No doctors yet</div>
           <div style={{ marginTop:16 }}><button className="btn" onClick={openAdd}>Add First Doctor</button></div>
         </div>
+      ) : filteredDoctors.length === 0 ? (
+        <div className="empty-state">
+          <div className="empty-state-icon">🔍</div>
+          <div className="empty-state-title">No doctors match your filters</div>
+          <div style={{ marginTop: 12, fontSize: 13, color: '#64748b' }}>Try adjusting your search or filter</div>
+        </div>
       ) : (
         <div className="table-container">
           <table>
@@ -160,7 +221,7 @@ export default function DoctorsTab() {
               </tr>
             </thead>
             <tbody>
-              {doctors.map(doc => (
+              {filteredDoctors.map(doc => (
                 <tr key={doc.id}>
                   <td><div style={{ fontWeight:600 }}>{doc.name}</div></td>
                   <td>{doc.title ?? '—'}</td>
@@ -192,6 +253,11 @@ export default function DoctorsTab() {
               ))}
             </tbody>
           </table>
+          {(doctorSearch || doctorSpecialty !== 'all') && (
+            <div style={{ fontSize: 12, color: '#94a3b8', padding: '8px 4px' }}>
+              Showing {filteredDoctors.length} of {doctors.length} doctor{doctors.length !== 1 ? 's' : ''}
+            </div>
+          )}
         </div>
       )}
 
@@ -224,9 +290,16 @@ export default function DoctorsTab() {
                     </select>
                   </div>
                   <div className="form-group">
-                    <label className="form-label">Specialty</label>
-                    <input type="text" className="form-input" placeholder="e.g. Allergy & Immunology"
-                      value={form.specialty} onChange={e => setField('specialty', e.target.value)} />
+                    <label className="form-label">Specialty <span className="required">*</span></label>
+                    <input
+                      type="text" className="form-input" placeholder="e.g. Allergy & Immunology"
+                      value={form.specialty} onChange={e => setField('specialty', e.target.value)}
+                      required
+                      style={!form.specialty.trim() && form.name ? { borderColor: '#f87171' } : {}}
+                    />
+                    {!form.specialty.trim() && form.name && (
+                      <div style={{ fontSize: 12, color: '#dc2626', marginTop: 3 }}>Specialty is required</div>
+                    )}
                   </div>
                 </div>
 
@@ -296,7 +369,7 @@ export default function DoctorsTab() {
 
               <div className="modal-footer">
                 <button type="button" className="btn btn-secondary" onClick={closeModal}>Cancel</button>
-                <button type="submit" className="btn" disabled={saving}>
+                <button type="submit" className="btn" disabled={saving || !form.name.trim() || !form.specialty.trim()}>
                   {saving ? 'Saving…' : editDoctor ? 'Save Changes' : 'Add Doctor'}
                 </button>
               </div>
