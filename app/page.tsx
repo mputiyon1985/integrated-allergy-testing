@@ -235,58 +235,64 @@ export default function DashboardPage() {
       try {
         const locId = getActiveLocation();
         const practiceId = !locId ? getActivePractice() : '';
-        const locParam = locId ? `&locationId=${locId}` : practiceId ? `&practiceId=${practiceId}` : '';
-        const todayStr = new Date().toISOString().split('T')[0]
-        const [patientsRes, doctorsRes, nursesRes, meRes, encounterCountRes, reasonsRes, apptsRes] = await Promise.allSettled([
-          fetch(`/api/patients${locId ? `?locationId=${locId}` : practiceId ? `?practiceId=${practiceId}` : ''}`),
-          fetch(`/api/doctors?all=1${locId ? `&locationId=${locId}` : ''}`),
-          fetch(`/api/nurses?all=1${locId ? `&locationId=${locId}` : ''}`),
+        const locParam = locId ? `?locationId=${locId}` : practiceId ? `?practiceId=${practiceId}` : '';
+
+        // Single consolidated endpoint — 1 cold start instead of 7
+        const [dashRes, meRes] = await Promise.allSettled([
+          fetch(`/api/dashboard${locParam}`),
           fetch('/api/auth/me'),
-          fetch(`/api/encounters/count?date=${todayStr}${locParam}`),
-          fetch('/api/appointment-reasons'),
-          fetch(`/api/iat-appointments?date=${todayStr}&range=day${locParam}`),
         ]);
-        if (patientsRes.status === 'fulfilled' && patientsRes.value.ok) {
-          const d = await patientsRes.value.json();
-          setPatientCount((Array.isArray(d) ? d : d.patients ?? []).length);
+
+        if (dashRes.status === 'fulfilled' && dashRes.value.ok) {
+          const d = await dashRes.value.json();
+
+          // Patients
+          const patients: {id: string; name: string}[] = (d.patients ?? []).map((p: Record<string, unknown>) => ({
+            id: p.id as string,
+            name: p.name as string ?? `${p.firstName} ${p.lastName}`,
+          }));
+          setPatientCount(patients.length);
+
+          // Doctors
+          const docList: Doctor[] = (d.doctors ?? []).filter((doc: Doctor) => doc.active !== false);
+          setDoctors(docList);
+
+          // Nurses
+          const nurseList: Nurse[] = d.nurses ?? [];
+          setNurses(nurseList);
+          setNurseCount(nurseList.length);
+
+          // Encounter count
+          setEncounterCount(d.encounterCount ?? 0);
+
+          // Service colors from reasons
+          const reasons: {name: string; color: string}[] = d.reasons ?? [];
+          const colorMap: Record<string, string> = {};
+          reasons.forEach((r: {name: string; color: string}) => { colorMap[r.name] = r.color; });
+          setServiceColors(colorMap);
+          setEditApptReasons(reasons.map((r: {id?: string; name: string; color: string}) => ({ id: r.id ?? r.name, name: r.name, color: r.color })));
+
+          // Today's appointments
+          const appts: TodayAppointment[] = d.appointments ?? [];
+          setTodayAppts(appts);
+
+          // Waiting room from dashboard data too
+          const waitEntries = (d.waiting ?? []).map((w: Record<string, unknown>) => ({
+            id: w.id,
+            patientId: w.patientId,
+            patientName: w.patientName ?? 'Unknown',
+            status: w.status,
+            checkedInAt: w.checkInTime,
+            notes: w.notes,
+          }));
+          if (waitEntries.length > 0) setWaiting(waitEntries);
         }
 
-        if (doctorsRes.status === 'fulfilled' && doctorsRes.value.ok) {
-          const d = await doctorsRes.value.json();
-          const list: Doctor[] = Array.isArray(d) ? d : d.doctors ?? [];
-          setDoctors(list.filter(doc => doc.active !== false));
-        }
-
-        if (nursesRes.status === 'fulfilled' && nursesRes.value.ok) {
-          const d = await nursesRes.value.json();
-          const list = Array.isArray(d) ? d : d.nurses ?? [];
-          setNurses(list);
-          setNurseCount(list.filter((n: { active?: boolean }) => n.active !== false).length);
-        }
         if (meRes.status === 'fulfilled' && meRes.value.ok) {
           const d = await meRes.value.json();
           const u = d?.user ?? d;
           setUserName(u?.name ?? '');
           if (u?.role) { setUserRole(u.role); try { localStorage.setItem('iat_user', JSON.stringify(u)); } catch {} }
-        }
-        // Use fast count endpoint — no need to fetch 100 encounters client-side
-        if (encounterCountRes.status === 'fulfilled' && encounterCountRes.value.ok) {
-          const d = await encounterCountRes.value.json();
-          setEncounterCount(d.count ?? 0);
-        } else {
-          setEncounterCount(0);
-        }
-        if (reasonsRes.status === 'fulfilled' && reasonsRes.value.ok) {
-          const d = await reasonsRes.value.json();
-          const reasons: {name: string; color: string}[] = d.reasons ?? [];
-          const colorMap: Record<string, string> = {};
-          reasons.forEach(r => { colorMap[r.name] = r.color; });
-          setServiceColors(colorMap);
-        }
-        if (apptsRes.status === 'fulfilled' && apptsRes.value.ok) {
-          const d = await apptsRes.value.json();
-          const arr: TodayAppointment[] = Array.isArray(d) ? d : [];
-          setTodayAppts(arr);
         }
       } catch {}
       finally { setLoading(false); }
