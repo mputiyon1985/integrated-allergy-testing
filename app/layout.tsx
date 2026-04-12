@@ -6,6 +6,7 @@ import { LocationSelector } from '@/components/LocationSelector';
 import { SidebarLocationSelector } from '@/components/SidebarLocationSelector';
 import { HeaderLocationSelector } from '@/components/HeaderLocationSelector';
 import { apiFetch } from '@/lib/api-fetch';
+import { getAuthUser } from '@/lib/auth-cache';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import DemoRoleBanner from '@/components/DemoRoleBanner';
 
@@ -370,13 +371,11 @@ function AppShell({ children }: { children: React.ReactNode }) {
     if (isAuthPage) return;
     // Read cache immediately for instant display
     try { const c = localStorage.getItem('iat_user'); if (c) setUserName(JSON.parse(c)?.name ?? ''); } catch {}
-    // Refresh from API in background
-    fetch('/api/auth/me').then(r => r.ok ? r.json() : null).then(d => {
-      const u = d?.user ?? d;
+    // Refresh from API in background (uses shared cache — deduped across components)
+    getAuthUser().then(u => {
       if (u?.name) {
         setUserName(u.name);
         if (u?.role) setUserRole(u.role);
-        try { localStorage.setItem('iat_user', JSON.stringify(u)); } catch {}
       }
     }).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps

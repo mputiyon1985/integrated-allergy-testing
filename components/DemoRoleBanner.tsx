@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { getAuthUser } from '@/lib/auth-cache';
 
 interface SessionInfo {
   role: string;
@@ -30,9 +31,8 @@ export default function DemoRoleBanner() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    fetch('/api/auth/me')
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d?.email && DEMO_EMAILS.includes(d.email)) setSession(d); })
+    getAuthUser()
+      .then(d => { if (d?.email && DEMO_EMAILS.includes(d.email)) setSession(d as SessionInfo); })
       .catch(() => {});
   }, []);
 

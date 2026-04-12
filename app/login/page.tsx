@@ -19,6 +19,19 @@ function LoginPageInner() {
   const searchParams = useSearchParams();
   const ssoError = searchParams?.get('error');
 
+  // Pre-warm key serverless functions while user is on login page
+  // This prevents cold-start delays after successful login
+  useEffect(() => {
+    const warm = () => {
+      // Fire and forget — just wake the functions up
+      fetch('/api/ping').catch(() => {});
+    };
+    // Warm immediately + again after 10s in case first hit times out
+    warm();
+    const t = setTimeout(warm, 10000);
+    return () => clearTimeout(t);
+  }, []);
+
   // MFA state
   const [tempToken, setTempToken] = useState('');
   const [mfaCode, setMfaCode] = useState('');

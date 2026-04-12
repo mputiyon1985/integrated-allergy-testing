@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { apiFetch } from '@/lib/api-fetch';
+import { getAuthUser } from '@/lib/auth-cache';
 import type { Layout } from 'react-grid-layout';
 import type { ResponsiveLayouts } from 'react-grid-layout';
 import WaitingRoomTile from '@/components/dashboard/WaitingRoomTile';
@@ -238,9 +239,10 @@ export default function DashboardPage() {
         const locParam = locId ? `?locationId=${locId}` : practiceId ? `?practiceId=${practiceId}` : '';
 
         // Single consolidated endpoint — 1 cold start instead of 7
-        const [dashRes, meRes] = await Promise.allSettled([
+        // auth/me uses shared cache — deduped, won't double-hit if layout already fetched it
+        const [dashRes, meData] = await Promise.allSettled([
           fetch(`/api/dashboard${locParam}`),
-          fetch('/api/auth/me'),
+          getAuthUser(),
         ]);
 
         if (dashRes.status === 'fulfilled' && dashRes.value.ok) {
@@ -288,11 +290,10 @@ export default function DashboardPage() {
           if (waitEntries.length > 0) setWaiting(waitEntries);
         }
 
-        if (meRes.status === 'fulfilled' && meRes.value.ok) {
-          const d = await meRes.value.json();
-          const u = d?.user ?? d;
+        if (meData.status === 'fulfilled' && meData.value) {
+          const u = meData.value;
           setUserName(u?.name ?? '');
-          if (u?.role) { setUserRole(u.role); try { localStorage.setItem('iat_user', JSON.stringify(u)); } catch {} }
+          if (u?.role) setUserRole(u.role);
         }
       } catch {}
       finally { setLoading(false); }

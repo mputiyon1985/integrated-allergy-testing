@@ -3,6 +3,10 @@
     {
       "path": "/api/seed",
       "schedule": "0 5 * * 1-5"
+    },
+    {
+      "path": "/api/ping",
+      "schedule": "*/5 * * * *"
     }
   ]
 }
