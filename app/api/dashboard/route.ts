@@ -87,15 +87,15 @@ export async function GET(req: NextRequest) {
       // Patients (for booking modal)
       locationId
         ? prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
-            `SELECT id, firstName || ' ' || lastName AS name, firstName, lastName, dateOfBirth
-             FROM Patient WHERE active = 1 AND locationId = ?
-             ORDER BY firstName ASC LIMIT 200`,
+            `SELECT id, name, dob, locationId
+             FROM Patient WHERE deletedAt IS NULL AND locationId = ?
+             ORDER BY name ASC LIMIT 200`,
             locationId
           )
         : prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
-            `SELECT id, firstName || ' ' || lastName AS name, firstName, lastName, dateOfBirth
-             FROM Patient WHERE active = 1
-             ORDER BY firstName ASC LIMIT 200`
+            `SELECT id, name, dob, locationId
+             FROM Patient WHERE deletedAt IS NULL
+             ORDER BY name ASC LIMIT 200`
           ),
 
       // Doctors
