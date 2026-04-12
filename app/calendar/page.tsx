@@ -130,6 +130,10 @@ function CalendarInner() {
   const [weekStart, setWeekStart] = useState<Date>(() => startOfWeek(new Date()));
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
+  const [patientSearch, setPatientSearch] = useState('');
+  const [patientResults, setPatientResults] = useState<Patient[]>([]);
+  const [patientSearchLoading, setPatientSearchLoading] = useState(false);
+  const [showPatientDropdown, setShowPatientDropdown] = useState(false);
   const [reasons, setReasons] = useState<AppointmentReason[]>([]);
   const [doctors, setDoctors] = useState<{id:string;name:string;title?:string}[]>([]);
   const [loading, setLoading] = useState(false);
@@ -220,6 +224,8 @@ function CalendarInner() {
       setEditMode(false);
       setTitleManuallyEdited(false);
       setError('');
+      setPatientSearch('');
+      setPatientResults([]);
       setShowModal(true);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -880,15 +886,48 @@ function CalendarInner() {
                     <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 4 }}>
                       Patient <span style={{ color: '#dc2626' }}>*</span>
                     </label>
-                    <select value={form.patientId}
-                      onChange={e => {
-                        const p = patients.find(x => x.id === e.target.value);
-                        setForm(f => ({ ...f, patientId: e.target.value, patientName: p?.name ?? '' }));
-                      }}
-                      style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: `1.5px solid ${!form.patientId && error ? '#fca5a5' : '#e2e8f0'}`, fontSize: 14, boxSizing: 'border-box' }}>
-                      <option value="">— Select patient —</option>
-                      {patients.map(p => <option key={p.id} value={p.id}>{p.name} ({p.patientId})</option>)}
-                    </select>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        type="text"
+                        value={patientSearch}
+                        placeholder="Search by name or patient ID..."
+                        style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: `1.5px solid ${!form.patientId && error ? '#fca5a5' : '#e2e8f0'}`, fontSize: 14, boxSizing: 'border-box' }}
+                        onChange={e => {
+                          const q = e.target.value;
+                          setPatientSearch(q);
+                          setShowPatientDropdown(true);
+                          if (!q.trim()) { setPatientResults([]); setForm(f => ({ ...f, patientId: '', patientName: '' })); return; }
+                          setPatientSearchLoading(true);
+                          const locParam = getLocationParam('&');
+                          fetch(`/api/patients?search=${encodeURIComponent(q)}${locParam}`)
+                            .then(r => r.ok ? r.json() : [])
+                            .then(d => { setPatientResults(Array.isArray(d) ? d.slice(0, 8) : []); setPatientSearchLoading(false); })
+                            .catch(() => setPatientSearchLoading(false));
+                        }}
+                        onFocus={() => { if (patientSearch) setShowPatientDropdown(true); }}
+                        onBlur={() => setTimeout(() => setShowPatientDropdown(false), 200)}
+                      />
+                      {form.patientId && <div style={{ fontSize: 11, color: '#0d9488', marginTop: 3 }}>✓ {form.patientName}</div>}
+                      {showPatientDropdown && (patientResults.length > 0 || patientSearchLoading) && (
+                        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 100, maxHeight: 220, overflowY: 'auto' }}>
+                          {patientSearchLoading && <div style={{ padding: '8px 12px', fontSize: 13, color: '#9ca3af' }}>Searching...</div>}
+                          {patientResults.map(p => (
+                            <div key={p.id}
+                              onMouseDown={() => {
+                                setForm(f => ({ ...f, patientId: p.id, patientName: p.name }));
+                                setPatientSearch(p.name + ' (' + (p.patientId ?? p.id.slice(0,8)) + ')');
+                                setShowPatientDropdown(false);
+                              }}
+                              style={{ padding: '8px 12px', fontSize: 13, cursor: 'pointer', borderBottom: '1px solid #f1f5f9' }}
+                              onMouseEnter={e => (e.currentTarget.style.background = '#f0fdf4')}
+                              onMouseLeave={e => (e.currentTarget.style.background = '')}
+                            >
+                              <strong>{p.name}</strong> <span style={{ color: '#94a3b8', fontSize: 11 }}>{p.patientId}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {/* Reason */}
