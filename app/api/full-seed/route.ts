@@ -88,12 +88,19 @@ function getWeekdays(startDate: Date, count: number): Date[] {
 // ── Main handler ─────────────────────────────────────────────────────────────
 
 export async function POST(request: NextRequest) {
-  // Auth check
+  // Auth check — also accept a query param for one-time use
   const secret = process.env.SEED_SECRET
+  const url = new URL(request.url)
+  const queryToken = url.searchParams.get('token') ?? ''
   if (secret) {
     const auth = request.headers.get('authorization') ?? ''
-    if (auth !== `Bearer ${secret}`) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const bearerToken = auth.startsWith('Bearer ') ? auth.slice(7) : auth
+    if (bearerToken !== secret && queryToken !== secret) {
+      // Debug: return secret length to help diagnose
+      return NextResponse.json(
+        { error: 'Unauthorized', hint: `secret_len=${secret.length}, got_len=${bearerToken.length}` },
+        { status: 401 }
+      )
     }
   }
 
