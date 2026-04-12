@@ -43,12 +43,12 @@ export async function POST(req: NextRequest) {
       const res = NextResponse.json({ ok: true })
       res.cookies.set('iat_session', token, {
         httpOnly: true, secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax', maxAge: 60 * 60 * 24 * 7, path: '/',
+        sameSite: 'strict', maxAge: 60 * 60 * 8, path: '/',
       })
       // Clear the backup cookie
       res.cookies.set('iat_session_backup', '', {
         httpOnly: true, secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax', maxAge: 0, path: '/',
+        sameSite: 'strict', maxAge: 0, path: '/',
       })
       return res
     }
@@ -77,14 +77,14 @@ export async function POST(req: NextRequest) {
     const res = NextResponse.json({ ok: true, role: user.role, name: user.name })
     res.cookies.set('iat_session', token, {
       httpOnly: true, secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax', maxAge: 60 * 60 * 24 * 7, path: '/',
+      sameSite: 'strict', maxAge: 60 * 60 * 8, path: '/',
     })
     // Back up the current admin session so "Back to Admin" can restore it
     const currentSession = req.cookies.get('iat_session')?.value
     if (currentSession) {
       res.cookies.set('iat_session_backup', currentSession, {
         httpOnly: true, secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax', maxAge: 60 * 60 * 24 * 7, path: '/',
+        sameSite: 'strict', maxAge: 60 * 60 * 8, path: '/',
       })
     }
     return res

@@ -195,15 +195,26 @@ function TopBar({ userName, userRole }: { userName: string; userRole: string }) 
     setSwitching(true);
     setMenuOpen(false);
     try {
-      // Use switch-role (not login) so the admin session gets backed up for restore
+      // Use switch-role so admin session is backed up for restore
       const res = await fetch('/api/auth/switch-role', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ targetEmail: email, password: 'demo1234' }),
       });
-      if (res.ok) window.location.href = '/';
-      else { const d = await res.json(); console.error('switch-role error:', d); }
-    } catch (e) { console.error(e); } finally { setSwitching(false); }
+      if (res.ok) {
+        const data = await res.json();
+        // Clear localStorage so stale admin name/role don't flash on reload
+        try { localStorage.removeItem('iat_user'); } catch {}
+        // Small delay to ensure cookie is set before navigate
+        await new Promise(r => setTimeout(r, 100));
+        window.location.href = '/';
+      } else {
+        const d = await res.json().catch(() => ({}));
+        console.error('switch-role failed:', res.status, d);
+        alert('Role switch failed: ' + (d.error ?? res.status));
+        setSwitching(false);
+      }
+    } catch (e) { console.error(e); setSwitching(false); }
   }
 
   async function switchToAdmin() {
