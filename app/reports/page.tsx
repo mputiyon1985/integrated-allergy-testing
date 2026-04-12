@@ -321,15 +321,61 @@ function StaffTab({ data }: { data: ReportData }) {
   );
 }
 
+// ── Allergen Bar Chart ──────────────────────────────────────────────────────
+
+function AllergenBarChart({ rows }: { rows: Record<string, unknown>[] }) {
+  if (!rows || rows.length === 0) {
+    return <div style={{ padding: '32px 0', textAlign: 'center', color: '#94a3b8', fontSize: 14 }}>No allergen data for this period</div>;
+  }
+  const maxVal = Math.max(...rows.map(r => Number(r.positiveCount ?? 0)), 1);
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {rows.map((row, i) => {
+        const tested = Number(row.tested ?? 0);
+        const positive = Number(row.positiveCount ?? 0);
+        const pct = tested > 0 ? Math.round((positive / tested) * 100) : 0;
+        const barPct = Math.round((positive / maxVal) * 100);
+        return (
+          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 160, fontSize: 12, fontWeight: 600, color: '#374151', flexShrink: 0, textAlign: 'right', paddingRight: 8 }}>
+              {String(row.allergen ?? '—')}
+            </div>
+            <div style={{ flex: 1, background: '#f1f5f9', borderRadius: 4, height: 22, overflow: 'hidden', position: 'relative' }}>
+              <div style={{
+                width: `${barPct}%`, height: '100%',
+                background: pct >= 50 ? '#dc2626' : pct >= 25 ? '#f59e0b' : TEAL,
+                borderRadius: 4, transition: 'width 0.3s ease',
+                minWidth: positive > 0 ? 4 : 0,
+              }} />
+            </div>
+            <div style={{ width: 80, fontSize: 12, color: '#64748b', flexShrink: 0 }}>
+              {positive} / {tested} <span style={{ color: '#94a3b8' }}>({pct}%)</span>
+            </div>
+          </div>
+        );
+      })}
+      <div style={{ marginTop: 8, fontSize: 11, color: '#94a3b8', display: 'flex', gap: 16 }}>
+        <span>🟢 &lt;25% positive</span>
+        <span>🟡 25–50% positive</span>
+        <span>🔴 &gt;50% positive</span>
+      </div>
+    </div>
+  );
+}
+
 // ── Testing Tab ───────────────────────────────────────────────────────────────
 
 function TestingTab({ data }: { data: ReportData }) {
   const kpi = data.kpi ?? {};
+  const total = Number(kpi.total ?? 0);
+  const positive = Number(kpi.positiveCount ?? 0);
+  const positiveRate = total > 0 ? `${Math.round((positive / total) * 100)}%` : '—';
   return (
     <>
       <div className="rpt-kpi-row" style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 24 }}>
-        <KpiCard label="Total Tests" value={kpi.total as number ?? 0} />
-        <KpiCard label="Positive Results" value={kpi.positiveCount as number ?? 0} sub="reaction ≥ 2" />
+        <KpiCard label="Total Tests" value={total} />
+        <KpiCard label="Positive Results" value={positive} sub="reaction ≥ 2" />
+        <KpiCard label="Positive Rate" value={positiveRate} sub="of all tests" />
       </div>
 
       <Section title="Tests by Type"
@@ -346,14 +392,7 @@ function TestingTab({ data }: { data: ReportData }) {
 
       <Section title="Most Reactive Allergens (Top 10)"
         onExport={() => exportCSV(data.topAllergens ?? [], 'top-allergens.csv')}>
-        <DataTable
-          columns={[
-            { key: 'allergen', label: 'Allergen' },
-            { key: 'tested', label: 'Times Tested', align: 'right' },
-            { key: 'positiveCount', label: 'Positive Reactions', align: 'right' },
-          ]}
-          rows={data.topAllergens ?? []}
-        />
+        <AllergenBarChart rows={data.topAllergens ?? []} />
       </Section>
 
       <Section title="Testing Volume by Day"
