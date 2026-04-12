@@ -11,21 +11,31 @@ import prisma from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 
+// Core demo patients — always available
+const CORE_PATIENTS = [
+  { id: 'pat-iat-001', name: 'James Thompson' },
+  { id: 'pat-iat-002', name: 'Maria Rodriguez' },
+  { id: 'pat-iat-003', name: 'Linda Chen' },
+  { id: 'pat-iat-004', name: 'David Patel' },
+  { id: 'pat-iat-005', name: 'Sarah Williams' },
+  { id: 'pat-iat-006', name: 'Michael Brown' },
+  { id: 'pat-iat-007', name: 'Mark Putiyon' },
+]
+
 const APPOINTMENT_TEMPLATES = [
-  { hour: 9,  min: 0,  duration: 30, title: 'Allergy Shot — Putiyon',       reasonName: 'Allergy Shot',             type: 'allergy-shot' },
-  { hour: 9,  min: 30, duration: 45, title: 'Allergy Testing — Thompson',    reasonName: 'Allergy Testing',          type: 'allergy-testing' },
-  { hour: 10, min: 0,  duration: 30, title: 'Allergy Shot — Rodriguez',      reasonName: 'Allergy Shot',             type: 'allergy-shot' },
-  { hour: 10, min: 30, duration: 60, title: 'New Patient Intake — Chen',     reasonName: 'New Patient Intake',       type: 'new-patient' },
-  { hour: 11, min: 0,  duration: 30, title: 'Allergy Shot — Williams',       reasonName: 'Allergy Shot',             type: 'allergy-shot' },
-  { hour: 11, min: 30, duration: 45, title: 'Immunotherapy Build-Up — Patel',reasonName: 'Immunotherapy Build-Up',   type: 'immunotherapy' },
-  { hour: 13, min: 0,  duration: 30, title: 'Allergy Shot — Brown',          reasonName: 'Allergy Shot',             type: 'allergy-shot' },
-  { hour: 13, min: 30, duration: 45, title: 'Follow-Up — Kim Putiyon',       reasonName: 'Follow-Up',                type: 'follow-up' },
-  { hour: 14, min: 0,  duration: 60, title: 'Allergy Testing — Smith',       reasonName: 'Allergy Testing',          type: 'allergy-testing' },
-  { hour: 14, min: 30, duration: 30, title: 'Immunotherapy Maintenance — Thompson', reasonName: 'Immunotherapy Maintenance', type: 'immunotherapy' },
-  { hour: 15, min: 0,  duration: 30, title: 'Allergy Shot — Mark Putiyon',   reasonName: 'Allergy Shot',             type: 'allergy-shot' },
-  { hour: 15, min: 30, duration: 45, title: 'Consultation — Jane Smith',     reasonName: 'Consultation',             type: 'consultation' },
-  { hour: 16, min: 0,  duration: 30, title: 'Allergy Shot — Bob Pople',      reasonName: 'Allergy Shot',             type: 'allergy-shot' },
-  { hour: 16, min: 30, duration: 45, title: 'Test Results Review — Rodriguez',reasonName: 'Test Results Review',     type: 'follow-up' },
+  { hour: 9,  min: 0,  duration: 30, reasonName: 'Allergy Shot',             pi: 0 },
+  { hour: 9,  min: 30, duration: 45, reasonName: 'Allergy Testing',          pi: 1 },
+  { hour: 10, min: 0,  duration: 30, reasonName: 'Allergy Shot',             pi: 2 },
+  { hour: 10, min: 30, duration: 60, reasonName: 'New Patient Intake',       pi: 3 },
+  { hour: 11, min: 0,  duration: 30, reasonName: 'Allergy Shot',             pi: 4 },
+  { hour: 11, min: 30, duration: 45, reasonName: 'Immunotherapy Build-Up',   pi: 5 },
+  { hour: 13, min: 0,  duration: 30, reasonName: 'Allergy Shot',             pi: 6 },
+  { hour: 13, min: 30, duration: 45, reasonName: 'Follow-Up',                pi: 0 },
+  { hour: 14, min: 0,  duration: 60, reasonName: 'Allergy Testing',          pi: 1 },
+  { hour: 14, min: 30, duration: 30, reasonName: 'Immunotherapy Maintenance',pi: 2 },
+  { hour: 15, min: 0,  duration: 30, reasonName: 'Allergy Shot',             pi: 3 },
+  { hour: 15, min: 30, duration: 45, reasonName: 'Consultation',             pi: 4 },
+  { hour: 16, min: 0,  duration: 30, reasonName: 'Allergy Shot',             pi: 5 },
 ]
 
 // Locations to seed appointments for
@@ -34,17 +44,13 @@ const LOCATION_IDS = [
   'loc-map-002',
 ]
 
-function makeId(prefix: string, dateStr: string, hour: number, locId: string) {
-  return `seed-${prefix}-${dateStr}-${hour}-${locId.slice(-3)}`
+function makeId(dateStr: string, idx: number, locId: string) {
+  return `demo-${dateStr}-${idx}-${locId.slice(-3)}`
 }
 
-function toIso(dateStr: string, hour: number, min: number) {
-  // dateStr is YYYY-MM-DD, treat as local Eastern time offset
-  // Store as UTC: EDT is UTC-4, EST is UTC-5
-  const offsetHours = 4 // EDT (April)
-  const utcHour = hour + offsetHours
-  const d = new Date(`${dateStr}T${String(utcHour).padStart(2,'0')}:${String(min).padStart(2,'0')}:00.000Z`)
-  return d.toISOString()
+function toIso(year: number, month: number, day: number, hour: number, min: number) {
+  // EDT = UTC-4 (April); convert local hour to UTC
+  return new Date(Date.UTC(year, month, day, hour + 4, min, 0)).toISOString()
 }
 
 export async function POST(request: NextRequest) {
@@ -77,18 +83,23 @@ export async function POST(request: NextRequest) {
       if (dow === 0 || dow === 6) continue
 
       for (const loc of LOCATION_IDS) {
-        for (const tmpl of APPOINTMENT_TEMPLATES) {
-          const id = makeId('appt', dateStr, tmpl.hour, loc)
-          const startTime = toIso(dateStr, tmpl.hour, tmpl.min)
-          const endTime = toIso(dateStr, tmpl.hour, tmpl.min + tmpl.duration)
+        for (let i = 0; i < APPOINTMENT_TEMPLATES.length; i++) {
+          const tmpl = APPOINTMENT_TEMPLATES[i]
+          const patient = CORE_PATIENTS[tmpl.pi]
+          const id = makeId(dateStr, i, loc)
+          const [y, mo, d2] = dateStr.split('-').map(Number)
+          const startTime = toIso(y, mo - 1, d2, tmpl.hour, tmpl.min)
+          const endMin = tmpl.min + tmpl.duration
+          const endTime = toIso(y, mo - 1, d2, tmpl.hour + Math.floor(endMin / 60), endMin % 60)
+          const title = `${tmpl.reasonName} — ${patient.name}`
 
           try {
             await prisma.$executeRaw`
               INSERT OR IGNORE INTO IatAppointment
-                (id, title, reasonName, startTime, endTime, type, status, locationId, createdAt, updatedAt)
+                (id, title, patientId, patientName, reasonName, startTime, endTime, type, status, locationId, createdAt, updatedAt)
               VALUES
-                (${id}, ${tmpl.title}, ${tmpl.reasonName}, ${startTime}, ${endTime},
-                 ${tmpl.type}, 'scheduled', ${loc}, ${now}, ${now})
+                (${id}, ${title}, ${patient.id}, ${patient.name}, ${tmpl.reasonName},
+                 ${startTime}, ${endTime}, 'allergy-test', 'scheduled', ${loc}, ${now}, ${now})
             `
             inserted++
           } catch {
