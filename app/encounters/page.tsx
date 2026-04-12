@@ -70,7 +70,7 @@ function QuickClaimButton({ encounterId }: { encounterId: string }) {
         if (!r.ok) { const d = await r.json(); throw new Error(d.error ?? 'Failed'); }
         return r.json();
       })
-      .then(d => { setClaim(d); setLoading(false); })
+      .then(d => { setClaim(d); setLoading(false); window.dispatchEvent(new CustomEvent('iat-reload-encounters')); })
       .catch(err => { setError(err.message); setLoading(false); });
   }
 
@@ -186,7 +186,11 @@ export default function EncountersPage() {
   useEffect(() => {
     const handler = () => loadEncounters();
     window.addEventListener('locationchange', handler);
-    return () => window.removeEventListener('locationchange', handler);
+    window.addEventListener('iat-reload-encounters', handler);
+    return () => {
+      window.removeEventListener('locationchange', handler);
+      window.removeEventListener('iat-reload-encounters', handler);
+    };
   }, [loadEncounters]);
 
   // ── Stats ──

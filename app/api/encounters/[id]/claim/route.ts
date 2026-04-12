@@ -76,11 +76,21 @@ export async function POST(
       ? new Date(encounter.encounterDate as string).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })
       : ''
 
-    // Provider name
+    // Provider name + NPI from Doctor record if available
     const doctorName = encounter.doctorName as string | undefined
     const renderingProvider = doctorName
       ? (doctorName.startsWith('Dr.') ? doctorName : `Dr. ${doctorName}`)
       : 'Dr. —'
+
+    let renderingProviderNPI = '—'
+    if (encounter.doctorId) {
+      const doctorRows = await prisma.$queryRawUnsafe<Record<string, unknown>[]>(
+        `SELECT npi FROM "Doctor" WHERE id=? AND deletedAt IS NULL`, encounter.doctorId as string
+      )
+      if (doctorRows.length && doctorRows[0].npi) {
+        renderingProviderNPI = doctorRows[0].npi as string
+      }
+    }
 
     const patientDisplayId = (patient.patientId as string | undefined) ?? (patient.id as string).slice(0, 8).toUpperCase()
 
@@ -95,7 +105,7 @@ export async function POST(
       groupNumber: (patient.insuranceGroup as string | undefined) ?? '—',
       dateOfService,
       renderingProvider,
-      renderingProviderNPI: '1234567890',
+      renderingProviderNPI,
       diagnosisCodes,
       cptCodes,
       totalCharges: Math.round(totalCharges * 100) / 100,
@@ -103,6 +113,11 @@ export async function POST(
       claimGeneratedAt: new Date().toISOString(),
       status: 'ready',
     }
+
+    // Auto-mark encounter as billed
+    await prisma.$executeRawUnsafe(
+      `UPDATE "Encounter" SET status='billed', billedAt=datetime('now') WHERE id=?`, id
+    )
 
     return NextResponse.json(claim, { headers: HIPAA_HEADERS })
   } catch (err) {
