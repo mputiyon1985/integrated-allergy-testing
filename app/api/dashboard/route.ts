@@ -10,27 +10,16 @@ import prisma from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 
-function todayRange(locParam?: string | null) {
-  const now = new Date()
-  const y = now.getFullYear(), m = now.getMonth(), d = now.getDate()
-  const start = new Date(y, m, d, 0, 0, 0).toISOString()
-  const end   = new Date(y, m, d, 23, 59, 59).toISOString()
-  return { start, end }
-}
-
 export async function GET(req: NextRequest) {
   const session = await verifySession(req)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { searchParams } = new URL(req.url)
-  const locationId  = searchParams.get('locationId')
-  const practiceId  = searchParams.get('practiceId')
+  const locationId = searchParams.get('locationId')
+  const practiceId = searchParams.get('practiceId')
 
-  const locFilter   = locationId  ? `AND locationId = '${locationId}'`  : practiceId ? `AND practiceId = '${practiceId}'` : ''
-  const locFilterAp = locationId  ? `AND a.locationId = '${locationId}'` : practiceId ? `AND a.practiceId = '${practiceId}'` : ''
-
-  const today = new Date()
-  const y = today.getFullYear(), m = today.getMonth(), d = today.getDate()
+  const now = new Date()
+  const y = now.getFullYear(), m = now.getMonth(), d = now.getDate()
   const dayStart = new Date(y, m, d, 0, 0, 0).toISOString()
   const dayEnd   = new Date(y, m, d, 23, 59, 59).toISOString()
 
@@ -44,76 +33,96 @@ export async function GET(req: NextRequest) {
       nursesRaw,
       reasonsRaw,
     ] = await Promise.all([
-      // Today's appointments
-      prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
-        `SELECT a.id, a.title, a.patientId, a.startTime, a.endTime, a.status, a.type, a.notes,
-                a.locationId, a.reasonId, a.createdBy, a.createdAt, a.updatedAt, a.deletedAt,
-                p.firstName || ' ' || p.lastName AS patientName,
-                ar.name AS reasonName,
-                COALESCE(doc.name, a.createdBy) AS providerName
-         FROM IatAppointment a
-         LEFT JOIN Patient p ON p.id = a.patientId
-         LEFT JOIN AppointmentReason ar ON ar.id = a.reasonId
-         LEFT JOIN Doctor doc ON doc.locationId = a.locationId AND doc.active = 1
-         WHERE a.deletedAt IS NULL
-           AND a.startTime >= ? AND a.startTime <= ?
-           ${locationId ? `AND a.locationId = ?` : practiceId ? `AND a.practiceId = ?` : ''}
-         ORDER BY a.startTime ASC
-         LIMIT 100`,
-        ...[dayStart, dayEnd, ...(locationId ? [locationId] : practiceId ? [practiceId] : [])]
-      ),
 
-      // Waiting room
-      prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
-        `SELECT w.id, w.patientId, w.status, w.checkInTime, w.appointmentId, w.locationId,
-                w.waitMinutes, w.inServiceMinutes, w.notes,
-                p.firstName || ' ' || p.lastName AS patientName,
-                ar.name AS reasonName
-         FROM WaitingRoom w
-         LEFT JOIN Patient p ON p.id = w.patientId
-         LEFT JOIN IatAppointment a ON a.id = w.appointmentId
-         LEFT JOIN AppointmentReason ar ON ar.id = a.reasonId
-         WHERE w.status IN ('waiting','in-service')
-           ${locationId ? `AND w.locationId = ?` : ''}
-         ORDER BY w.checkInTime ASC`,
-        ...(locationId ? [locationId] : [])
-      ),
+      // Today's appointments — IATAppointment has patientName + reasonName inline
+      locationId
+        ? prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+            `SELECT id, title, patientId, patientName, startTime, endTime, status, type,
+                    notes, reasonId, reasonName, providerName, locationId, createdBy, createdAt, updatedAt, deletedAt
+             FROM IATAppointment
+             WHERE deletedAt IS NULL AND startTime >= ? AND startTime <= ? AND locationId = ?
+             ORDER BY startTime ASC LIMIT 100`,
+            dayStart, dayEnd, locationId
+          )
+        : prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+            `SELECT id, title, patientId, patientName, startTime, endTime, status, type,
+                    notes, reasonId, reasonName, providerName, locationId, createdBy, createdAt, updatedAt, deletedAt
+             FROM IATAppointment
+             WHERE deletedAt IS NULL AND startTime >= ? AND startTime <= ?
+             ORDER BY startTime ASC LIMIT 100`,
+            dayStart, dayEnd
+          ),
+
+      // Waiting room — active entries only
+      locationId
+        ? prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+            `SELECT id, patientId, patientName, status, checkedInAt, calledAt,
+                    nurseName, notes, videosWatched, locationId
+             FROM WaitingRoom
+             WHERE status IN ('waiting','in-service') AND locationId = ?
+             ORDER BY checkedInAt ASC`,
+            locationId
+          )
+        : prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+            `SELECT id, patientId, patientName, status, checkedInAt, calledAt,
+                    nurseName, notes, videosWatched, locationId
+             FROM WaitingRoom
+             WHERE status IN ('waiting','in-service')
+             ORDER BY checkedInAt ASC`
+          ),
 
       // Encounter count for today
-      prisma.$queryRawUnsafe<Array<{ cnt: number }>>(
-        `SELECT COUNT(*) as cnt FROM Encounter
-         WHERE encounterDate >= ? AND encounterDate <= ?
-           ${locationId ? `AND locationId = ?` : ''}`,
-        ...[dayStart, dayEnd, ...(locationId ? [locationId] : [])]
-      ),
+      locationId
+        ? prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+            `SELECT COUNT(*) as cnt FROM Encounter
+             WHERE encounterDate >= ? AND encounterDate <= ? AND locationId = ?`,
+            dayStart, dayEnd, locationId
+          )
+        : prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+            `SELECT COUNT(*) as cnt FROM Encounter
+             WHERE encounterDate >= ? AND encounterDate <= ?`,
+            dayStart, dayEnd
+          ),
 
-      // Patients (limited for booking modal)
-      prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
-        `SELECT id, firstName || ' ' || lastName AS name, firstName, lastName, dateOfBirth
-         FROM Patient
-         WHERE active = 1
-           ${locationId ? `AND locationId = ?` : ''}
-         ORDER BY firstName ASC LIMIT 200`,
-        ...(locationId ? [locationId] : [])
-      ),
+      // Patients (for booking modal)
+      locationId
+        ? prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+            `SELECT id, firstName || ' ' || lastName AS name, firstName, lastName, dateOfBirth
+             FROM Patient WHERE active = 1 AND locationId = ?
+             ORDER BY firstName ASC LIMIT 200`,
+            locationId
+          )
+        : prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+            `SELECT id, firstName || ' ' || lastName AS name, firstName, lastName, dateOfBirth
+             FROM Patient WHERE active = 1
+             ORDER BY firstName ASC LIMIT 200`
+          ),
 
       // Doctors
-      prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
-        `SELECT id, name, title, locationId, active FROM Doctor
-         WHERE active = 1
-           ${locationId ? `AND (locationId = ? OR locationId IS NULL)` : ''}
-         ORDER BY name ASC`,
-        ...(locationId ? [locationId] : [])
-      ),
+      locationId
+        ? prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+            `SELECT id, name, title, locationId, active FROM Doctor
+             WHERE active = 1 AND (locationId = ? OR locationId IS NULL)
+             ORDER BY name ASC`,
+            locationId
+          )
+        : prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+            `SELECT id, name, title, locationId, active FROM Doctor
+             WHERE active = 1 ORDER BY name ASC`
+          ),
 
       // Nurses
-      prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
-        `SELECT id, name, title, locationId, active FROM Nurse
-         WHERE active = 1
-           ${locationId ? `AND (locationId = ? OR locationId IS NULL)` : ''}
-         ORDER BY name ASC`,
-        ...(locationId ? [locationId] : [])
-      ),
+      locationId
+        ? prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+            `SELECT id, name, title, locationId, active FROM Nurse
+             WHERE active = 1 AND (locationId = ? OR locationId IS NULL)
+             ORDER BY name ASC`,
+            locationId
+          )
+        : prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+            `SELECT id, name, title, locationId, active FROM Nurse
+             WHERE active = 1 ORDER BY name ASC`
+          ),
 
       // Appointment reasons
       prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
