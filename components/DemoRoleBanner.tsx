@@ -53,12 +53,13 @@ export default function DemoRoleBanner() {
 
   return (
     <div style={{
-      position: 'fixed', bottom: 16, right: 16, zIndex: 9999,
+      position: 'fixed', bottom: 16, right: 16, zIndex: 500,
       background: '#1e1b4b', color: '#fff',
       borderRadius: 12, padding: '10px 16px',
       display: 'flex', alignItems: 'center', gap: 12,
       boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
       fontSize: 13, fontWeight: 500,
+      pointerEvents: 'auto',
     }}>
       <span>🎭 Viewing as <strong>{ROLE_LABELS[session.role] ?? session.role}</strong></span>
       <button
