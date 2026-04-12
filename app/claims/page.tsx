@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api-fetch';
 
 interface ClaimRow {
@@ -84,6 +85,7 @@ function GenerateClaimButton({ row, onBilled }: { row: ClaimRow; onBilled: (id: 
 }
 
 export default function ClaimsPage() {
+  const router = useRouter();
   const [claims, setClaims] = useState<ClaimRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -298,7 +300,8 @@ export default function ClaimsPage() {
                   {filtered.map((row, i) => (
                     <tr
                       key={row.id}
-                      style={{ borderBottom: i < filtered.length - 1 ? '1px solid #f1f5f9' : 'none', transition: 'background 0.1s' }}
+                      onClick={() => router.push(`/encounters/${row.id}`)}
+                      style={{ borderBottom: i < filtered.length - 1 ? '1px solid #f1f5f9' : 'none', transition: 'background 0.1s', cursor: 'pointer' }}
                       onMouseEnter={e => (e.currentTarget.style.background = '#f8fafc')}
                       onMouseLeave={e => (e.currentTarget.style.background = '')}
                     >
@@ -327,11 +330,11 @@ export default function ClaimsPage() {
                       <td style={{ padding: '10px 14px' }}>
                         <StatusBadge status={row.status} />
                       </td>
-                      <td style={{ padding: '10px 14px' }}>
+                      <td style={{ padding: '10px 14px' }} onClick={e => e.stopPropagation()}>
                         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                           <GenerateClaimButton row={row} onBilled={handleBilled} />
                           <a
-                            href={`/encounters?search=${encodeURIComponent(row.patientName)}`}
+                            href={`/encounters/${row.id}`}
                             style={{
                               fontSize: 11, padding: '3px 10px', borderRadius: 6,
                               border: '1px solid #e2e8f0', background: '#f8fafc',
