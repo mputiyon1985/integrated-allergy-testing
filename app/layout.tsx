@@ -173,11 +173,6 @@ function Sidebar({ open, onClose, userName, userRole }: { open: boolean; onClose
           })}
         </div>
 
-        {/* Practice / Location switcher */}
-        <div style={{ margin: '0 8px 8px', padding: '12px 12px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12 }}>
-          {/* Location selector moved to top header */}
-        </div>
-
         <UserCard userName={userName} />
 
         {/* Settings at bottom — above copyright */}
