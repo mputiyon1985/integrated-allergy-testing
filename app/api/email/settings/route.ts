@@ -3,6 +3,7 @@
  * PUT /api/email/settings — saves settings
  */
 import { NextRequest, NextResponse } from 'next/server'
+import { HIPAA_HEADERS } from '@/lib/hipaaHeaders'
 import prisma from '@/lib/db'
 import { requirePermission } from '@/lib/api-permissions'
 

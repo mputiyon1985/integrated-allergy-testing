@@ -115,7 +115,7 @@ export async function POST(request: NextRequest) {
         notes: `${testType} test: ${allergenId}, reaction ${reaction}`,
         performedBy: nurseName || 'Staff',
       }),
-    }).catch(() => {})
+    }).catch((e: unknown) => console.error('[audit]', e))
 
     await prisma.auditLog.create({
       data: {

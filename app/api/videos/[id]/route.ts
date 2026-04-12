@@ -28,7 +28,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         patientId: null,
         details: `Video updated: ${video.title}`,
       },
-    }).catch(() => {})
+    }).catch((e: unknown) => console.error('[audit]', e))
 
     return NextResponse.json({ video })
   } catch (error) {

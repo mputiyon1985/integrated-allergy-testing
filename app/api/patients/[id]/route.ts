@@ -6,9 +6,35 @@
  * @security Requires authenticated session (iat_session cookie via proxy.ts)
  */
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import prisma from '@/lib/db'
 import { HIPAA_HEADERS } from '@/lib/hipaaHeaders'
 import { requirePermission } from '@/lib/api-permissions'
+
+const UpdatePatientSchema = z.object({
+  name: z.string().min(1).max(200).optional(),
+  dob: z.string().optional().nullable(),
+  email: z.string().email().max(200).optional().nullable(),
+  phone: z.string().max(20).optional().nullable(),
+  homePhone: z.string().max(20).optional().nullable(),
+  street: z.string().max(200).optional().nullable(),
+  apt: z.string().max(50).optional().nullable(),
+  city: z.string().max(100).optional().nullable(),
+  state: z.string().max(50).optional().nullable(),
+  zip: z.string().max(20).optional().nullable(),
+  physician: z.string().max(200).optional().nullable(),
+  clinicLocation: z.string().max(200).optional().nullable(),
+  diagnosis: z.string().max(500).optional().nullable(),
+  notes: z.string().max(2000).optional().nullable(),
+  doctorId: z.string().max(100).optional().nullable(),
+  status: z.string().max(50).optional().nullable(),
+  insuranceId: z.string().max(100).optional().nullable(),
+  insuranceProvider: z.string().max(200).optional().nullable(),
+  insuranceGroup: z.string().max(100).optional().nullable(),
+  emergencyName: z.string().max(200).optional().nullable(),
+  emergencyPhone: z.string().max(20).optional().nullable(),
+  emergencyRelation: z.string().max(100).optional().nullable(),
+})
 
 export const dynamic = 'force-dynamic'
 
@@ -96,7 +122,12 @@ export async function PUT(
   if (denied) return denied
   try {
     const { id } = await params
-    const body = await request.json() as Record<string, string | number | boolean | null | undefined>
+    const rawBody = await request.json()
+    const parsed = UpdatePatientSchema.safeParse(rawBody)
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Invalid input', details: parsed.error.flatten() }, { status: 400 })
+    }
+    const body = parsed.data
 
     const {
       name,

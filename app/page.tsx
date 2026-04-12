@@ -158,6 +158,7 @@ export default function DashboardPage() {
   const [editApptPatients, setEditApptPatients] = useState<{id: string; name: string}[]>([]);
   const [editApptReasons, setEditApptReasons] = useState<{id: string; name: string; color: string}[]>([]);
   const [serviceColors, setServiceColors] = useState<Record<string, string>>({});
+  const [locationNames, setLocationNames] = useState<Record<string, string>>({});
   const [savingAppt, setSavingAppt] = useState(false);
   const [deletingApptId, setDeletingApptId] = useState<string | null>(null);
   const [showAddApptModal, setShowAddApptModal] = useState(false);
@@ -237,6 +238,14 @@ export default function DashboardPage() {
         const locId = getActiveLocation();
         const practiceId = !locId ? getActivePractice() : '';
         const locParam = locId ? `?locationId=${locId}` : practiceId ? `?practiceId=${practiceId}` : '';
+
+        // Load location names for display (alongside dashboard data)
+        fetch('/api/locations').then(r => r.ok ? r.json() : {locations:[]}).then(d => {
+          const locs: {id: string; name: string}[] = Array.isArray(d) ? d : (d.locations ?? []);
+          const nameMap: Record<string, string> = {};
+          locs.forEach(l => { nameMap[l.id] = l.name; });
+          setLocationNames(nameMap);
+        }).catch(() => {});
 
         // Single consolidated endpoint — 1 cold start instead of 7
         // auth/me uses shared cache — deduped, won't double-hit if layout already fetched it
@@ -515,6 +524,7 @@ export default function DashboardPage() {
 
   const appointmentsTile = (
     <AppointmentsTile
+              locationNames={locationNames}
       todayAppts={todayAppts}
       serviceColors={serviceColors}
       editMode={editMode}

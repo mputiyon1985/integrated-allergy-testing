@@ -43,7 +43,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         patientId: existing.patientId as string,
         details: 'Encounter marked as billed',
       }
-    }).catch(() => {})
+    }).catch((e: unknown) => console.error('[audit]', e))
 
     return NextResponse.json({ encounter }, { headers: HIPAA_HEADERS })
   } catch (err) {

@@ -53,7 +53,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         patientId: existing.patientId as string,
         details: `Signed by MD: ${body.mdName}`,
       }
-    }).catch(() => {})
+    }).catch((e: unknown) => console.error('[audit]', e))
 
     return NextResponse.json({ encounter }, { headers: HIPAA_HEADERS })
   } catch (err) {

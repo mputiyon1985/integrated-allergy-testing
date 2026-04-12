@@ -7,9 +7,32 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { randomUUID } from 'crypto'
+import { z } from 'zod'
 import prisma from '@/lib/db'
 import { HIPAA_HEADERS } from '@/lib/hipaaHeaders'
 import { requirePermission } from '@/lib/api-permissions'
+
+const CreateActivitySchema = z.object({
+  patientId: z.string().min(1).max(100),
+  activityType: z.string().min(1).max(100).optional(),
+  type: z.string().min(1).max(100).optional(),
+  encounterId: z.string().max(100).optional(),
+  performedBy: z.string().max(200).optional().nullable(),
+  notes: z.string().max(2000).optional().nullable(),
+  soapSubjective: z.string().max(2000).optional().nullable(),
+  subjectiveNotes: z.string().max(2000).optional().nullable(),
+  soapObjective: z.string().max(2000).optional().nullable(),
+  objectiveNotes: z.string().max(2000).optional().nullable(),
+  soapAssessment: z.string().max(2000).optional().nullable(),
+  assessment: z.string().max(2000).optional().nullable(),
+  soapPlan: z.string().max(2000).optional().nullable(),
+  plan: z.string().max(2000).optional().nullable(),
+  linkedTestResultId: z.string().max(100).optional().nullable(),
+  linkedConsentId: z.string().max(100).optional().nullable(),
+  linkedAppointmentId: z.string().max(100).optional().nullable(),
+}).refine(data => data.activityType || data.type, {
+  message: 'activityType (or type) is required',
+})
 
 export const dynamic = 'force-dynamic'
 
@@ -17,7 +40,12 @@ export async function POST(request: NextRequest) {
   const denied = await requirePermission(request, 'encounters_create')
   if (denied) return denied
   try {
-    const body = await request.json() as Record<string, unknown>
+    const rawBody = await request.json()
+    const parsed = CreateActivitySchema.safeParse(rawBody)
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Invalid input', details: parsed.error.flatten() }, { status: 400 })
+    }
+    const body = parsed.data
 
     // Support both activityType (frontend) and type (DB/legacy)
     const actType = (body.activityType ?? body.type) as string | undefined

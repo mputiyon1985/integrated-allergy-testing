@@ -2,6 +2,7 @@
  * GET/PUT/DELETE /api/email/templates/[id]
  */
 import { NextRequest, NextResponse } from 'next/server'
+import { HIPAA_HEADERS } from '@/lib/hipaaHeaders'
 import prisma from '@/lib/db'
 import { requirePermission } from '@/lib/api-permissions'
 

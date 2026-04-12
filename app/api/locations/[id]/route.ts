@@ -91,7 +91,7 @@ export async function PUT(
         patientId: null,
         details: `Location updated: ${rows[0]?.name ?? id}`,
       },
-    }).catch(() => {})
+    }).catch((e: unknown) => console.error('[audit]', e))
 
     return NextResponse.json(rows[0] ?? { id })
   } catch (error) {

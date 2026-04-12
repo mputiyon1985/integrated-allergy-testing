@@ -6,10 +6,19 @@
  *   Staff-facing (GET) and kiosk-facing (POST) endpoint.
  */
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import { DEFAULT_LOCATION_ID } from '@/lib/defaults'
 import prisma from '@/lib/db'
 import { HIPAA_HEADERS } from '@/lib/hipaaHeaders'
 import { verifySession } from '@/lib/auth/session'
+
+const CheckInSchema = z.object({
+  patientId: z.string().min(1).max(100),
+  patientName: z.string().min(1).max(200),
+  notes: z.string().max(500).optional().nullable(),
+  videosWatched: z.number().int().min(0).optional(),
+  locationId: z.string().max(50).optional(),
+})
 
 export const dynamic = 'force-dynamic'
 
@@ -48,12 +57,12 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json() as { patientId?: string; patientName?: string; notes?: string; videosWatched?: number; locationId?: string }
-
-    // Validate required fields
-    if (!body.patientId || !body.patientName) {
-      return NextResponse.json({ error: 'patientId and patientName are required' }, { status: 400, headers: HIPAA_HEADERS })
+    const rawBody = await req.json()
+    const parsedBody = CheckInSchema.safeParse(rawBody)
+    if (!parsedBody.success) {
+      return NextResponse.json({ error: 'Invalid input', details: parsedBody.error.flatten() }, { status: 400, headers: HIPAA_HEADERS })
     }
+    const body = parsedBody.data
 
     // Validate that the patientId actually exists in the database to prevent spoofing
     const patientRows = await prisma.$queryRawUnsafe<Array<{ id: string; name: string }>>(
@@ -101,7 +110,7 @@ export async function POST(req: NextRequest) {
         notes: `Patient checked in via kiosk. Videos watched: ${videosWatched}`,
         performedBy: 'Patient (Kiosk)',
       }),
-    }).catch(() => {})
+    }).catch((e: unknown) => console.error('[audit]', e))
 
     return NextResponse.json({ entry }, { status: 201, headers: HIPAA_HEADERS })
   } catch (err) {

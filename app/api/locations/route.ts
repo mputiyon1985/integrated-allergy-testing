@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
         patientId: null,
         details: `Location created: ${name} (${key})`,
       },
-    }).catch(() => {})
+    }).catch((e: unknown) => console.error('[audit]', e))
 
     return NextResponse.json(rows[0] ?? { id, name, key }, { status: 201 })
   } catch (error) {

@@ -1,4 +1,5 @@
 'use client';
+import PageErrorBoundary from '@/components/PageErrorBoundary';
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiFetch } from '@/lib/api-fetch';

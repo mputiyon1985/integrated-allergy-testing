@@ -6,6 +6,7 @@
  *   Staff-facing endpoint for downloading signed consent records.
  */
 import { NextRequest, NextResponse } from 'next/server'
+import { HIPAA_HEADERS } from '@/lib/hipaaHeaders'
 import prisma from '@/lib/db'
 import { jsPDF } from 'jspdf'
 

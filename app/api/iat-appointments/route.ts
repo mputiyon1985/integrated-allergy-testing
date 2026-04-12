@@ -150,7 +150,7 @@ export async function POST(request: NextRequest) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ patientId: appointment.patientId, type: 'appointment_scheduled', linkedAppointmentId: appointment.id, notes: `Booked: ${appointment.title}`, performedBy: 'Staff' }),
-      }).catch(() => {})
+      }).catch((e: unknown) => console.error('[audit]', e))
     }
 
     prisma.auditLog.create({
@@ -161,7 +161,7 @@ export async function POST(request: NextRequest) {
         patientId: appointment.patientId || null,
         details: `Appointment: ${appointment.title} at ${appointment.startTime}`,
       },
-    }).catch(() => {})
+    }).catch((e: unknown) => console.error('[audit]', e))
 
     return NextResponse.json(appointment, { status: 201 })
   } catch (error) {

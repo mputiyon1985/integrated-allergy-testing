@@ -1,4 +1,5 @@
 'use client';
+import PageErrorBoundary from '@/components/PageErrorBoundary';
 
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';

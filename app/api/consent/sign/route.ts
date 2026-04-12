@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ patientId, type: 'consent_signed', linkedConsentId: record.id, notes: `Signed: ${formId}`, performedBy: 'Patient (Kiosk)' }),
-    }).catch(() => {})
+    }).catch((e: unknown) => console.error('[audit]', e))
 
     await prisma.auditLog.create({
       data: {

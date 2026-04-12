@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
         patientId: null,
         details: `Video created: ${video.title}`,
       },
-    }).catch(() => {})
+    }).catch((e: unknown) => console.error('[audit]', e))
 
     return NextResponse.json(video, { status: 201 })
   } catch (error) {

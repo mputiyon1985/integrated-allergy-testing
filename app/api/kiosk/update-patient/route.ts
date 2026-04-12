@@ -64,7 +64,7 @@ export async function PUT(req: NextRequest) {
         patientId,
         details: `Kiosk updated fields: ${Object.keys(safeUpdates).join(', ')}`,
       },
-    }).catch(() => {})
+    }).catch((e: unknown) => console.error('[audit]', e))
 
     return NextResponse.json({ ok: true }, { headers: HIPAA_HEADERS })
   } catch (err) {

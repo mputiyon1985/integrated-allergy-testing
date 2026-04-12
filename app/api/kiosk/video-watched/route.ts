@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ patientId, type: 'video_education', notes: `Watched video: ${videoId}`, performedBy: 'Patient (Kiosk)' }),
-    }).catch(() => {})
+    }).catch((e: unknown) => console.error('[audit]', e))
 
     return NextResponse.json({ success: true, activity }, { headers: HIPAA_HEADERS });
   } catch (error) {

@@ -100,7 +100,7 @@ export async function POST(req: NextRequest) {
       status, locationId, createdBy
     )
 
-    prisma.auditLog.create({ data: { action: 'ENCOUNTER_CREATED', entity: 'Encounter', entityId: id, patientId, details: `Chief complaint: ${chiefComplaint}` }}).catch(()=>{})
+    prisma.auditLog.create({ data: { action: 'ENCOUNTER_CREATED', entity: 'Encounter', entityId: id, patientId, details: `Chief complaint: ${chiefComplaint}` }}).catch((e: unknown) => console.error('[audit]', e))
     return NextResponse.json({ encounter: { id, patientId, chiefComplaint, status } }, { status: 201, headers: HIPAA_HEADERS })
   } catch (err) { console.error("[api/encounters:POST]", { error: err instanceof Error ? err.message : String(err), timestamp: new Date().toISOString() }); return NextResponse.json({ error: "Failed to create encounter" }, { status: 500 }) }
 }

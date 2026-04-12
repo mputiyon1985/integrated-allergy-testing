@@ -6,25 +6,32 @@
  *   Staff-facing endpoint.
  */
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import prisma from '@/lib/db'
 import { HIPAA_HEADERS } from '@/lib/hipaaHeaders'
 import { requirePermission } from '@/lib/api-permissions'
 
 export const dynamic = 'force-dynamic'
 
-const VALID_STATUSES = ['waiting', 'in-service', 'complete', 'cancelled']
+const UpdateWaitingRoomSchema = z.object({
+  status: z.enum(['waiting', 'in-service', 'complete', 'cancelled']).optional(),
+  nurseName: z.string().max(200).optional(),
+  nurseId: z.string().max(100).optional(),
+  videoAckBy: z.string().max(200).optional(),
+  notes: z.string().max(500).optional().nullable(),
+})
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const denied = await requirePermission(req, 'waiting_room_manage')
   if (denied) return denied
   try {
     const { id } = await params
-    const body = await req.json() as { status?: string; nurseName?: string; nurseId?: string; videoAckBy?: string; notes?: string | null }
-
-    // Validate status if provided
-    if (body.status !== undefined && !VALID_STATUSES.includes(body.status)) {
-      return NextResponse.json({ error: `status must be one of: ${VALID_STATUSES.join(', ')}` }, { status: 400, headers: HIPAA_HEADERS })
+    const rawBody = await req.json()
+    const parsedBody = UpdateWaitingRoomSchema.safeParse(rawBody)
+    if (!parsedBody.success) {
+      return NextResponse.json({ error: 'Invalid input', details: parsedBody.error.flatten() }, { status: 400, headers: HIPAA_HEADERS })
     }
+    const body = parsedBody.data
 
     const now = new Date().toISOString()
 

@@ -2,9 +2,25 @@
  * @file /api/encounter-activities/[id] — Get, update, or soft-delete an encounter activity
  */
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import prisma from '@/lib/db'
 import { HIPAA_HEADERS } from '@/lib/hipaaHeaders'
 import { requirePermission } from '@/lib/api-permissions'
+
+const UpdateActivitySchema = z.object({
+  activityType: z.string().max(100).optional(),
+  type: z.string().max(100).optional(),
+  performedBy: z.string().max(200).optional().nullable(),
+  notes: z.string().max(2000).optional().nullable(),
+  soapSubjective: z.string().max(2000).optional().nullable(),
+  subjectiveNotes: z.string().max(2000).optional().nullable(),
+  soapObjective: z.string().max(2000).optional().nullable(),
+  objectiveNotes: z.string().max(2000).optional().nullable(),
+  soapAssessment: z.string().max(2000).optional().nullable(),
+  assessment: z.string().max(2000).optional().nullable(),
+  soapPlan: z.string().max(2000).optional().nullable(),
+  plan: z.string().max(2000).optional().nullable(),
+})
 
 export const dynamic = 'force-dynamic'
 
@@ -49,7 +65,12 @@ export async function PUT(
 
   const { id } = await params
   try {
-    const body = await req.json() as Record<string, unknown>
+    const rawBody = await req.json()
+    const parsed = UpdateActivitySchema.safeParse(rawBody)
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Invalid input', details: parsed.error.flatten() }, { status: 400 })
+    }
+    const body = parsed.data as Record<string, unknown>
     const setClauses: string[] = []
     const values: unknown[] = []
 

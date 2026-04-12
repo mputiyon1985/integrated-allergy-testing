@@ -64,7 +64,7 @@ export async function PUT(
 
     prisma.auditLog.create({
       data: { action: 'APPOINTMENT_UPDATED', entity: 'IATAppointment', entityId: id, patientId: null, details: 'Appointment updated' },
-    }).catch(() => {})
+    }).catch((e: unknown) => console.error('[audit]', e))
 
     return NextResponse.json({ id })
   } catch (error) {
@@ -89,7 +89,7 @@ export async function DELETE(
 
     prisma.auditLog.create({
       data: { action: 'APPOINTMENT_DELETED', entity: 'IATAppointment', entityId: id, patientId: null, details: 'Appointment deleted' },
-    }).catch(() => {})
+    }).catch((e: unknown) => console.error('[audit]', e))
 
     return NextResponse.json({ ok: true })
   } catch (error) {

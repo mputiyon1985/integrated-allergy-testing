@@ -18,6 +18,13 @@ export const dynamic = 'force-dynamic'
 
 // Simple in-memory rate limiter (resets on server restart — good enough for edge)
 export const loginAttempts = new Map<string, { count: number; resetAt: number }>()
+// Cleanup stale entries every 15 minutes to prevent memory leak
+setInterval(() => {
+  const now = Date.now()
+  for (const [ip, entry] of loginAttempts.entries()) {
+    if (now > entry.resetAt) loginAttempts.delete(ip)
+  }
+}, 15 * 60 * 1000)
 const MAX_ATTEMPTS = 5
 const WINDOW_MS = 15 * 60 * 1000 // 15 minutes
 

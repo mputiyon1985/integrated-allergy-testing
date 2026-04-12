@@ -18,20 +18,8 @@ interface TodayAppointment {
   locationName?: string | null;
 }
 
-// Short display names for locations
-const LOC_SHORT: Record<string, string> = {
-  'loc-iat-001': 'MAP Dumfries',
-  'loc-map-002': 'MAP Woodbridge',
-  'loc-map-003': 'MAP Stafford',
-  'loc-map-004': 'MAP Fredericksburg',
-  'loc-nvaa-001': 'NVAA Fairfax',
-  'loc-nvaa-002': 'NVAA Arlington',
-  'loc-nvaa-003': 'NVAA Reston',
-  'loc-nvaa-004': 'NVAA Tysons',
-  'loc-caac-001': 'CAAC Bethesda',
-  'loc-caac-002': 'CAAC Silver Spring',
-  'loc-caac-003': 'CAAC Rockville',
-}
+// Location display names — passed as prop from parent (loaded from /api/locations)
+// Fallback uses locationId if name not available
 
 interface AppointmentsTileProps {
   todayAppts: TodayAppointment[];
@@ -43,6 +31,7 @@ interface AppointmentsTileProps {
   setSelectedAppt: (appt: TodayAppointment | null) => void;
   setShowAddApptModal: (show: boolean) => void;
   showLocationBadge?: boolean; // show location tag when viewing all locations
+  locationNames?: Record<string, string>; // {locationId: displayName} from API
 }
 
 function formatApptTime(iso: string) {
@@ -63,6 +52,7 @@ export default function AppointmentsTile({
   setSelectedAppt,
   setShowAddApptModal,
   showLocationBadge = false,
+  locationNames = {},
 }: AppointmentsTileProps) {
   // Auto-detect: show location badge when appointments span multiple locations
   const uniqueLocs = new Set(todayAppts.map(a => a.locationId).filter(Boolean));
@@ -115,7 +105,7 @@ export default function AppointmentsTile({
                     </span>
                     {shouldShowLoc && appt.locationId && (
                       <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 999, background: '#f1f5f9', color: '#475569', border: '1px solid #e2e8f0', flexShrink: 0 }}>
-                        📍 {LOC_SHORT[appt.locationId] ?? appt.locationId}
+                        📍 {(locationNames[appt.locationId] ?? appt.locationId?.split('-').slice(-2).join(' ').toUpperCase() ?? appt.locationId) ?? appt.locationId}
                       </span>
                     )}
                   </div>

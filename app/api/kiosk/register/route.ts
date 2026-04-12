@@ -9,9 +9,21 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { HIPAA_HEADERS } from '@/lib/hipaaHeaders';
 
+const kioskAttempts = new Map<string, { count: number; resetAt: number }>()
+function checkKioskLimit(ip: string): boolean {
+  const now = Date.now()
+  const entry = kioskAttempts.get(ip)
+  if (!entry || now > entry.resetAt) { kioskAttempts.set(ip, { count: 1, resetAt: now + 60 * 60 * 1000 }); return true }
+  if (entry.count >= 20) return false // max 20 new patients per IP per hour
+  entry.count++; return true
+}
+
+
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
+  const ip = request.headers.get('x-forwarded-for') || 'unknown'
+  if (!checkKioskLimit(ip)) return NextResponse.json({ error: 'Too many registrations. Please wait before trying again.' }, { status: 429 })
   try {
     const body = await request.json() as {
       firstName?: string;

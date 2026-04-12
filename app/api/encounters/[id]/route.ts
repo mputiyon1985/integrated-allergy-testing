@@ -1,7 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import prisma from '@/lib/db'
 import { HIPAA_HEADERS } from '@/lib/hipaaHeaders'
 import { requirePermission } from '@/lib/api-permissions'
+
+const UpdateEncounterSchema = z.object({
+  chiefComplaint: z.string().max(500).optional(),
+  subjectiveNotes: z.string().max(5000).optional(),
+  objectiveNotes: z.string().max(5000).optional(),
+  assessment: z.string().max(5000).optional(),
+  plan: z.string().max(5000).optional(),
+  status: z.string().max(50).optional(),
+  doctorId: z.string().max(100).optional().nullable(),
+  doctorName: z.string().max(200).optional().nullable(),
+  nurseId: z.string().max(100).optional().nullable(),
+  nurseName: z.string().max(200).optional().nullable(),
+  appointmentId: z.string().max(100).optional().nullable(),
+  followUpDays: z.number().int().min(0).max(365).optional().nullable(),
+  encounterDate: z.string().optional(),
+})
 export const dynamic = 'force-dynamic'
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -47,7 +64,12 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   if (denied) return denied
   try {
     const { id } = await params
-    const body = await req.json() as Record<string, unknown>
+    const rawBody = await req.json()
+    const parsed = UpdateEncounterSchema.safeParse(rawBody)
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Invalid input', details: parsed.error.flatten() }, { status: 400 })
+    }
+    const body = parsed.data as Record<string, unknown>
 
     const setClauses: string[] = []
     const values: unknown[] = []
@@ -90,7 +112,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     )
     const encounter = updatedRows[0] ?? null
 
-    prisma.auditLog.create({ data: { action: 'ENCOUNTER_UPDATED', entity: 'Encounter', entityId: id, patientId: encounter?.patientId as string ?? '' }}).catch(()=>{})
+    prisma.auditLog.create({ data: { action: 'ENCOUNTER_UPDATED', entity: 'Encounter', entityId: id, patientId: encounter?.patientId as string ?? '' }}).catch((e: unknown) => console.error('[audit]', e))
     return NextResponse.json({ encounter }, { headers: HIPAA_HEADERS })
   } catch (err) { console.error(err); return NextResponse.json({ error: 'Failed to update encounter' }, { status: 500 }) }
 }
@@ -107,7 +129,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
       `UPDATE Encounter SET deletedAt=CURRENT_TIMESTAMP, updatedAt=CURRENT_TIMESTAMP WHERE id=?`,
       id
     )
-    prisma.auditLog.create({ data: { action: 'ENCOUNTER_DELETED', entity: 'Encounter', entityId: id, patientId }}).catch(()=>{})
+    prisma.auditLog.create({ data: { action: 'ENCOUNTER_DELETED', entity: 'Encounter', entityId: id, patientId }}).catch((e: unknown) => console.error('[audit]', e))
     return NextResponse.json({ ok: true })
   } catch (err) { console.error(err); return NextResponse.json({ error: 'Failed to delete encounter' }, { status: 500 }) }
 }

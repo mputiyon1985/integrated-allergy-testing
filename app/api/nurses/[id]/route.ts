@@ -77,7 +77,7 @@ export async function PUT(
         patientId: null,
         details: `Nurse updated: ${rows[0]?.name ?? id}`,
       },
-    }).catch(() => {})
+    }).catch((e: unknown) => console.error('[audit]', e))
 
     return NextResponse.json(rows[0] ?? { id })
   } catch (error) {
@@ -112,7 +112,7 @@ export async function DELETE(
         patientId: null,
         details: `Nurse deleted: ${existingRows[0].name as string}`,
       },
-    }).catch(() => {})
+    }).catch((e: unknown) => console.error('[audit]', e))
 
     return NextResponse.json({ success: true })
   } catch (error) {

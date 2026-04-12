@@ -85,7 +85,7 @@ export async function GET(req: NextRequest) {
         performedBy: staffUser.name,
         details: `Azure AD SSO login: ${email}`,
       },
-    }).catch(() => {})
+    }).catch((e: unknown) => console.error('[audit]', e))
 
     return response
   } catch (err) {

@@ -12,6 +12,12 @@ import { signSession } from '@/lib/auth/session'
 import { log } from '@/lib/audit'
 
 const mfaAttempts = new Map<string, { count: number; resetAt: number }>()
+setInterval(() => {
+  const now = Date.now()
+  for (const [ip, entry] of mfaAttempts.entries()) {
+    if (now > entry.resetAt) mfaAttempts.delete(ip)
+  }
+}, 15 * 60 * 1000)
 function checkMfaRateLimit(ip: string): boolean {
   const now = Date.now()
   const entry = mfaAttempts.get(ip)
