@@ -195,13 +195,15 @@ function TopBar({ userName, userRole }: { userName: string; userRole: string }) 
     setSwitching(true);
     setMenuOpen(false);
     try {
-      const res = await fetch('/api/auth/login', {
+      // Use switch-role (not login) so the admin session gets backed up for restore
+      const res = await fetch('/api/auth/switch-role', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password: 'demo1234' }),
+        body: JSON.stringify({ targetEmail: email, password: 'demo1234' }),
       });
       if (res.ok) window.location.href = '/';
-    } catch {} finally { setSwitching(false); }
+      else { const d = await res.json(); console.error('switch-role error:', d); }
+    } catch (e) { console.error(e); } finally { setSwitching(false); }
   }
 
   async function switchToAdmin() {
