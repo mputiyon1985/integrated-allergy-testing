@@ -4,6 +4,7 @@ import './globals.css';
 import Link from 'next/link';
 import { LocationSelector } from '@/components/LocationSelector';
 import { SidebarLocationSelector } from '@/components/SidebarLocationSelector';
+import { HeaderLocationSelector } from '@/components/HeaderLocationSelector';
 import { apiFetch } from '@/lib/api-fetch';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import DemoRoleBanner from '@/components/DemoRoleBanner';
@@ -174,7 +175,7 @@ function Sidebar({ open, onClose, userName, userRole }: { open: boolean; onClose
 
         {/* Practice / Location switcher */}
         <div style={{ margin: '0 8px 8px', padding: '12px 12px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12 }}>
-          <SidebarLocationSelector />
+          {/* Location selector moved to top header */}
         </div>
 
         <UserCard userName={userName} />
@@ -205,51 +206,168 @@ function Sidebar({ open, onClose, userName, userRole }: { open: boolean; onClose
   );
 }
 
-function TopBar({ userName }: { userName: string }) {
+const DEMO_ROLES = [
+  { label: '👨‍⚕️ Provider',       email: 'demo.provider@iat-demo.com' },
+  { label: '💉 Clinical Staff',  email: 'demo.nurse@iat-demo.com' },
+  { label: '🗓 Front Desk',      email: 'demo.frontdesk@iat-demo.com' },
+  { label: '💳 Billing',         email: 'demo.billing@iat-demo.com' },
+  { label: '🏢 Office Manager',  email: 'demo.manager@iat-demo.com' },
+];
+
+function TopBar({ userName, userRole }: { userName: string; userRole: string }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [switching, setSwitching] = useState(false);
+
+  async function switchToRole(email: string) {
+    setSwitching(true);
+    setMenuOpen(false);
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password: 'demo1234' }),
+      });
+      if (res.ok) window.location.href = '/';
+    } catch {} finally { setSwitching(false); }
+  }
+
+  async function switchToAdmin() {
+    setSwitching(true);
+    setMenuOpen(false);
+    try {
+      const res = await fetch('/api/auth/switch-role', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ returnToAdmin: true }),
+      });
+      if (res.ok) window.location.href = '/';
+    } catch {} finally { setSwitching(false); }
+  }
+
+  const isAdmin = userRole === 'admin';
+  const isDemo = ['provider','clinical_staff','front_desk','billing','office_manager'].includes(userRole);
 
   return (
     <div style={{
-      position: 'sticky',
-      top: 0,
-      zIndex: 200,
-      background: '#fff',
-      borderBottom: '1px solid #e2e8f0',
-      height: 48,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      padding: '0 24px',
+      position: 'sticky', top: 0, zIndex: 200,
+      background: '#fff', borderBottom: '1px solid #e2e8f0',
+      height: 48, display: 'flex', alignItems: 'center',
+      justifyContent: 'space-between', padding: '0 24px',
     }}>
-      {/* Location managed via sidebar */}
       <div />
 
-      {/* Right: User name */}
-      {userName && (
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          fontSize: 13,
-          color: '#374151',
-          fontWeight: 500,
-        }}>
-          <div style={{
-            width: 28,
-            height: 28,
-            borderRadius: '50%',
-            background: '#0d9488',
-            color: '#fff',
-            fontWeight: 700,
-            fontSize: 12,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}>
-            {userName.charAt(0).toUpperCase()}
+      {/* Right side: Location breadcrumb + divider + user card */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        {/* Location breadcrumb */}
+        <HeaderLocationSelector />
+
+        {/* Divider */}
+        <div style={{ width: 1, height: 24, background: '#e2e8f0' }} />
+
+        {/* User card with role switcher */}
+        {userName && (
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={() => setMenuOpen(v => !v)}
+              disabled={switching}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                fontSize: 13, color: '#374151', fontWeight: 500,
+                background: 'none', border: 'none', cursor: 'pointer',
+                padding: '4px 8px', borderRadius: 6,
+              }}
+            >
+              <div style={{
+                width: 28, height: 28, borderRadius: '50%',
+                background: isDemo ? '#7c3aed' : '#0d9488',
+                color: '#fff', fontWeight: 700, fontSize: 12,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                {switching ? '…' : userName.charAt(0).toUpperCase()}
+              </div>
+              <span>{userName}</span>
+              <span style={{ color: '#94a3b8', fontSize: 11 }}>▾</span>
+            </button>
+
+            {/* Dropdown menu */}
+            {menuOpen && (
+              <div
+                style={{
+                  position: 'absolute', top: '100%', right: 0, marginTop: 4,
+                  background: '#fff', border: '1px solid #e2e8f0', borderRadius: 10,
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.12)', minWidth: 200, zIndex: 999,
+                  overflow: 'hidden',
+                }}
+                onMouseLeave={() => setMenuOpen(false)}
+              >
+                {/* Current user info */}
+                <div style={{ padding: '10px 14px', borderBottom: '1px solid #f1f5f9', background: '#f8fafc' }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#1f2937' }}>{userName}</div>
+                  <div style={{ fontSize: 11, color: '#6b7280', textTransform: 'capitalize' }}>{userRole?.replace('_', ' ')}</div>
+                </div>
+
+                {/* Role switcher — only for admin or demo roles */}
+                {(isAdmin || isDemo) && (
+                  <>
+                    <div style={{ padding: '6px 14px 4px', fontSize: 10, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      🎭 Preview as role
+                    </div>
+                    {DEMO_ROLES.map(r => (
+                      <button
+                        key={r.email}
+                        onClick={() => switchToRole(r.email)}
+                        style={{
+                          width: '100%', textAlign: 'left', padding: '7px 14px',
+                          background: 'none', border: 'none', cursor: 'pointer',
+                          fontSize: 13, color: '#374151',
+                        }}
+                        onMouseEnter={e => (e.currentTarget.style.background = '#f0fdf4')}
+                        onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                      >
+                        {r.label}
+                      </button>
+                    ))}
+                    {isDemo && (
+                      <button
+                        onClick={switchToAdmin}
+                        style={{
+                          width: '100%', textAlign: 'left', padding: '7px 14px',
+                          background: 'none', border: 'none', cursor: 'pointer',
+                          fontSize: 13, color: '#dc2626', fontWeight: 600,
+                        }}
+                        onMouseEnter={e => (e.currentTarget.style.background = '#fef2f2')}
+                        onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                      >
+                        🔑 Return to Admin
+                      </button>
+                    )}
+                    <div style={{ height: 1, background: '#f1f5f9', margin: '4px 0' }} />
+                  </>
+                )}
+
+                {/* Logout */}
+                <button
+                  onClick={async () => {
+                    setMenuOpen(false);
+                    try { localStorage.removeItem('iat_user'); localStorage.removeItem('iat_active_location'); } catch {}
+                    await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+                    window.location.href = '/login';
+                  }}
+                  style={{
+                    width: '100%', textAlign: 'left', padding: '8px 14px',
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    fontSize: 13, color: '#6b7280',
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.background = '#f9fafb')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                >
+                  🚪 Sign out
+                </button>
+              </div>
+            )}
           </div>
-          <span>{userName}</span>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
@@ -299,7 +417,7 @@ function AppShell({ children }: { children: React.ReactNode }) {
       <button className="sidebar-toggle" onClick={() => setSidebarOpen((v) => !v)} aria-label="Toggle navigation">☰</button>
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} userName={userName} userRole={userRole} />
       <div className="main-content">
-        <TopBar userName={userName} />
+        <TopBar userName={userName} userRole={userRole} />
         {children}
       </div>
     </div>
