@@ -434,29 +434,49 @@ export default function EncounterDetailPage() {
 
   useEffect(() => { loadEncounter(); }, [loadEncounter]);
 
-  // Load doctors, nurses, ICD-10 for dropdowns
-  useEffect(() => {
-    let locId = '';
-    try { locId = localStorage.getItem('iat_active_location') ?? ''; } catch {}
+  // Load doctors, nurses, ICD-10 for dropdowns — location-scoped
+  const loadDropdowns = useCallback((overrideLocId?: string) => {
+    let locId = overrideLocId ?? '';
+    if (!locId) try { locId = localStorage.getItem('iat_active_location') ?? ''; } catch {}
+    let practiceId = '';
+    if (!locId) try { practiceId = localStorage.getItem('iat_active_practice_filter') ?? ''; } catch {}
+    const locParam = locId ? `&locationId=${locId}` : practiceId ? `&practiceId=${practiceId}` : '';
 
-    (() => { let lp = ''; try { const l = localStorage.getItem('iat_active_location'); const p = !l ? localStorage.getItem('iat_active_practice_filter') ?? '' : ''; if (l) lp = `&locationId=${l}`; else if (p) lp = `&practiceId=${p}`; } catch {} return fetch(`/api/doctors?all=1${lp}`); })().then(r => r.ok ? r.json() : { doctors: [] }).then(d => {
-      const all: (DoctorOption & { active?: boolean; locationId?: string | null })[] =
-        Array.isArray(d) ? d : (d.doctors ?? []);
-      const filtered = locId ? all.filter(x => !x.locationId || x.locationId === locId) : all;
-      setDoctors(filtered.filter(x => x.active !== false));
-    }).catch(() => {});
+    fetch(`/api/doctors?all=1${locParam}`)
+      .then(r => r.ok ? r.json() : { doctors: [] })
+      .then(d => {
+        const all: (DoctorOption & { active?: boolean; locationId?: string | null })[] =
+          Array.isArray(d) ? d : (d.doctors ?? []);
+        // Filter to this location; always include staff with no locationId set (global staff)
+        const filtered = locId ? all.filter(x => !x.locationId || x.locationId === locId) : all;
+        setDoctors(filtered.filter(x => x.active !== false));
+      }).catch(() => {});
 
-    (() => { let lp = ''; try { const l = localStorage.getItem('iat_active_location'); const p = !l ? localStorage.getItem('iat_active_practice_filter') ?? '' : ''; if (l) lp = `&locationId=${l}`; else if (p) lp = `&practiceId=${p}`; } catch {} return fetch(`/api/nurses?all=1${lp}`); })().then(r => r.ok ? r.json() : []).then(d => {
-      const all: (NurseOption & { active?: boolean; locationId?: string | null })[] =
-        Array.isArray(d) ? d : (d.nurses ?? []);
-      const filtered = locId ? all.filter(x => !x.locationId || x.locationId === locId) : all;
-      setNurses(filtered.filter(x => x.active !== false));
-    }).catch(() => {});
+    fetch(`/api/nurses?all=1${locParam}`)
+      .then(r => r.ok ? r.json() : [])
+      .then(d => {
+        const all: (NurseOption & { active?: boolean; locationId?: string | null })[] =
+          Array.isArray(d) ? d : (d.nurses ?? []);
+        const filtered = locId ? all.filter(x => !x.locationId || x.locationId === locId) : all;
+        setNurses(filtered.filter(x => x.active !== false));
+      }).catch(() => {});
 
-    fetch('/api/icd10-codes?all=true').then(r => r.ok ? r.json() : { codes: [] }).then(d => {
-      setIcd10Options(d.codes ?? []);
-    }).catch(() => {});
+    fetch('/api/icd10-codes?all=true')
+      .then(r => r.ok ? r.json() : { codes: [] })
+      .then(d => setIcd10Options(d.codes ?? []))
+      .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    loadDropdowns();
+    // Re-load if location changes while on this page
+    const onLocChange = (e: Event) => {
+      const detail = (e as CustomEvent<{ locationId?: string }>).detail ?? {};
+      loadDropdowns(detail.locationId ?? '');
+    };
+    window.addEventListener('locationchange', onLocChange);
+    return () => window.removeEventListener('locationchange', onLocChange);
+  }, [loadDropdowns]);
 
   async function patchEncounter(fields: Partial<Encounter>) {
     if (!encounter) return;
