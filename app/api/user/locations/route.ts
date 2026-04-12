@@ -6,6 +6,7 @@
  * @security Requires authenticated session
  */
 import { NextRequest, NextResponse } from 'next/server'
+import { DEFAULT_LOCATION_ID } from '@/lib/defaults'
 import prisma from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
@@ -69,7 +70,7 @@ export async function GET(req: NextRequest) {
       `SELECT defaultLocationId FROM StaffUser WHERE id=? LIMIT 1`,
       userId
     )
-    const defaultLocationId = (userRows[0]?.defaultLocationId as string | null) ?? locations[0]?.id ?? 'loc-iat-001'
+    const defaultLocationId = (userRows[0]?.defaultLocationId as string | null) ?? locations[0]?.id ?? DEFAULT_LOCATION_ID
 
     // Derive practice from the default location (or first location)
     const defaultLoc = locations.find((l) => l.id === defaultLocationId) ?? locations[0]

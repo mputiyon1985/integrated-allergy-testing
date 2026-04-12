@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { DEFAULT_LOCATION_ID } from '@/lib/defaults'
 import { getServerSession } from 'next-auth'
 import prisma from '@/lib/db'
 import { signSession } from '@/lib/auth/session'
@@ -62,7 +63,7 @@ export async function GET(req: NextRequest) {
       email: staffUser.email,
       role: staffUser.role,
       name: staffUser.name,
-      defaultLocationId: staffUser.defaultLocationId ?? 'loc-iat-001',
+      defaultLocationId: staffUser.defaultLocationId ?? DEFAULT_LOCATION_ID,
       provider: 'azure',
     })
 

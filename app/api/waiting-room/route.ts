@@ -6,6 +6,7 @@
  *   Staff-facing (GET) and kiosk-facing (POST) endpoint.
  */
 import { NextRequest, NextResponse } from 'next/server'
+import { DEFAULT_LOCATION_ID } from '@/lib/defaults'
 import prisma from '@/lib/db'
 import { HIPAA_HEADERS } from '@/lib/hipaaHeaders'
 import { verifySession } from '@/lib/auth/session'
@@ -79,8 +80,8 @@ export async function POST(req: NextRequest) {
     const id = `wr-${Date.now().toString(36)}`
     const now = new Date().toISOString()
     const notes = body.notes ? String(body.notes).slice(0, 500) : null
-    // Use locationId from request body, fall back to 'loc-iat-001'
-    const locationId = body.locationId ? String(body.locationId).slice(0, 50) : 'loc-iat-001'
+    // Use locationId from request body, fall back to DEFAULT_LOCATION_ID
+    const locationId = body.locationId ? String(body.locationId).slice(0, 50) : DEFAULT_LOCATION_ID
 
     await prisma.$executeRaw`INSERT INTO WaitingRoom (id, patientId, patientName, notes, videosWatched, status, locationId, checkedInAt)
       VALUES (${id}, ${patient.id}, ${patient.name}, ${notes}, ${videosWatched}, 'waiting', ${locationId}, ${now})`

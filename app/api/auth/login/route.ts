@@ -6,6 +6,7 @@
  * @security Public route — no session required
  */
 import { NextRequest, NextResponse } from 'next/server'
+import { DEFAULT_LOCATION_ID } from '@/lib/defaults'
 import { generateCsrfToken } from '@/lib/csrf'
 import bcrypt from 'bcryptjs'
 import { randomUUID } from 'crypto'
@@ -83,7 +84,7 @@ export async function POST(req: NextRequest) {
         email: user.email,
         role: user.role,
         name: user.name,
-        defaultLocationId: (user as Record<string, unknown>).defaultLocationId as string ?? 'loc-iat-001',
+        defaultLocationId: (user as Record<string, unknown>).defaultLocationId as string ?? DEFAULT_LOCATION_ID,
       })
       const response = NextResponse.json({ success: true, role: user.role, name: user.name })
       response.cookies.set('iat_session', token, {

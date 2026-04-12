@@ -3,6 +3,7 @@
  * @description Allows admin users to impersonate demo roles and return to admin.
  */
 import { NextRequest, NextResponse } from 'next/server'
+import { DEFAULT_LOCATION_ID } from '@/lib/defaults'
 import { verifySession, signSession } from '@/lib/auth/session'
 import prisma from '@/lib/db'
 import bcrypt from 'bcryptjs'
@@ -72,7 +73,7 @@ export async function POST(req: NextRequest) {
       email: user.email as string,
       name: user.name as string,
       role: user.role as string,
-      defaultLocationId: (user.defaultLocationId as string | null) ?? 'loc-iat-001',
+      defaultLocationId: (user.defaultLocationId as string | null) ?? DEFAULT_LOCATION_ID,
     })
 
     const res = NextResponse.json({ ok: true, role: user.role, name: user.name })

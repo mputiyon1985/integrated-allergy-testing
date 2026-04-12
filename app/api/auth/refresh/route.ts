@@ -6,6 +6,7 @@
  * @security Requires valid existing session cookie
  */
 import { NextRequest, NextResponse } from 'next/server'
+import { DEFAULT_LOCATION_ID } from '@/lib/defaults'
 import { verifySession, signSession, setSessionCookie } from '@/lib/auth/session'
 import prisma from '@/lib/db'
 
@@ -42,7 +43,7 @@ export async function POST(req: NextRequest) {
       email: user.email,
       role: user.role,
       name: user.name,
-      defaultLocationId: user.defaultLocationId ?? 'loc-iat-001',
+      defaultLocationId: user.defaultLocationId ?? DEFAULT_LOCATION_ID,
     })
 
     const response = NextResponse.json({ ok: true, refreshed: true })

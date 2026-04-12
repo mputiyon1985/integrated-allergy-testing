@@ -8,6 +8,7 @@
  * @security Requires valid tempToken (not expired, active user)
  */
 import { NextRequest, NextResponse } from 'next/server'
+import { DEFAULT_LOCATION_ID } from '@/lib/defaults'
 import speakeasy from 'speakeasy'
 import QRCode from 'qrcode'
 import prisma from '@/lib/db'
@@ -94,7 +95,7 @@ export async function POST(req: NextRequest) {
       email: user.email,
       role: user.role,
       name: user.name,
-      defaultLocationId: user.defaultLocationId ?? 'loc-iat-001',
+      defaultLocationId: user.defaultLocationId ?? DEFAULT_LOCATION_ID,
     })
 
     await log({ action: 'LOGIN_SUCCESS', entity: 'StaffUser', entityId: user.id, performedBy: user.name, details: `${user.name} (${user.email}) completed MFA setup and logged in` })
