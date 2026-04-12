@@ -53,14 +53,12 @@ const DEFAULT_LAYOUTS: ResponsiveLayouts = {
 };
 
 function loadLayouts(): ResponsiveLayouts {
+  // Always start with the default layout for all users
+  // Purge any previously saved layouts
   try {
-    // Purge all old layout keys
-    // Purge ALL old layout versions so every user gets the fresh default
-    for (let v = 1; v <= 9; v++) {
+    for (let v = 1; v <= 10; v++) {
       try { localStorage.removeItem(`iat-dashboard-layout-v${v}`); } catch {}
     }
-    const saved = localStorage.getItem(LAYOUT_KEY);
-    if (saved) return JSON.parse(saved);
   } catch {}
   return DEFAULT_LAYOUTS;
 }
