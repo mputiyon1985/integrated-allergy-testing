@@ -195,7 +195,7 @@ export default function PatientDetailPage() {
     if (!id) return;
     setLoading(true);
     fetch(`/api/patients/${id}`)
-      .then(r => { if (!r.ok) throw new Error('Patient not found'); return r.json(); })
+      .then(async r => { if (!r.ok) { const d = await r.json().catch(() => ({})); throw new Error(d.error ?? `Error ${r.status}`); } return r.json(); })
       .then(data => { setPatient(data); setEditForm(data); })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));

@@ -33,7 +33,7 @@ export async function GET(
     // Fetch related data using safe ORM (no DateTime issues) and raw SQL as needed
     const [testResults, videoActivity, formActivity, auditLogs, doctor, dates] = await Promise.all([
       prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
-        `SELECT t.*, a.id as allergen_id, a.name as allergen_name, a.category as allergen_category
+        `SELECT t.*, a.id as allergen_id, a.name as allergen_name, a.type as allergen_category
          FROM AllergyTestResult t
          LEFT JOIN Allergen a ON a.id = t.allergenId
          WHERE t.patientId = ? AND t.active = 1
