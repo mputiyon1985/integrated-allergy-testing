@@ -52,6 +52,14 @@ function hexToRgba(hex: string, alpha: number) {
 
 const HOURS = Array.from({ length: 12 }, (_, i) => i + 7); // 7am–6pm
 
+// Auto-calculate end time from start + duration (minutes)
+function calcEndTime(startHour: string, startMin: string, durationMins: number) {
+  const totalMins = parseInt(startHour) * 60 + parseInt(startMin) + durationMins;
+  const endH = Math.floor(totalMins / 60);
+  const endM = totalMins % 60;
+  return { endHour: String(Math.min(endH, 23)), endMin: String(endM).padStart(2, '0') };
+}
+
 function formatHour(h: number) {
   if (h === 12) return '12pm';
   if (h > 12) return `${h - 12}pm`;
@@ -936,7 +944,8 @@ function CalendarInner() {
                     <select value={form.reasonId}
                       onChange={e => {
                         const r = reasons.find(x => x.id === e.target.value);
-                        setForm(f => ({ ...f, reasonId: e.target.value, reasonName: r?.name ?? '' }));
+                        const dur = r?.duration ?? 15;
+                        setForm(f => ({ ...f, reasonId: e.target.value, reasonName: r?.name ?? '', ...calcEndTime(f.startHour, f.startMin, dur) }));
                       }}
                       style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: 14, boxSizing: 'border-box' }}>
                       <option value="">— Select reason —</option>
@@ -993,11 +1002,19 @@ function CalendarInner() {
                     <div>
                       <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 4 }}>Start Time <span style={{ color: '#dc2626' }}>*</span></label>
                       <div style={{ display: 'flex', gap: 4 }}>
-                        <select value={form.startHour} onChange={e => setForm(f => ({ ...f, startHour: e.target.value }))}
+                        <select value={form.startHour} onChange={e => {
+                            const newHour = e.target.value;
+                            const dur = reasons.find(r => r.id === form.reasonId)?.duration ?? 15;
+                            setForm(f => ({ ...f, startHour: newHour, ...calcEndTime(newHour, f.startMin, dur) }));
+                          }}
                           style={{ flex: 1, padding: '8px 6px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: 13 }}>
                           {HOURS.map(h => <option key={h} value={h}>{formatHour(h)}</option>)}
                         </select>
-                        <select value={form.startMin} onChange={e => setForm(f => ({ ...f, startMin: e.target.value }))}
+                        <select value={form.startMin} onChange={e => {
+                            const newMin = e.target.value;
+                            const dur = reasons.find(r => r.id === form.reasonId)?.duration ?? 15;
+                            setForm(f => ({ ...f, startMin: newMin, ...calcEndTime(f.startHour, newMin, dur) }));
+                          }}
                           style={{ width: 56, padding: '8px 4px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontSize: 13 }}>
                           {['00','15','30','45'].map(m => <option key={m} value={m}>:{m}</option>)}
                         </select>
