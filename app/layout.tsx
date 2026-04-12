@@ -349,8 +349,8 @@ function TopBar({ userName, userRole }: { userName: string; userRole: string }) 
 
 function AppShell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [userName, setUserName] = useState('');
-  const [userRole, setUserRole] = useState('');
+  const [userName, setUserName] = useState(() => { try { return JSON.parse(localStorage.getItem('iat_user') ?? '{}')?.name ?? ''; } catch { return ''; } });
+  const [userRole, setUserRole] = useState(() => { try { return JSON.parse(localStorage.getItem('iat_user') ?? '{}')?.role ?? ''; } catch { return ''; } });
   const pathname = usePathname();
   const isAuthPage = pathname === '/login' || pathname?.startsWith('/login') || pathname === '/consent' || pathname?.startsWith('/consent') || pathname?.startsWith('/kiosk');
 
