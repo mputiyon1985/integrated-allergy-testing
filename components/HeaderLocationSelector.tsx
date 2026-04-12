@@ -118,6 +118,7 @@ export function HeaderLocationSelector() {
         style={{ ...selectStyle, border: '1px solid #0d9488', color: '#0d9488', fontWeight: 600 }}
         title="Select Location"
       >
+        <option value="">All Locations</option>
         {activeLocations.map(l => (
           <option key={l.id} value={l.id}>{l.name}</option>
         ))}

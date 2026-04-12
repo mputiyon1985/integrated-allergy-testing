@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
         )
         if (!rows[0]) return NextResponse.json({ error: 'Admin not found' }, { status: 404 })
         token = await signSession({
-          id: rows[0].id as string,
+          userId: rows[0].id as string,
           email: rows[0].email as string,
           name: rows[0].name as string,
           role: rows[0].role as string,
@@ -68,10 +68,11 @@ export async function POST(req: NextRequest) {
     if (!valid) return NextResponse.json({ error: 'Invalid password' }, { status: 401 })
 
     const token = await signSession({
-      id: user.id as string,
+      userId: user.id as string,
       email: user.email as string,
       name: user.name as string,
       role: user.role as string,
+      defaultLocationId: (user.defaultLocationId as string | null) ?? 'loc-iat-001',
     })
 
     const res = NextResponse.json({ ok: true, role: user.role, name: user.name })
