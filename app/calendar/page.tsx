@@ -139,6 +139,7 @@ function CalendarInner() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [patientSearch, setPatientSearch] = useState('');
+  const [userRole] = useState(() => { try { const u = localStorage.getItem('iat_user'); return JSON.parse(u ?? '{}')?.role ?? ''; } catch { return ''; } });
   const [patientResults, setPatientResults] = useState<Patient[]>([]);
   const [patientSearchLoading, setPatientSearchLoading] = useState(false);
   const [showPatientDropdown, setShowPatientDropdown] = useState(false);
@@ -867,6 +868,7 @@ function CalendarInner() {
                       </>
                     );
                   })()}
+                  {userRole !== 'clinical_staff' && (
                   <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
                     <button onClick={() => openEditModal(selectedAppt)}
                       style={{ flex: 1, padding: '10px 0', borderRadius: 10, border: '1.5px solid #0d9488', background: '#fff', color: '#0d9488', fontWeight: 700, cursor: 'pointer', fontSize: 14 }}>
@@ -877,6 +879,7 @@ function CalendarInner() {
                       🗑️ Delete
                     </button>
                   </div>
+                  )}
                 </div>
               )}
 

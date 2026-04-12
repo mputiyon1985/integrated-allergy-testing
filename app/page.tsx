@@ -117,6 +117,7 @@ export default function DashboardPage() {
   const [encounterCount, setEncounterCount] = useState<number | null>(null);
   const [nurseCount, setNurseCount] = useState<number | null>(null);
   const [userName, setUserName] = useState('');
+  const [userRole, setUserRole] = useState(() => { try { const u = localStorage.getItem('iat_user'); return JSON.parse(u ?? '{}')?.role ?? ''; } catch { return ''; } });
   const [loading, setLoading] = useState(true);
   const [waiting, setWaiting] = useState<WaitingEntry[]>([]);
   const [editMode, setEditMode] = useState(false);
@@ -263,7 +264,9 @@ export default function DashboardPage() {
         }
         if (meRes.status === 'fulfilled' && meRes.value.ok) {
           const d = await meRes.value.json();
-          setUserName(d?.user?.name ?? d?.name ?? '');
+          const u = d?.user ?? d;
+          setUserName(u?.name ?? '');
+          if (u?.role) setUserRole(u.role);
         }
         // Use fast count endpoint — no need to fetch 100 encounters client-side
         if (encounterCountRes.status === 'fulfilled' && encounterCountRes.value.ok) {
@@ -668,7 +671,7 @@ export default function DashboardPage() {
             </div>
             {/* Actions */}
             <div style={{ padding: '12px 20px', borderTop: '1px solid #e2e8f0', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <button
+              {userRole !== 'clinical_staff' && <button
                 onClick={async () => {
                   const t = selectedAppt;
                   const start = t.startTime ? new Date(t.startTime) : new Date();
@@ -695,7 +698,8 @@ export default function DashboardPage() {
                 }}
                 style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', color: '#374151', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
                 ✏️ Edit
-              </button>
+              </button>}
+              {userRole !== 'clinical_staff' && (
               <button
                 disabled={deletingApptId === selectedAppt.id}
                 onClick={async () => {
@@ -709,6 +713,7 @@ export default function DashboardPage() {
                 style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: '#fef2f2', color: '#b91c1c', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
                 {deletingApptId === selectedAppt.id ? '⏳' : '🗑️ Delete'}
               </button>
+              )}
             </div>
           </div>
         </div>
