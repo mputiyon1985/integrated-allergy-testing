@@ -6,6 +6,7 @@ import { LocationSelector } from '@/components/LocationSelector';
 import { SidebarLocationSelector } from '@/components/SidebarLocationSelector';
 import { apiFetch } from '@/lib/api-fetch';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import DemoRoleBanner from '@/components/DemoRoleBanner';
 
 import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
@@ -302,6 +303,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <ErrorBoundary>
           <AppShell>{children}</AppShell>
+          <DemoRoleBanner />
         </ErrorBoundary>
       </body>
     </html>

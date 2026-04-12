@@ -206,6 +206,46 @@ function LoginPageInner() {
                 </div>
               )}
 
+              {/* Demo Role Switcher */}
+              <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#166534', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>🎭 Demo — Sign in as a role</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                  {[
+                    { label: '👨‍⚕️ Provider', email: 'demo.provider@iat-demo.com', color: '#7c3aed' },
+                    { label: '💉 Clinical Staff', email: 'demo.nurse@iat-demo.com', color: '#0d9488' },
+                    { label: '🗓 Front Desk', email: 'demo.frontdesk@iat-demo.com', color: '#2563eb' },
+                    { label: '💳 Billing', email: 'demo.billing@iat-demo.com', color: '#d97706' },
+                    { label: '🏢 Office Manager', email: 'demo.manager@iat-demo.com', color: '#64748b' },
+                    { label: '🔑 Admin', email: 'mputiyon@tipinc.ai', color: '#dc2626', admin: true },
+                  ].map(r => (
+                    <button
+                      key={r.email}
+                      type="button"
+                      onClick={async () => {
+                        setError('');
+                        setLoading(true);
+                        try {
+                          const res = await fetch('/api/auth/login', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ email: r.email, password: r.admin ? undefined : 'demo1234', _demoRole: true }),
+                          });
+                          const data = await res.json();
+                          if (!res.ok) { setError(data.error ?? 'Demo login failed'); setLoading(false); return; }
+                          if (data.requiresMfa) { setError('MFA required — use email login'); setLoading(false); return; }
+                          window.location.href = '/';
+                        } catch { setError('Demo login failed'); setLoading(false); }
+                      }}
+                      disabled={loading}
+                      style={{ padding: '8px 10px', background: r.color, color: '#fff', border: 'none', borderRadius: 7, fontSize: 12, fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, textAlign: 'left' }}
+                    >
+                      {r.label}
+                    </button>
+                  ))}
+                </div>
+                <div style={{ fontSize: 10, color: '#6b7280', marginTop: 8 }}>Demo password: <code>demo1234</code> · Admin requires your password</div>
+              </div>
+
               {/* Microsoft SSO button */}
               <button
                 onClick={() => signIn('azure-ad', { callbackUrl: '/api/auth/azure-callback' })}
