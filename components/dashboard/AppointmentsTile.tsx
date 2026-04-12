@@ -14,6 +14,23 @@ interface TodayAppointment {
   notes?: string | null;
   reasonName?: string | null;
   providerName?: string | null;
+  locationId?: string | null;
+  locationName?: string | null;
+}
+
+// Short display names for locations
+const LOC_SHORT: Record<string, string> = {
+  'loc-iat-001': 'MAP Dumfries',
+  'loc-map-002': 'MAP Woodbridge',
+  'loc-map-003': 'MAP Stafford',
+  'loc-map-004': 'MAP Fredericksburg',
+  'loc-nvaa-001': 'NVAA Fairfax',
+  'loc-nvaa-002': 'NVAA Arlington',
+  'loc-nvaa-003': 'NVAA Reston',
+  'loc-nvaa-004': 'NVAA Tysons',
+  'loc-caac-001': 'CAAC Bethesda',
+  'loc-caac-002': 'CAAC Silver Spring',
+  'loc-caac-003': 'CAAC Rockville',
 }
 
 interface AppointmentsTileProps {
@@ -25,6 +42,7 @@ interface AppointmentsTileProps {
   handleCheckInAppt: (appt: TodayAppointment, e: React.MouseEvent) => Promise<void>;
   setSelectedAppt: (appt: TodayAppointment | null) => void;
   setShowAddApptModal: (show: boolean) => void;
+  showLocationBadge?: boolean; // show location tag when viewing all locations
 }
 
 function formatApptTime(iso: string) {
@@ -44,7 +62,11 @@ export default function AppointmentsTile({
   handleCheckInAppt,
   setSelectedAppt,
   setShowAddApptModal,
+  showLocationBadge = false,
 }: AppointmentsTileProps) {
+  // Auto-detect: show location badge when appointments span multiple locations
+  const uniqueLocs = new Set(todayAppts.map(a => a.locationId).filter(Boolean));
+  const shouldShowLoc = showLocationBadge || uniqueLocs.size > 1;
   return (
     <div className="card" style={{ height: '100%', overflow: 'auto', border: editMode ? '2px dashed #f59e0b' : '1px solid #e2e8f0' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
@@ -87,7 +109,14 @@ export default function AppointmentsTile({
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 700, fontSize: 14, color: '#111827' }}>{appt.title}</div>
-                  {appt.patientName && <div style={{ fontSize: 12, color: '#64748b' }}>{appt.patientName}</div>}
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 2, flexWrap: 'wrap' }}>
+                    {appt.patientName && <span style={{ fontSize: 12, color: '#64748b' }}>{appt.patientName}</span>}
+                    {shouldShowLoc && appt.locationId && (
+                      <span style={{ fontSize: 10, fontWeight: 700, padding: '1px 7px', borderRadius: 999, background: '#f1f5f9', color: '#475569', border: '1px solid #e2e8f0' }}>
+                        📍 {LOC_SHORT[appt.locationId] ?? appt.locationId}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 10px', borderRadius: 999, background: color, color: '#fff', border: `1px solid ${color}` }}>
                   {appt.reasonName ?? appt.type}

@@ -76,6 +76,8 @@ interface TodayAppointment {
   notes?: string | null;
   reasonName?: string | null;
   providerName?: string | null;
+  locationId?: string | null;
+  locationName?: string | null;
 }
 
 function formatApptTime(iso: string) {
