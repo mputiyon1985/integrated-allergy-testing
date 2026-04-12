@@ -789,7 +789,52 @@ function NewEncounterModal({
           <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div>
               <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Chief Complaint *</label>
-              <input className="form-input" value={encForm.chiefComplaint} onChange={e => setEncForm(p => ({ ...p, chiefComplaint: e.target.value }))} placeholder="Reason for visit" />
+              <select
+                className="form-input"
+                value={encForm.chiefComplaint}
+                onChange={e => setEncForm(p => ({ ...p, chiefComplaint: e.target.value }))}
+              >
+                <option value="">— Select or type below —</option>
+                <optgroup label="Allergy Visits">
+                  <option>Allergic rhinitis — seasonal</option>
+                  <option>Allergic rhinitis — perennial</option>
+                  <option>Allergic conjunctivitis</option>
+                  <option>Food allergy consultation</option>
+                  <option>Food allergy — peanut</option>
+                  <option>Bee venom allergy</option>
+                  <option>Drug allergy evaluation</option>
+                  <option>New patient allergy eval</option>
+                </optgroup>
+                <optgroup label="Shots &amp; Testing">
+                  <option>Visit - Allergy Shot</option>
+                  <option>Visit - Allergy Testing</option>
+                  <option>Immunotherapy build-up</option>
+                  <option>Immunotherapy maintenance</option>
+                </optgroup>
+                <optgroup label="Conditions">
+                  <option>Asthma follow-up</option>
+                  <option>Asthma, mild intermittent</option>
+                  <option>Atopic dermatitis — moderate</option>
+                  <option>Chronic urticaria</option>
+                  <option>Hives / urticaria flare</option>
+                  <option>Angioedema</option>
+                  <option>Eczema follow-up</option>
+                  <option>Sinusitis — allergic</option>
+                </optgroup>
+                <optgroup label="Other">
+                  <option>Annual allergy review</option>
+                  <option>Medication refill visit</option>
+                  <option>Post-reaction follow-up</option>
+                  <option>Telehealth consultation</option>
+                </optgroup>
+              </select>
+              <input
+                className="form-input"
+                value={encForm.chiefComplaint}
+                onChange={e => setEncForm(p => ({ ...p, chiefComplaint: e.target.value }))}
+                placeholder="Or type a custom complaint…"
+                style={{ marginTop: 6, fontSize: 12 }}
+              />
             </div>
             <div>
               <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 4, textTransform: 'uppercase' }}>Physician</label>

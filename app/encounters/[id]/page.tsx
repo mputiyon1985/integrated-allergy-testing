@@ -592,13 +592,63 @@ export default function EncounterDetailPage() {
               📋 Encounter Details
             </div>
 
-            <InlineField
-              label="Chief Complaint"
-              value={encounter.chiefComplaint}
-              multiline
-              rows={2}
-              onSave={v => patchEncounter({ chiefComplaint: v })}
-            />
+            {/* Chief Complaint — dropdown + free text */}
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Chief Complaint</div>
+              <select
+                value={encounter.chiefComplaint ?? ''}
+                onChange={e => {
+                  if (!e.target.value) return;
+                  setEncounter(prev => prev ? { ...prev, chiefComplaint: e.target.value } : prev);
+                  patchEncounter({ chiefComplaint: e.target.value });
+                }}
+                style={{ width: '100%', fontSize: 13, padding: '6px 10px', borderRadius: 7, border: '1px solid #e2e8f0', background: '#fff', cursor: 'pointer', marginBottom: 6 }}
+              >
+                <option value="">— Select common complaint —</option>
+                <optgroup label="Allergy Visits">
+                  <option>Allergic rhinitis — seasonal</option>
+                  <option>Allergic rhinitis — perennial</option>
+                  <option>Allergic conjunctivitis</option>
+                  <option>Food allergy consultation</option>
+                  <option>Food allergy — peanut</option>
+                  <option>Bee venom allergy</option>
+                  <option>Drug allergy evaluation</option>
+                  <option>New patient allergy eval</option>
+                </optgroup>
+                <optgroup label="Shots &amp; Testing">
+                  <option>Visit - Allergy Shot</option>
+                  <option>Visit - Allergy Testing</option>
+                  <option>Immunotherapy build-up</option>
+                  <option>Immunotherapy maintenance</option>
+                </optgroup>
+                <optgroup label="Conditions">
+                  <option>Asthma follow-up</option>
+                  <option>Asthma, mild intermittent</option>
+                  <option>Atopic dermatitis — moderate</option>
+                  <option>Chronic urticaria</option>
+                  <option>Hives / urticaria flare</option>
+                  <option>Angioedema</option>
+                  <option>Eczema follow-up</option>
+                  <option>Sinusitis — allergic</option>
+                </optgroup>
+                <optgroup label="Other">
+                  <option>Annual allergy review</option>
+                  <option>Medication refill visit</option>
+                  <option>Post-reaction follow-up</option>
+                  <option>Telehealth consultation</option>
+                </optgroup>
+              </select>
+              <InlineField
+                label=""
+                value={encounter.chiefComplaint}
+                multiline
+                rows={1}
+                onSave={async v => {
+                  setEncounter(prev => prev ? { ...prev, chiefComplaint: v } : prev);
+                  await patchEncounter({ chiefComplaint: v });
+                }}
+              />
+            </div>
 
             {/* Physician dropdown */}
             <div style={{ marginBottom: 14 }}>
