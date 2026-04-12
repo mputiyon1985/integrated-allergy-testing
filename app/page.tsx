@@ -533,10 +533,12 @@ export default function DashboardPage() {
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
           <Link href="/patients/new" className="btn-secondary btn-sm btn">+ Register</Link>
           <Link href="/testing" className="btn btn-sm">🧪 Test</Link>
+          {userRole !== 'clinical_staff' && (
           <button onClick={() => setEditMode(v => !v)}
             style={{ padding: '6px 12px', borderRadius: 8, border: `1px solid ${editMode ? '#f59e0b' : '#e2e8f0'}`, background: editMode ? '#fefce8' : '#fff', color: editMode ? '#b45309' : '#374151', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
             {editMode ? '✅ Done' : '⊞ Edit'}
           </button>
+          )}
           <Link href="/calendar?action=new" className="btn btn-sm" style={{ background: '#7c3aed', color: '#fff' }}>📅 Book</Link>
         </div>
       </div>
