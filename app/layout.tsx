@@ -53,7 +53,18 @@ function UserCard({ userName }: { userName: string }) {
   );
 }
 
-function Sidebar({ open, onClose, userName }: { open: boolean; onClose: () => void; userName: string }) {
+// Nav items hidden per role
+const ROLE_HIDDEN_NAV: Record<string, string[]> = {
+  clinical_staff: ['/claims', '/reports', '/insurance', '/kiosk', '/settings'],
+  front_desk: ['/reports', '/claims'],
+  billing: ['/kiosk', '/testing'],
+  provider: ['/kiosk', '/settings'],
+};
+
+function Sidebar({ open, onClose, userName, userRole }: { open: boolean; onClose: () => void; userName: string; userRole: string }) {
+  const hiddenPaths = ROLE_HIDDEN_NAV[userRole] ?? [];
+  const visibleNavItems = navItems.filter(item => !hiddenPaths.includes(item.href));
+  const visibleBottomItems = bottomNavItems.filter(item => !hiddenPaths.includes(item.href));
   const pathname = usePathname();
 
   return (
@@ -72,7 +83,7 @@ function Sidebar({ open, onClose, userName }: { open: boolean; onClose: () => vo
 
         <div className="sidebar-nav">
           <div className="nav-label">Navigation</div>
-          {navItems.map((item) => {
+          {visibleNavItems.map((item) => {
             const isActive =
               item.href === '/'
                 ? pathname === '/'
@@ -170,7 +181,7 @@ function Sidebar({ open, onClose, userName }: { open: boolean; onClose: () => vo
 
         {/* Settings at bottom — above copyright */}
         <div style={{ padding: '4px 8px' }}>
-          {bottomNavItems.map(item => {
+          {visibleBottomItems.map(item => {
             const isActive = pathname.startsWith(item.href);
             return (
               <Link
@@ -246,6 +257,7 @@ function TopBar({ userName }: { userName: string }) {
 function AppShell({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userName, setUserName] = useState('');
+  const [userRole, setUserRole] = useState('');
   const pathname = usePathname();
   const isAuthPage = pathname === '/login' || pathname?.startsWith('/login') || pathname === '/consent' || pathname?.startsWith('/consent') || pathname?.startsWith('/kiosk');
 
@@ -259,6 +271,7 @@ function AppShell({ children }: { children: React.ReactNode }) {
       const u = d?.user ?? d;
       if (u?.name) {
         setUserName(u.name);
+        if (u?.role) setUserRole(u.role);
         try { localStorage.setItem('iat_user', JSON.stringify(u)); } catch {}
       }
     }).catch(() => {});
@@ -284,7 +297,7 @@ function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="app-shell">
       <button className="sidebar-toggle" onClick={() => setSidebarOpen((v) => !v)} aria-label="Toggle navigation">☰</button>
-      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} userName={userName} />
+      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} userName={userName} userRole={userRole} />
       <div className="main-content">
         <TopBar userName={userName} />
         {children}
