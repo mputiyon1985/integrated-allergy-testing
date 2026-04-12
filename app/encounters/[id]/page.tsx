@@ -94,6 +94,21 @@ function fmtDateTime(iso?: string) {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + ' ' + fmtTime(iso);
 }
 
+function fmtCurrency(amount: number) {
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+}
+
+// ── Status Badge ─────────────────────────────────────────────
+function StatusBadge({ status }: { status: string }) {
+  const s = ENC_STATUS_STYLES[status] ?? ENC_STATUS_STYLES.open;
+  return (
+    <span style={{
+      fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999,
+      background: s.bg, color: s.color, textTransform: 'uppercase' as const, whiteSpace: 'nowrap' as const,
+    }}>{s.label}</span>
+  );
+}
+
 // ── Inline editable textarea / input ────────────────────────
 function InlineField({
   label, value, multiline = false, rows = 2, onSave,
@@ -195,7 +210,6 @@ function AddActivityModal({
   useEffect(() => {
     let locId = '';
     try { locId = localStorage.getItem('iat_active_location') ?? ''; } catch {}
-    // Use encounterId's location via prop (patientId context) — fallback to localStorage
     (() => { let lp = ''; try { const l = localStorage.getItem('iat_active_location'); const p = !l ? localStorage.getItem('iat_active_practice_filter') ?? '' : ''; if (l) lp = `&locationId=${l}`; else if (p) lp = `&practiceId=${p}`; } catch {} return fetch(`/api/nurses?all=1${lp}&noLimit=1`); })().then(r => r.ok ? r.json() : []).then(d => {
       const all: (NurseOption & { active?: boolean; locationId?: string | null })[] =
         Array.isArray(d) ? d : (d.nurses ?? []);
@@ -414,6 +428,14 @@ export default function EncounterDetailPage() {
   const [saving, setSaving] = useState(false);
   const [showAddActivity, setShowAddActivity] = useState(false);
 
+  // Tab state
+  const [activeTab, setActiveTab] = useState<'details' | 'activities' | 'claim'>('details');
+
+  // Claim state
+  const [claim, setClaim] = useState<Record<string, unknown> | null>(null);
+  const [claimLoading, setClaimLoading] = useState(false);
+  const [claimError, setClaimError] = useState('');
+
   const [doctors, setDoctors] = useState<DoctorOption[]>([]);
   const [nurses, setNurses] = useState<NurseOption[]>([]);
   const [icd10Options, setIcd10Options] = useState<Icd10Option[]>([]);
@@ -426,7 +448,6 @@ export default function EncounterDetailPage() {
       if (!r.ok) throw new Error(r.status === 401 ? 'session_expired' : `HTTP ${r.status}`);
       const data = await r.json();
       setEncounter(data);
-      // Use the encounter's own locationId for dropdowns — most accurate
       if (data?.locationId) loadDropdowns(data.locationId);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -438,10 +459,8 @@ export default function EncounterDetailPage() {
 
   useEffect(() => { loadEncounter(); }, [loadEncounter]);
 
-  // Load doctors, nurses, ICD-10 for dropdowns — scoped to encounter's locationId
   const loadDropdowns = useCallback((overrideLocId?: string) => {
     let locId = overrideLocId ?? '';
-    // Fall back to header-selected location only if encounter has no locationId
     if (!locId) try { locId = localStorage.getItem('iat_active_location') ?? ''; } catch {}
     let practiceId = '';
     if (!locId) try { practiceId = localStorage.getItem('iat_active_practice_filter') ?? ''; } catch {}
@@ -452,7 +471,6 @@ export default function EncounterDetailPage() {
       .then(d => {
         const all: (DoctorOption & { active?: boolean; locationId?: string | null })[] =
           Array.isArray(d) ? d : (d.doctors ?? []);
-        // Filter to this location; always include staff with no locationId set (global staff)
         const filtered = locId ? all.filter(x => !x.locationId || x.locationId === locId) : all;
         setDoctors(filtered.filter(x => x.active !== false));
       }).catch(() => {});
@@ -474,7 +492,6 @@ export default function EncounterDetailPage() {
 
   useEffect(() => {
     loadDropdowns();
-    // Re-load if location changes while on this page
     const onLocChange = (e: Event) => {
       const detail = (e as CustomEvent<{ locationId?: string }>).detail ?? {};
       loadDropdowns(detail.locationId ?? '');
@@ -498,6 +515,28 @@ export default function EncounterDetailPage() {
       }
     } catch {}
     setSaving(false);
+  }
+
+  async function loadClaim() {
+    setClaimLoading(true);
+    setClaimError('');
+    try {
+      const r = await fetch(`/api/encounters/${id}/claim`, { method: 'POST' });
+      if (!r.ok) { const d = await r.json(); throw new Error(d.error ?? 'Failed'); }
+      const data = await r.json();
+      setClaim(data);
+      if (encounter?.status === 'signed') {
+        setEncounter(prev => prev ? { ...prev, status: 'billed' } : prev);
+      }
+    } catch (e) {
+      setClaimError(e instanceof Error ? e.message : 'Failed to generate claim');
+    }
+    setClaimLoading(false);
+  }
+
+  function handleTabClick(tab: 'details' | 'activities' | 'claim') {
+    setActiveTab(tab);
+    if (tab === 'claim' && !claim && !claimLoading) loadClaim();
   }
 
   if (loading) {
@@ -529,6 +568,51 @@ export default function EncounterDetailPage() {
   const encDate = new Date(encounter.encounterDate);
   const encDateLabel = encDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
 
+  // Claim helpers
+  const claimData = claim as {
+    claimId?: string;
+    diagnosisCode?: string;
+    diagnosisDescription?: string;
+    cptCodes?: { code: string; description: string; units: number; fee: number; total: number }[];
+    patient?: { name?: string; dob?: string; insuranceProvider?: string; groupNumber?: string; memberId?: string };
+    provider?: { name?: string; npi?: string; dateOfService?: string; location?: string };
+    totalCharges?: number;
+  } | null;
+
+  function downloadClaimJson() {
+    if (!claimData) return;
+    const blob = new Blob([JSON.stringify(claim, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `claim-${claimData.claimId ?? 'unknown'}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function markAsSubmitted() {
+    try {
+      await fetch(`/api/encounters/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'complete' }),
+      });
+      setEncounter(prev => prev ? { ...prev, status: 'complete' } : prev);
+    } catch {}
+  }
+
+  const tabStyle = (tab: 'details' | 'activities' | 'claim') => ({
+    padding: '12px 20px',
+    fontSize: 14,
+    fontWeight: 600,
+    cursor: 'pointer' as const,
+    background: 'none',
+    border: 'none',
+    borderBottom: activeTab === tab ? '2px solid #0d9488' : '2px solid transparent',
+    color: activeTab === tab ? '#0d9488' : '#64748b',
+    transition: 'color 0.15s, border-color 0.15s',
+  });
+
   return (
     <div style={{ minHeight: '100vh', background: '#f1f5f9', paddingBottom: 48 }}>
       {/* Top nav bar */}
@@ -550,192 +634,210 @@ export default function EncounterDetailPage() {
       </div>
 
       {/* Header */}
-      <div style={{ background: '#fff', borderBottom: '1px solid #e2e8f0', padding: '20px 32px' }}>
-        <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-          <div style={{ flex: 1 }}>
-            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 6 }}>
-              <span style={{ fontSize: 22, fontWeight: 800, color: '#1a2233' }}>{encounter.chiefComplaint}</span>
-              <span style={{
-                fontSize: 12, fontWeight: 700, padding: '3px 12px', borderRadius: 999,
-                background: statusStyle.bg, color: statusStyle.color, textTransform: 'uppercase', whiteSpace: 'nowrap'
-              }}>{statusStyle.label}</span>
+      <div style={{ background: '#fff', borderBottom: '1px solid #e2e8f0' }}>
+        <div style={{ padding: '20px 32px' }}>
+          <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 6 }}>
+                <span style={{ fontSize: 22, fontWeight: 800, color: '#1a2233' }}>{encounter.chiefComplaint}</span>
+                <span style={{
+                  fontSize: 12, fontWeight: 700, padding: '3px 12px', borderRadius: 999,
+                  background: statusStyle.bg, color: statusStyle.color, textTransform: 'uppercase', whiteSpace: 'nowrap'
+                }}>{statusStyle.label}</span>
+              </div>
+              <div style={{ display: 'flex', gap: 16, fontSize: 13, color: '#64748b', flexWrap: 'wrap' }}>
+                <span>📅 {encDateLabel}</span>
+                {encounter.doctorName && <span>👨‍⚕️ {encounter.doctorName}</span>}
+                {encounter.nurseName  && <span>👩‍⚕️ {encounter.nurseName}</span>}
+                {encounter.waitMinutes != null && <span>⏱ Wait: {encounter.waitMinutes}m</span>}
+                {encounter.inServiceMinutes != null && <span>🩺 In-service: {encounter.inServiceMinutes}m</span>}
+              </div>
             </div>
-            <div style={{ display: 'flex', gap: 16, fontSize: 13, color: '#64748b', flexWrap: 'wrap' }}>
-              <span>📅 {encDateLabel}</span>
-              {encounter.doctorName && <span>👨‍⚕️ {encounter.doctorName}</span>}
-              {encounter.nurseName  && <span>👩‍⚕️ {encounter.nurseName}</span>}
-              {encounter.waitMinutes != null && <span>⏱ Wait: {encounter.waitMinutes}m</span>}
-              {encounter.inServiceMinutes != null && <span>🩺 In-service: {encounter.inServiceMinutes}m</span>}
-            </div>
+            {/* Quick status toggle */}
+            <select
+              value={encounter.status}
+              onChange={e => {
+                const newStatus = e.target.value;
+                setEncounter(prev => prev ? { ...prev, status: newStatus } : prev);
+                patchEncounter({ status: newStatus });
+              }}
+              style={{ fontSize: 13, fontWeight: 700, padding: '6px 12px', borderRadius: 8, border: `2px solid ${statusStyle.color}`, color: statusStyle.color, background: statusStyle.bg, cursor: 'pointer' }}
+            >
+              <option value="open">Open</option>
+              <option value="awaiting_md">Awaiting MD</option>
+              <option value="signed">Signed</option>
+              <option value="complete">Complete</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
           </div>
-          {/* Quick status toggle */}
-          <select
-            value={encounter.status}
-            onChange={e => {
-              const newStatus = e.target.value;
-              setEncounter(prev => prev ? { ...prev, status: newStatus } : prev);
-              patchEncounter({ status: newStatus });
-            }}
-            style={{ fontSize: 13, fontWeight: 700, padding: '6px 12px', borderRadius: 8, border: `2px solid ${statusStyle.color}`, color: statusStyle.color, background: statusStyle.bg, cursor: 'pointer' }}
-          >
-            <option value="open">Open</option>
-            <option value="awaiting_md">Awaiting MD</option>
-            <option value="complete">Complete</option>
-            <option value="cancelled">Cancelled</option>
-          </select>
+        </div>
+
+        {/* Tab strip */}
+        <div style={{ borderBottom: '1px solid #e2e8f0', padding: '0 32px', display: 'flex', gap: 0 }}>
+          <button style={tabStyle('details')} onClick={() => handleTabClick('details')}>
+            📋 Details
+          </button>
+          <button style={tabStyle('activities')} onClick={() => handleTabClick('activities')}>
+            📊 Activities ({activities.length})
+          </button>
+          <button style={tabStyle('claim')} onClick={() => handleTabClick('claim')}>
+            💳 Claim
+          </button>
         </div>
       </div>
 
-      {/* Body: two-column layout */}
-      <div style={{ maxWidth: 1200, margin: '24px auto', padding: '0 24px', display: 'grid', gridTemplateColumns: '1fr 1.4fr', gap: 24, alignItems: 'start' }}>
+      {/* Tab content */}
+      <div style={{ maxWidth: activeTab === 'activities' ? 1100 : 900, margin: '24px auto', padding: '0 24px' }}>
 
-        {/* ─── Left: Editable Encounter Info ─────────────────── */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {/* Encounter details card */}
-          <div className="card" style={{ padding: 20 }}>
-            <div style={{ fontWeight: 700, fontSize: 15, color: '#1a2233', marginBottom: 16, borderBottom: '1px solid #f1f5f9', paddingBottom: 10 }}>
-              📋 Encounter Details
+        {/* ─── Details Tab ─────────────────────────────────── */}
+        {activeTab === 'details' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {/* Encounter details card */}
+            <div className="card" style={{ padding: 20 }}>
+              <div style={{ fontWeight: 700, fontSize: 15, color: '#1a2233', marginBottom: 16, borderBottom: '1px solid #f1f5f9', paddingBottom: 10 }}>
+                📋 Encounter Details
+              </div>
+
+              {/* Chief Complaint — dropdown + free text */}
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Chief Complaint</div>
+                <select
+                  value={encounter.chiefComplaint ?? ''}
+                  onChange={e => {
+                    if (!e.target.value) return;
+                    setEncounter(prev => prev ? { ...prev, chiefComplaint: e.target.value } : prev);
+                    patchEncounter({ chiefComplaint: e.target.value });
+                  }}
+                  style={{ width: '100%', fontSize: 13, padding: '6px 10px', borderRadius: 7, border: '1px solid #e2e8f0', background: '#fff', cursor: 'pointer', marginBottom: 6 }}
+                >
+                  <option value="">— Select common complaint —</option>
+                  <optgroup label="Allergy Visits">
+                    <option>Allergic rhinitis — seasonal</option>
+                    <option>Allergic rhinitis — perennial</option>
+                    <option>Allergic conjunctivitis</option>
+                    <option>Food allergy consultation</option>
+                    <option>Food allergy — peanut</option>
+                    <option>Bee venom allergy</option>
+                    <option>Drug allergy evaluation</option>
+                    <option>New patient allergy eval</option>
+                  </optgroup>
+                  <optgroup label="Shots &amp; Testing">
+                    <option>Visit - Allergy Shot</option>
+                    <option>Visit - Allergy Testing</option>
+                    <option>Immunotherapy build-up</option>
+                    <option>Immunotherapy maintenance</option>
+                  </optgroup>
+                  <optgroup label="Conditions">
+                    <option>Asthma follow-up</option>
+                    <option>Asthma, mild intermittent</option>
+                    <option>Atopic dermatitis — moderate</option>
+                    <option>Chronic urticaria</option>
+                    <option>Hives / urticaria flare</option>
+                    <option>Angioedema</option>
+                    <option>Eczema follow-up</option>
+                    <option>Sinusitis — allergic</option>
+                  </optgroup>
+                  <optgroup label="Other">
+                    <option>Annual allergy review</option>
+                    <option>Medication refill visit</option>
+                    <option>Post-reaction follow-up</option>
+                    <option>Telehealth consultation</option>
+                  </optgroup>
+                </select>
+                <InlineField
+                  label=""
+                  value={encounter.chiefComplaint}
+                  multiline
+                  rows={1}
+                  onSave={async v => {
+                    setEncounter(prev => prev ? { ...prev, chiefComplaint: v } : prev);
+                    await patchEncounter({ chiefComplaint: v });
+                  }}
+                />
+              </div>
+
+              {/* Physician dropdown */}
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Physician</div>
+                <select
+                  value={encounter.doctorName ?? ''}
+                  onChange={e => {
+                    const v = e.target.value;
+                    setEncounter(prev => prev ? { ...prev, doctorName: v } : prev);
+                    patchEncounter({ doctorName: v });
+                  }}
+                  style={{ width: '100%', fontSize: 13, padding: '6px 10px', borderRadius: 7, border: '1px solid #e2e8f0', background: '#fff', cursor: 'pointer' }}
+                >
+                  <option value="">— Select Physician —</option>
+                  {doctors.map(d => <option key={d.id} value={d.name}>{d.title ? `${d.name}, ${d.title}` : d.name}</option>)}
+                </select>
+              </div>
+
+              {/* Nurse dropdown */}
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Nurse / Tech</div>
+                <select
+                  value={encounter.nurseName ?? ''}
+                  onChange={e => {
+                    const v = e.target.value;
+                    setEncounter(prev => prev ? { ...prev, nurseName: v } : prev);
+                    patchEncounter({ nurseName: v });
+                  }}
+                  style={{ width: '100%', fontSize: 13, padding: '6px 10px', borderRadius: 7, border: '1px solid #e2e8f0', background: '#fff', cursor: 'pointer' }}
+                >
+                  <option value="">— Select Nurse / Tech —</option>
+                  {nurses.map(n => <option key={n.id} value={n.name}>{n.title ? `${n.name}, ${n.title}` : n.name}</option>)}
+                </select>
+              </div>
+
+              {/* Diagnosis Code (ICD-10) */}
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Diagnosis Code (ICD-10)</div>
+                <select
+                  value={encounter.diagnosisCode ?? ''}
+                  onChange={e => {
+                    const v = e.target.value;
+                    setEncounter(prev => prev ? { ...prev, diagnosisCode: v } : prev);
+                    patchEncounter({ diagnosisCode: v });
+                  }}
+                  style={{ width: '100%', fontSize: 13, padding: '6px 10px', borderRadius: 7, border: '1px solid #e2e8f0', background: '#fff', cursor: 'pointer' }}
+                >
+                  <option value="">— Select ICD-10 Code —</option>
+                  {icd10Options.map(c => <option key={c.id} value={c.code}>{c.code} — {c.description}</option>)}
+                  {icd10Options.length === 0 && encounter.diagnosisCode && (
+                    <option value={encounter.diagnosisCode}>{encounter.diagnosisCode}</option>
+                  )}
+                </select>
+              </div>
             </div>
 
-            {/* Chief Complaint — dropdown + free text */}
-            <div style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Chief Complaint</div>
-              <select
-                value={encounter.chiefComplaint ?? ''}
-                onChange={e => {
-                  if (!e.target.value) return;
-                  setEncounter(prev => prev ? { ...prev, chiefComplaint: e.target.value } : prev);
-                  patchEncounter({ chiefComplaint: e.target.value });
-                }}
-                style={{ width: '100%', fontSize: 13, padding: '6px 10px', borderRadius: 7, border: '1px solid #e2e8f0', background: '#fff', cursor: 'pointer', marginBottom: 6 }}
-              >
-                <option value="">— Select common complaint —</option>
-                <optgroup label="Allergy Visits">
-                  <option>Allergic rhinitis — seasonal</option>
-                  <option>Allergic rhinitis — perennial</option>
-                  <option>Allergic conjunctivitis</option>
-                  <option>Food allergy consultation</option>
-                  <option>Food allergy — peanut</option>
-                  <option>Bee venom allergy</option>
-                  <option>Drug allergy evaluation</option>
-                  <option>New patient allergy eval</option>
-                </optgroup>
-                <optgroup label="Shots &amp; Testing">
-                  <option>Visit - Allergy Shot</option>
-                  <option>Visit - Allergy Testing</option>
-                  <option>Immunotherapy build-up</option>
-                  <option>Immunotherapy maintenance</option>
-                </optgroup>
-                <optgroup label="Conditions">
-                  <option>Asthma follow-up</option>
-                  <option>Asthma, mild intermittent</option>
-                  <option>Atopic dermatitis — moderate</option>
-                  <option>Chronic urticaria</option>
-                  <option>Hives / urticaria flare</option>
-                  <option>Angioedema</option>
-                  <option>Eczema follow-up</option>
-                  <option>Sinusitis — allergic</option>
-                </optgroup>
-                <optgroup label="Other">
-                  <option>Annual allergy review</option>
-                  <option>Medication refill visit</option>
-                  <option>Post-reaction follow-up</option>
-                  <option>Telehealth consultation</option>
-                </optgroup>
-              </select>
-              <InlineField
-                label=""
-                value={encounter.chiefComplaint}
-                multiline
-                rows={1}
-                onSave={async v => {
-                  setEncounter(prev => prev ? { ...prev, chiefComplaint: v } : prev);
-                  await patchEncounter({ chiefComplaint: v });
-                }}
-              />
+            {/* SOAP card */}
+            <div className="card" style={{ padding: 20 }}>
+              <div style={{ fontWeight: 700, fontSize: 15, color: '#1a2233', marginBottom: 16, borderBottom: '1px solid #f1f5f9', paddingBottom: 10 }}>
+                🩺 Clinical Notes (SOAP)
+              </div>
+              <InlineField label="Subjective" value={encounter.subjectiveNotes ?? ''} multiline rows={3} onSave={v => patchEncounter({ subjectiveNotes: v })} />
+              <InlineField label="Objective"  value={encounter.objectiveNotes  ?? ''} multiline rows={3} onSave={v => patchEncounter({ objectiveNotes:  v })} />
+              <InlineField label="Assessment" value={encounter.assessment       ?? ''} multiline rows={3} onSave={v => patchEncounter({ assessment:       v })} />
+              <InlineField label="Plan"       value={encounter.plan             ?? ''} multiline rows={3} onSave={v => patchEncounter({ plan:             v })} />
             </div>
 
-            {/* Physician dropdown */}
-            <div style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Physician</div>
-              <select
-                value={encounter.doctorName ?? ''}
-                onChange={e => {
-                  const v = e.target.value;
-                  setEncounter(prev => prev ? { ...prev, doctorName: v } : prev);
-                  patchEncounter({ doctorName: v });
-                }}
-                style={{ width: '100%', fontSize: 13, padding: '6px 10px', borderRadius: 7, border: '1px solid #e2e8f0', background: '#fff', cursor: 'pointer' }}
-              >
-                <option value="">— Select Physician —</option>
-                {doctors.map(d => <option key={d.id} value={d.name}>{d.title ? `${d.name}, ${d.title}` : d.name}</option>)}
-              </select>
-            </div>
-
-            {/* Nurse dropdown */}
-            <div style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Nurse / Tech</div>
-              <select
-                value={encounter.nurseName ?? ''}
-                onChange={e => {
-                  const v = e.target.value;
-                  setEncounter(prev => prev ? { ...prev, nurseName: v } : prev);
-                  patchEncounter({ nurseName: v });
-                }}
-                style={{ width: '100%', fontSize: 13, padding: '6px 10px', borderRadius: 7, border: '1px solid #e2e8f0', background: '#fff', cursor: 'pointer' }}
-              >
-                <option value="">— Select Nurse / Tech —</option>
-                {nurses.map(n => <option key={n.id} value={n.name}>{n.title ? `${n.name}, ${n.title}` : n.name}</option>)}
-              </select>
-            </div>
-
-            {/* Diagnosis Code (ICD-10) */}
-            <div style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Diagnosis Code (ICD-10)</div>
-              <select
-                value={encounter.diagnosisCode ?? ''}
-                onChange={e => {
-                  const v = e.target.value;
-                  setEncounter(prev => prev ? { ...prev, diagnosisCode: v } : prev);
-                  patchEncounter({ diagnosisCode: v });
-                }}
-                style={{ width: '100%', fontSize: 13, padding: '6px 10px', borderRadius: 7, border: '1px solid #e2e8f0', background: '#fff', cursor: 'pointer' }}
-              >
-                <option value="">— Select ICD-10 Code —</option>
-                {icd10Options.map(c => <option key={c.id} value={c.code}>{c.code} — {c.description}</option>)}
-                {icd10Options.length === 0 && encounter.diagnosisCode && (
-                  <option value={encounter.diagnosisCode}>{encounter.diagnosisCode}</option>
-                )}
-              </select>
+            {/* Metadata card */}
+            <div className="card" style={{ padding: 20 }}>
+              <div style={{ fontWeight: 700, fontSize: 13, color: '#64748b', marginBottom: 12 }}>ℹ️ Encounter Info</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 16px', fontSize: 12, color: '#374151' }}>
+                <div><span style={{ color: '#94a3b8' }}>ID:</span> <span style={{ fontFamily: 'monospace', fontSize: 11 }}>{id.slice(0, 8)}…</span></div>
+                <div><span style={{ color: '#94a3b8' }}>Status:</span> <strong>{statusStyle.label}</strong></div>
+                {encounter.signedBy  && <div style={{ gridColumn: '1/-1' }}><span style={{ color: '#94a3b8' }}>Signed by:</span> {encounter.signedBy} — {fmtDateTime(encounter.signedAt)}</div>}
+                {encounter.billedAt  && <div style={{ gridColumn: '1/-1' }}><span style={{ color: '#94a3b8' }}>Billed:</span> {fmtDateTime(encounter.billedAt)}</div>}
+                {encounter.cptSummary && <div style={{ gridColumn: '1/-1' }}><span style={{ color: '#94a3b8' }}>CPT:</span> {encounter.cptSummary}</div>}
+              </div>
             </div>
           </div>
+        )}
 
-          {/* SOAP card */}
-          <div className="card" style={{ padding: 20 }}>
-            <div style={{ fontWeight: 700, fontSize: 15, color: '#1a2233', marginBottom: 16, borderBottom: '1px solid #f1f5f9', paddingBottom: 10 }}>
-              🩺 Clinical Notes (SOAP)
-            </div>
-            <InlineField label="Subjective" value={encounter.subjectiveNotes ?? ''} multiline rows={3} onSave={v => patchEncounter({ subjectiveNotes: v })} />
-            <InlineField label="Objective"  value={encounter.objectiveNotes  ?? ''} multiline rows={3} onSave={v => patchEncounter({ objectiveNotes:  v })} />
-            <InlineField label="Assessment" value={encounter.assessment       ?? ''} multiline rows={3} onSave={v => patchEncounter({ assessment:       v })} />
-            <InlineField label="Plan"       value={encounter.plan             ?? ''} multiline rows={3} onSave={v => patchEncounter({ plan:             v })} />
-          </div>
-
-          {/* Metadata card */}
-          <div className="card" style={{ padding: 20 }}>
-            <div style={{ fontWeight: 700, fontSize: 13, color: '#64748b', marginBottom: 12 }}>ℹ️ Encounter Info</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 16px', fontSize: 12, color: '#374151' }}>
-              <div><span style={{ color: '#94a3b8' }}>ID:</span> <span style={{ fontFamily: 'monospace', fontSize: 11 }}>{id.slice(0, 8)}…</span></div>
-              <div><span style={{ color: '#94a3b8' }}>Status:</span> <strong>{statusStyle.label}</strong></div>
-              {encounter.signedBy  && <div style={{ gridColumn: '1/-1' }}><span style={{ color: '#94a3b8' }}>Signed by:</span> {encounter.signedBy} — {fmtDateTime(encounter.signedAt)}</div>}
-              {encounter.billedAt  && <div style={{ gridColumn: '1/-1' }}><span style={{ color: '#94a3b8' }}>Billed:</span> {fmtDateTime(encounter.billedAt)}</div>}
-              {encounter.cptSummary && <div style={{ gridColumn: '1/-1' }}><span style={{ color: '#94a3b8' }}>CPT:</span> {encounter.cptSummary}</div>}
-            </div>
-          </div>
-        </div>
-
-        {/* ─── Right: Activity Timeline ───────────────────────── */}
-        <div>
+        {/* ─── Activities Tab ───────────────────────────────── */}
+        {activeTab === 'activities' && (
           <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
             {/* Timeline header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 20px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
@@ -752,7 +854,7 @@ export default function EncounterDetailPage() {
             </div>
 
             {/* Activities */}
-            <div style={{ padding: '0 20px', maxHeight: 'calc(100vh - 260px)', overflowY: 'auto' }}>
+            <div style={{ padding: '0 20px' }}>
               {activities.length === 0 ? (
                 <div style={{ padding: '32px 0', textAlign: 'center', color: '#94a3b8' }}>
                   <div style={{ fontSize: 28, marginBottom: 8 }}>📭</div>
@@ -773,7 +875,172 @@ export default function EncounterDetailPage() {
               )}
             </div>
           </div>
-        </div>
+        )}
+
+        {/* ─── Claim Tab ────────────────────────────────────── */}
+        {activeTab === 'claim' && (
+          <div>
+            {/* Warning: not yet signed */}
+            {(encounter.status === 'open' || encounter.status === 'awaiting_md') && (
+              <div style={{ background: '#fefce8', border: '1px solid #fde68a', borderRadius: 10, padding: '14px 20px', color: '#92400e', fontSize: 14, marginBottom: 16 }}>
+                ⚠️ Encounter must be signed before generating a claim. Change the status to <strong>Signed</strong> or <strong>Awaiting MD</strong> first.
+              </div>
+            )}
+
+            {/* Loading spinner */}
+            {claimLoading && (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '60px 0', gap: 12 }}>
+                <div className="spinner" />
+                <span style={{ fontSize: 14, color: '#64748b' }}>Generating claim…</span>
+              </div>
+            )}
+
+            {/* Error state */}
+            {!claimLoading && claimError && (
+              <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, padding: '16px 20px', color: '#b91c1c', fontSize: 14, display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'space-between' }}>
+                <span>🚨 {claimError}</span>
+                <button onClick={loadClaim} style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: '#b91c1c', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
+                  ↺ Retry
+                </button>
+              </div>
+            )}
+
+            {/* Claim card */}
+            {!claimLoading && !claimError && claimData && (
+              <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #e2e8f0', overflow: 'hidden', maxWidth: 800, margin: '0 auto' }}>
+                {/* Header row */}
+                <div style={{ background: '#1e293b', color: '#fff', padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 700 }}>💳 CMS-1500 CLAIM</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    {claimData.claimId && <span style={{ fontFamily: 'monospace', fontSize: 12, color: '#94a3b8' }}>{claimData.claimId}</span>}
+                    <StatusBadge status={encounter.status} />
+                  </div>
+                </div>
+
+                {/* Two-column patient/provider */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, padding: 24 }}>
+                  {/* Patient */}
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#0d9488', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>Patient Information</div>
+                    {[
+                      ['Name', claimData.patient?.name],
+                      ['Date of Birth', claimData.patient?.dob],
+                      ['Insurance Provider', claimData.patient?.insuranceProvider],
+                      ['Group #', claimData.patient?.groupNumber],
+                      ['Member ID', claimData.patient?.memberId],
+                    ].map(([lbl, val]) => (
+                      <div key={lbl as string} style={{ marginBottom: 8 }}>
+                        <div style={{ fontSize: 11, color: '#94a3b8' }}>{lbl}</div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: '#1a2233' }}>{val ?? '—'}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Provider */}
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#0d9488', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>Provider Information</div>
+                    {[
+                      ['Provider Name', claimData.provider?.name],
+                      ['NPI', claimData.provider?.npi],
+                      ['Date of Service', claimData.provider?.dateOfService],
+                      ['Location', claimData.provider?.location],
+                    ].map(([lbl, val]) => (
+                      <div key={lbl as string} style={{ marginBottom: 8 }}>
+                        <div style={{ fontSize: 11, color: '#94a3b8' }}>{lbl}</div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: '#1a2233' }}>{val ?? '—'}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Diagnosis */}
+                <div style={{ borderTop: '1px solid #f1f5f9', padding: '16px 24px' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#0d9488', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Diagnosis Code</div>
+                  <div style={{ fontFamily: 'monospace', fontSize: 22, fontWeight: 700, color: '#1a2233' }}>
+                    {claimData.diagnosisCode ?? encounter.diagnosisCode ?? '—'}
+                    {claimData.diagnosisDescription && (
+                      <span style={{ fontFamily: 'sans-serif', fontSize: 13, fontWeight: 400, color: '#64748b', marginLeft: 12 }}>{claimData.diagnosisDescription}</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* CPT Codes */}
+                {claimData.cptCodes && claimData.cptCodes.length > 0 && (
+                  <div style={{ borderTop: '1px solid #f1f5f9', padding: '16px 24px' }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#0d9488', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>Procedure Codes (CPT)</div>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                      <thead>
+                        <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                          {['Code', 'Description', 'Units', 'Fee', 'Total'].map(h => (
+                            <th key={h} style={{ textAlign: h === 'Units' || h === 'Fee' || h === 'Total' ? 'right' : 'left', padding: '4px 8px', fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {claimData.cptCodes.map((cpt, i) => (
+                          <tr key={i} style={{ borderBottom: '1px solid #f8fafc' }}>
+                            <td style={{ padding: '6px 8px', fontFamily: 'monospace', fontWeight: 700, color: '#1a2233' }}>{cpt.code}</td>
+                            <td style={{ padding: '6px 8px', color: '#374151' }}>{cpt.description}</td>
+                            <td style={{ padding: '6px 8px', textAlign: 'right', color: '#374151' }}>{cpt.units}</td>
+                            <td style={{ padding: '6px 8px', textAlign: 'right', color: '#374151' }}>{fmtCurrency(cpt.fee)}</td>
+                            <td style={{ padding: '6px 8px', textAlign: 'right', fontWeight: 600, color: '#1a2233' }}>{fmtCurrency(cpt.total)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot>
+                        <tr style={{ borderTop: '2px solid #e2e8f0' }}>
+                          <td colSpan={3} />
+                          <td style={{ padding: '8px 8px', textAlign: 'right', fontWeight: 700, fontSize: 12, color: '#64748b', textTransform: 'uppercase' }}>Total Charges</td>
+                          <td style={{ padding: '8px 8px', textAlign: 'right', fontWeight: 800, fontSize: 15, color: '#1a2233' }}>
+                            {fmtCurrency(claimData.totalCharges ?? (claimData.cptCodes?.reduce((s, c) => s + (c.total ?? 0), 0) ?? 0))}
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                )}
+
+                {/* Actions footer */}
+                <div style={{ borderTop: '1px solid #e2e8f0', padding: '16px 24px', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                  <button
+                    onClick={downloadClaimJson}
+                    style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: '#7c3aed', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+                  >
+                    ⬇ Download JSON
+                  </button>
+                  <button
+                    onClick={() => window.print()}
+                    style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#f8fafc', color: '#374151', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+                  >
+                    🖨 Print
+                  </button>
+                  {encounter.status !== 'complete' && (
+                    <button
+                      onClick={markAsSubmitted}
+                      style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: '#15803d', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+                    >
+                      ✅ Mark as Submitted
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Prompt to load if status is signed/billed but no claim yet and not loading */}
+            {!claimLoading && !claimError && !claimData && encounter.status !== 'open' && encounter.status !== 'awaiting_md' && (
+              <div style={{ textAlign: 'center', padding: '40px 0', color: '#64748b' }}>
+                <div style={{ fontSize: 32, marginBottom: 12 }}>💳</div>
+                <div style={{ fontSize: 14, marginBottom: 16 }}>Generate a CMS-1500 claim for this encounter.</div>
+                <button
+                  onClick={loadClaim}
+                  style={{ padding: '10px 24px', borderRadius: 8, border: 'none', background: '#0d9488', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}
+                >
+                  Generate Claim
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {showAddActivity && (
