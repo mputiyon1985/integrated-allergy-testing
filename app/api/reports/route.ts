@@ -168,11 +168,13 @@ async function getStaff(
     ...base,
   )
 
-  const loc2 = locFilterAlias('ea', locationId, practiceId)
+  // EncounterActivity has no locationId — join through Encounter
+  const loc2 = locFilterAlias('e2', locationId, practiceId)
   const actBase = [from, to, ...loc2.vals]
   const activityByType = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
     `SELECT ea.type as activityType, COUNT(*) as count
      FROM EncounterActivity ea
+     JOIN Encounter e2 ON ea.encounterId = e2.id
      WHERE ea.deletedAt IS NULL
        AND date(ea.timestamp)>=? AND date(ea.timestamp)<=?${loc2.sql}
      GROUP BY ea.type ORDER BY count DESC`,
