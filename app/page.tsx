@@ -213,7 +213,7 @@ export default function DashboardPage() {
       const todayStr = new Date().toISOString().split('T')[0];
       const locParam = locId ? `&locationId=${locId}` : practId ? `&practiceId=${practId}` : '';
       try {
-        const r = await fetch(`/api/iat-appointments?date=${todayStr}${locParam}`);
+        const r = await fetch(`/api/iat-appointments?date=${todayStr}&range=day${locParam}`);
         if (r.ok) {
           const d = await r.json();
           setTodayAppts(Array.isArray(d) ? d : (d.appointments ?? []));
@@ -242,7 +242,7 @@ export default function DashboardPage() {
           fetch('/api/auth/me'),
           fetch(`/api/encounters/count?date=${todayStr}${locParam}`),
           fetch('/api/appointment-reasons'),
-          fetch(`/api/iat-appointments?date=${todayStr}${locParam}`),
+          fetch(`/api/iat-appointments?date=${todayStr}&range=day${locParam}`),
         ]);
         if (patientsRes.status === 'fulfilled' && patientsRes.value.ok) {
           const d = await patientsRes.value.json();
@@ -282,8 +282,7 @@ export default function DashboardPage() {
         if (apptsRes.status === 'fulfilled' && apptsRes.value.ok) {
           const d = await apptsRes.value.json();
           const arr: TodayAppointment[] = Array.isArray(d) ? d : [];
-          const todayDateStr = new Date().toDateString();
-          setTodayAppts(arr.filter(a => new Date(a.startTime).toDateString() === todayDateStr));
+          setTodayAppts(arr);
         }
       } catch {}
       finally { setLoading(false); }
@@ -797,7 +796,7 @@ export default function DashboardPage() {
                 });
                 setSavingAppt(false); setEditingAppt(null);
                 const todayStr = new Date().toISOString().split('T')[0];
-                fetch(`/api/iat-appointments?date=${todayStr}`).then(async r => {
+                fetch(`/api/iat-appointments?date=${todayStr}&range=day`).then(async r => {
                   if (!r.ok) throw new Error(`HTTP ${r.status}`);
                   return r.json();
                 }).then(d => setTodayAppts(d.appointments ?? d ?? [])).catch(err => {

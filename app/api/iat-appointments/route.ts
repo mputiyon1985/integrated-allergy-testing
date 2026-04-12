@@ -54,7 +54,9 @@ export async function GET(request: NextRequest) {
 
     const { start, end } = rangeParam === 'month'
       ? getMonthRange(base)
-      : getWeekRange(base)
+      : rangeParam === 'day'
+        ? { start: new Date(base.getFullYear(), base.getMonth(), base.getDate(), 0, 0, 0, 0), end: new Date(base.getFullYear(), base.getMonth(), base.getDate(), 23, 59, 59, 999) }
+        : getWeekRange(base)
 
     const startStr = start.toISOString()
     const endStr = end.toISOString()
