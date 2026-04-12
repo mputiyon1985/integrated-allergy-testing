@@ -12,43 +12,43 @@ import AppointmentsTile from '@/components/dashboard/AppointmentsTile';
 
 const DashboardGrid = dynamic(() => import('@/components/DashboardGrid'), { ssr: false });
 
-const LAYOUT_KEY = 'iat-dashboard-layout-v10'; // v10: locked default for all users
+const LAYOUT_KEY = 'iat-dashboard-layout-v11'; // v11: schedule starts at y=0, side by side with KPIs
 
 const DEFAULT_LAYOUTS: ResponsiveLayouts = {
   lg: [
-    { i: 'kpi-patients',   x: 0,  y: 0,  w: 4, h: 4,  minW: 2, minH: 3 },
-    { i: 'kpi-waiting',    x: 4,  y: 0,  w: 4, h: 4,  minW: 2, minH: 3 },
-    { i: 'kpi-inservice',  x: 8,  y: 0,  w: 4, h: 4,  minW: 2, minH: 3 },
-    { i: 'waiting-room',   x: 0,  y: 4,  w: 4, h: 4,  minW: 3, minH: 4 },
-    { i: 'appointments',   x: 4,  y: 4,  w: 8, h: 20, minW: 3, minH: 6 },
+    { i: 'kpi-patients',   x: 0,  y: 0,  w: 2, h: 5,  minW: 2, minH: 3 },
+    { i: 'kpi-waiting',    x: 2,  y: 0,  w: 2, h: 5,  minW: 2, minH: 3 },
+    { i: 'kpi-inservice',  x: 4,  y: 0,  w: 2, h: 5,  minW: 2, minH: 3 },
+    { i: 'waiting-room',   x: 0,  y: 5,  w: 6, h: 8,  minW: 3, minH: 4 },
+    { i: 'appointments',   x: 6,  y: 0,  w: 6, h: 24, minW: 3, minH: 6 },
   ],
   md: [
-    { i: 'kpi-patients',   x: 0, y: 0,  w: 4,  h: 4 },
-    { i: 'kpi-waiting',    x: 4, y: 0,  w: 3,  h: 4 },
-    { i: 'kpi-inservice',  x: 7, y: 0,  w: 3,  h: 4 },
-    { i: 'waiting-room',   x: 0, y: 4,  w: 4,  h: 4 },
-    { i: 'appointments',   x: 4, y: 4,  w: 6,  h: 20 },
+    { i: 'kpi-patients',   x: 0, y: 0,  w: 2, h: 5 },
+    { i: 'kpi-waiting',    x: 2, y: 0,  w: 2, h: 5 },
+    { i: 'kpi-inservice',  x: 4, y: 0,  w: 2, h: 5 },
+    { i: 'waiting-room',   x: 0, y: 5,  w: 6, h: 8 },
+    { i: 'appointments',   x: 6, y: 0,  w: 4, h: 24 },
   ],
   sm: [
     { i: 'kpi-patients',   x: 0, y: 0,  w: 2, h: 4 },
     { i: 'kpi-waiting',    x: 2, y: 0,  w: 2, h: 4 },
     { i: 'kpi-inservice',  x: 4, y: 0,  w: 2, h: 4 },
-    { i: 'waiting-room',   x: 0, y: 4,  w: 3, h: 4 },
-    { i: 'appointments',   x: 3, y: 4,  w: 3, h: 20 },
+    { i: 'waiting-room',   x: 0, y: 4,  w: 4, h: 6 },
+    { i: 'appointments',   x: 4, y: 0,  w: 2, h: 24 },
   ],
   xs: [
     { i: 'kpi-patients',   x: 0, y: 0,  w: 2, h: 4 },
     { i: 'kpi-waiting',    x: 2, y: 0,  w: 2, h: 4 },
     { i: 'kpi-inservice',  x: 0, y: 4,  w: 4, h: 4 },
-    { i: 'waiting-room',   x: 0, y: 8,  w: 4, h: 4 },
-    { i: 'appointments',   x: 0, y: 12, w: 4, h: 20 },
+    { i: 'waiting-room',   x: 0, y: 8,  w: 4, h: 5 },
+    { i: 'appointments',   x: 0, y: 13, w: 4, h: 20 },
   ],
   xxs: [
     { i: 'kpi-patients',   x: 0, y: 0,  w: 2, h: 4 },
     { i: 'kpi-waiting',    x: 0, y: 4,  w: 2, h: 4 },
     { i: 'kpi-inservice',  x: 0, y: 8,  w: 2, h: 4 },
-    { i: 'waiting-room',   x: 0, y: 12, w: 2, h: 4 },
-    { i: 'appointments',   x: 0, y: 16, w: 2, h: 20 },
+    { i: 'waiting-room',   x: 0, y: 12, w: 2, h: 5 },
+    { i: 'appointments',   x: 0, y: 17, w: 2, h: 20 },
   ],
 };
 
@@ -56,7 +56,7 @@ function loadLayouts(): ResponsiveLayouts {
   // Always start with the default layout for all users
   // Purge any previously saved layouts
   try {
-    for (let v = 1; v <= 10; v++) {
+    for (let v = 1; v <= 11; v++) {
       try { localStorage.removeItem(`iat-dashboard-layout-v${v}`); } catch {}
     }
   } catch {}
