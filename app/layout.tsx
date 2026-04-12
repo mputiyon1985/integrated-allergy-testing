@@ -30,29 +30,7 @@ const bottomNavItems = [
   { href: '/settings', label: 'Settings', icon: '⚙️' },
 ];
 
-function UserCard({ userName }: { userName: string }) {
-  const [user, setUser] = useState<{ name: string; email: string; role: string } | null>(null);
-
-  useEffect(() => {
-    try { const c = localStorage.getItem('iat_user'); if (c) setUser(JSON.parse(c)); } catch {}
-  }, [userName]); // re-read cache when userName updates
-
-  if (!user && !userName) return null;
-  const displayName = user?.name ?? userName;
-
-  return (
-    <div style={{ margin: '0 8px 8px' }}>
-      <button onClick={async () => {
-          try { localStorage.removeItem('iat_user'); localStorage.removeItem('iat_active_location'); } catch {}
-          await apiFetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
-          window.location.href = '/api/auth/signout?callbackUrl=/login';
-        }}
-        style={{ width: '100%', padding: '7px 0', fontSize: 12, color: '#dc2626', background: '#fff', border: '1px solid #fca5a5', borderRadius: 8, cursor: 'pointer', fontWeight: 700 }}>
-        🚪 Sign Out
-      </button>
-    </div>
-  );
-}
+// UserCard removed — Sign Out is in top-right user menu
 
 // Nav items hidden per role
 const ROLE_HIDDEN_NAV: Record<string, string[]> = {
@@ -173,7 +151,7 @@ function Sidebar({ open, onClose, userName, userRole }: { open: boolean; onClose
           })}
         </div>
 
-        <UserCard userName={userName} />
+        
 
         {/* Settings at bottom — above copyright */}
         <div style={{ padding: '4px 8px' }}>
