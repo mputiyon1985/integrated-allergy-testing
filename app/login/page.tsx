@@ -15,9 +15,10 @@ function LoginPageInner() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // SSO error from URL
+  // SSO error / timeout reason from URL
   const searchParams = useSearchParams();
   const ssoError = searchParams?.get('error');
+  const reason = searchParams?.get('reason');
 
   // Pre-warm key serverless functions while user is on login page
   // This prevents cold-start delays after successful login
@@ -201,6 +202,13 @@ function LoginPageInner() {
               <h2 style={{ fontSize: 17, fontWeight: 600, color: '#1f2937', marginBottom: 20, textAlign: 'center' }}>
                 Sign in to your account
               </h2>
+
+              {/* Session timeout banner */}
+              {reason === 'timeout' && (
+                <div style={{ background: '#fefce8', border: '1px solid #fde68a', color: '#92400e', borderRadius: 8, padding: '10px 14px', fontSize: 13, marginBottom: 16 }}>
+                  ⏱ Your session expired due to inactivity. Please log in again.
+                </div>
+              )}
 
               {/* SSO domain error */}
               {ssoError === 'unauthorized_domain' && (

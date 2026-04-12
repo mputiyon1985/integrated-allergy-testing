@@ -87,6 +87,12 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     console.error('POST /api/kiosk/lookup error:', error);
+        prisma.auditLog.create({ data: {
+      action: 'KIOSK_LOOKUP',
+      entity: 'Patient',
+      entityId: 'kiosk',
+      details: 'Patient lookup performed via kiosk',
+    }}).catch(() => {})
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

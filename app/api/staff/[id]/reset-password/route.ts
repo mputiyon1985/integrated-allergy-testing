@@ -4,6 +4,7 @@
  * @security Requires authenticated session with admin role
  */
 import { NextRequest, NextResponse } from 'next/server'
+import { validatePassword } from '@/lib/password-policy'
 import bcrypt from 'bcryptjs'
 import prisma from '@/lib/db'
 import { verifySession } from '@/lib/auth/session'
@@ -34,6 +35,8 @@ export async function POST(
     )
     if (!existingRows[0]) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
+    const pwCheck = validatePassword(password)
+    if (!pwCheck.valid) return NextResponse.json({ error: pwCheck.errors.join('. ') }, { status: 400 })
     const passwordHash = await bcrypt.hash(password, 12)
 
     await prisma.$executeRawUnsafe(

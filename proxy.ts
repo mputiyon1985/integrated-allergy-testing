@@ -18,6 +18,13 @@ const PUBLIC_PATHS = ['/login', '/api/auth', '/consent', '/api/consent', '/api/h
 
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl
+
+  // Request size limit — reject payloads > 2MB to prevent abuse
+  const contentLength = parseInt(req.headers.get('content-length') || '0', 10)
+  if (contentLength > 2_000_000) {
+    return NextResponse.json({ error: 'Request too large' }, { status: 413 })
+  }
+
   // CSRF protection for state-changing requests
   if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method) && pathname.startsWith('/api/')) {
     const isPublic = PUBLIC_PATHS.some(p => pathname.startsWith(p))

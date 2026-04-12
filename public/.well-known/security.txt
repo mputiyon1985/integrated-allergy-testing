@@ -1,0 +1,4 @@
+Contact: mailto:mputiyon@tipinc.ai
+Preferred-Languages: en
+Policy: https://integrated-allergy-testing.vercel.app/privacy
+Expires: 2027-01-01T00:00:00.000Z

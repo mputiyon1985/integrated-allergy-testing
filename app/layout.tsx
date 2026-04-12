@@ -11,7 +11,9 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import DemoRoleBanner from '@/components/DemoRoleBanner';
 
 import { usePathname } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useInactivityTimeout } from '@/lib/useInactivityTimeout';
+import InactivityModal from '@/components/InactivityModal';
 
 type NavItem = { href: string; label: string; icon: string; children?: NavItem[] };
 
@@ -366,6 +368,23 @@ function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isAuthPage = pathname === '/login' || pathname?.startsWith('/login') || pathname === '/consent' || pathname?.startsWith('/consent') || pathname?.startsWith('/kiosk');
 
+  // ── Inactivity timeout state ──────────────────────────────────────────────
+  const [showTimeoutWarning, setShowTimeoutWarning] = useState(false);
+  const [timeoutSeconds] = useState(120);
+
+  const handleAutoLogout = useCallback(async () => {
+    setShowTimeoutWarning(false);
+    try { localStorage.removeItem('iat_user'); localStorage.removeItem('iat_active_location'); } catch {}
+    await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+    window.location.href = '/login?reason=timeout';
+  }, []);
+
+  useInactivityTimeout(
+    () => { setShowTimeoutWarning(true); },
+    handleAutoLogout,
+    !isAuthPage,
+  );
+
   // Load user ONCE at mount — persists across all page navigations (AppShell never unmounts)
   useEffect(() => {
     if (isAuthPage) return;
@@ -405,6 +424,12 @@ function AppShell({ children }: { children: React.ReactNode }) {
         <TopBar userName={userName} userRole={userRole} />
         {children}
       </div>
+      <InactivityModal
+        isOpen={showTimeoutWarning}
+        secondsLeft={timeoutSeconds}
+        onStayLoggedIn={() => setShowTimeoutWarning(false)}
+        onLogout={handleAutoLogout}
+      />
     </div>
   );
 }

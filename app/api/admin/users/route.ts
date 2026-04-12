@@ -5,6 +5,7 @@
  *   POST — Create a new staff user.
  */
 import { NextRequest, NextResponse } from 'next/server'
+import { validatePassword } from '@/lib/password-policy'
 import bcrypt from 'bcryptjs'
 import prisma from '@/lib/db'
 import { requirePermission } from '@/lib/api-permissions'
@@ -62,6 +63,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'A user with that email already exists' }, { status: 409 })
     }
 
+    const pwCheck = validatePassword(password)
+    if (!pwCheck.valid) return NextResponse.json({ error: pwCheck.errors.join('. ') }, { status: 400 })
     const passwordHash = await bcrypt.hash(password, 12)
     const validRoles = ['admin', 'provider', 'clinical_staff', 'front_desk', 'billing', 'office_manager', 'staff']
     const assignedRole = role && validRoles.includes(role) ? role : 'staff'
@@ -93,7 +96,7 @@ export async function POST(req: NextRequest) {
       active: Boolean(newRows[0].active),
       mfaEnabled: Boolean(newRows[0].mfaEnabled),
       defaultLocationId: newRows[0].defaultLocationId as string | null,
-    } : { id: newId, email, name, role: assignedRole, permissions: null, active: true, mfaEnabled: false, defaultLocationId: defaultLocationId ?? null }
+    } : { id: newId, email, name, role: assignedRole, permissions: null, active: true, mfaEnabled: true, defaultLocationId: defaultLocationId ?? null }
 
     await prisma.auditLog.create({
       data: {

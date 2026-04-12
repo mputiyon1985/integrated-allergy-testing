@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import prisma from '@/lib/db'
 import { HIPAA_HEADERS } from '@/lib/hipaaHeaders'
+import { verifySession } from '@/lib/auth/session'
 import { requirePermission } from '@/lib/api-permissions'
 
 const UpdatePatientSchema = z.object({
@@ -97,6 +98,19 @@ export async function GET(
         category: r.allergen_category,
       } : null,
     }))
+
+    // HIPAA: log every PHI read access
+    const session = await import('@/lib/auth/session').then(m => m.verifySession(_request))
+    const sessionName = String(session?.name ?? 'unknown')
+    const sessionRole = String(session?.role ?? 'unknown')
+    prisma.auditLog.create({ data: {
+      action: 'PATIENT_VIEWED',
+      entity: 'Patient',
+      entityId: id,
+      patientId: id,
+      performedBy: sessionName,
+      details: `Patient record accessed by ${sessionName} (role: ${sessionRole})`,
+    }}).catch((e: unknown) => console.error('[audit]', e))
 
     return NextResponse.json({
       ...patient,

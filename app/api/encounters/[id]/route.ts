@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import prisma from '@/lib/db'
 import { HIPAA_HEADERS } from '@/lib/hipaaHeaders'
+import { verifySession } from '@/lib/auth/session'
 import { requirePermission } from '@/lib/api-permissions'
 
 const UpdateEncounterSchema = z.object({
@@ -54,6 +55,19 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       id
     )
     encounter.activities = activities
+
+    // HIPAA: audit every encounter PHI read
+    const session = await verifySession(_req)
+    const sessionName = String(session?.name ?? 'unknown')
+    const sessionRole = String(session?.role ?? 'unknown')
+    prisma.auditLog.create({ data: {
+      action: 'ENCOUNTER_VIEWED',
+      entity: 'Encounter',
+      entityId: id,
+      patientId: (encounter.patientId as string) ?? '',
+      performedBy: sessionName,
+      details: `Encounter ${id.slice(0,8)} accessed by ${sessionName} (${sessionRole})`,
+    }}).catch((e: unknown) => console.error('[audit]', e))
 
     return NextResponse.json(encounter, { headers: HIPAA_HEADERS })
   } catch (err) { console.error(err); return NextResponse.json({ error: 'Failed to fetch encounter' }, { status: 500 }) }

@@ -28,6 +28,13 @@ const createPatientSchema = z.object({
 export async function GET(request: NextRequest) {
   const denied = await requirePermission(request, 'patients_view')
   if (denied) return denied
+  // HIPAA: audit patient list access (non-blocking)
+  // Audit non-blocking — verifySession already called by requirePermission
+  prisma.auditLog.create({ data: {
+    action: 'PATIENT_LIST_VIEWED', entity: 'Patient', entityId: 'list',
+    performedBy: 'staff',
+    details: 'Patient list accessed',
+  }}).catch((e: unknown) => console.error('[audit]', e))
   try {
     const { searchParams } = new URL(request.url)
     const search = searchParams.get('search')

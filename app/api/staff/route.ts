@@ -6,6 +6,7 @@
  * @security Requires authenticated session with admin role (iat_session cookie via proxy.ts)
  */
 import { NextRequest, NextResponse } from 'next/server'
+import { validatePassword } from '@/lib/password-policy'
 import bcrypt from 'bcryptjs'
 import prisma from '@/lib/db'
 import { verifySession } from '@/lib/auth/session'
@@ -39,18 +40,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'A user with that email already exists' }, { status: 409 })
     }
 
+    const pwCheck = validatePassword(password)
+    if (!pwCheck.valid) return NextResponse.json({ error: pwCheck.errors.join('. ') }, { status: 400 })
     const passwordHash = await bcrypt.hash(password, 12)
     const assignedRole = role === 'admin' ? 'admin' : 'staff'
     const newId = crypto.randomUUID()
 
     if (defaultLocationId) {
       await prisma.$executeRawUnsafe(
-        `INSERT INTO StaffUser (id, email, passwordHash, name, role, active, mfaEnabled, defaultLocationId, updatedAt) VALUES (?,?,?,?,?,1,0,?,CURRENT_TIMESTAMP)`,
+        `INSERT INTO StaffUser (id, email, passwordHash, name, role, active, mfaEnabled, defaultLocationId, updatedAt) VALUES (?,?,?,?,?,1,1,?,CURRENT_TIMESTAMP)`,
         newId, email, passwordHash, name, assignedRole, defaultLocationId
       )
     } else {
       await prisma.$executeRawUnsafe(
-        `INSERT INTO StaffUser (id, email, passwordHash, name, role, active, mfaEnabled, updatedAt) VALUES (?,?,?,?,?,1,0,CURRENT_TIMESTAMP)`,
+        `INSERT INTO StaffUser (id, email, passwordHash, name, role, active, mfaEnabled, updatedAt) VALUES (?,?,?,?,?,1,1,CURRENT_TIMESTAMP)`,
         newId, email, passwordHash, name, assignedRole
       )
     }
