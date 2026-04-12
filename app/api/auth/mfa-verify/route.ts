@@ -10,9 +10,21 @@ import prisma from '@/lib/db'
 import { signSession } from '@/lib/auth/session'
 import { log } from '@/lib/audit'
 
+const mfaAttempts = new Map<string, { count: number; resetAt: number }>()
+function checkMfaRateLimit(ip: string): boolean {
+  const now = Date.now()
+  const entry = mfaAttempts.get(ip)
+  if (!entry || now > entry.resetAt) { mfaAttempts.set(ip, { count: 1, resetAt: now + 15 * 60 * 1000 }); return true }
+  if (entry.count >= 10) return false
+  entry.count++; return true
+}
+
+
 export const dynamic = 'force-dynamic'
 
 export async function POST(req: NextRequest) {
+  const ip = req.headers.get('x-forwarded-for') || 'unknown'
+  if (!checkMfaRateLimit(ip)) return NextResponse.json({ error: 'Too many attempts. Try again in 15 minutes.' }, { status: 429 })
   try {
     const body = await req.json() as { tempToken?: string; code?: string }
     const { tempToken, code } = body

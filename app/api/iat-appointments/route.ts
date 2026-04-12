@@ -6,6 +6,7 @@
  *   POST — create new appointment.
  */
 import { NextRequest, NextResponse } from 'next/server'
+import { HIPAA_HEADERS } from '@/lib/hipaaHeaders'
 import { z } from 'zod'
 import prisma from '@/lib/db'
 import { requirePermission } from '@/lib/api-permissions'

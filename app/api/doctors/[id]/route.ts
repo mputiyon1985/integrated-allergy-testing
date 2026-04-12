@@ -6,6 +6,7 @@
  *   DELETE — Soft delete (set deletedAt).
  */
 import { NextRequest, NextResponse } from 'next/server'
+import { HIPAA_HEADERS } from '@/lib/hipaaHeaders'
 import prisma from '@/lib/db'
 import { requirePermission } from '@/lib/api-permissions'
 
@@ -72,7 +73,7 @@ export async function PUT(
     WHERE id = ${id}`
 
     const rows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
-      `SELECT * FROM Doctor WHERE id = ?`, id
+      `SELECT * FROM Doctor WHERE id = ? AND (deletedAt IS NULL OR deletedAt = \'\')`, id
     )
 
     prisma.auditLog.create({

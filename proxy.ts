@@ -18,6 +18,16 @@ const PUBLIC_PATHS = ['/login', '/api/auth', '/consent', '/api/consent', '/api/h
 
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl
+  // CSRF protection for state-changing requests
+  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method) && pathname.startsWith('/api/')) {
+    const isPublic = PUBLIC_PATHS.some(p => pathname.startsWith(p))
+    if (!isPublic) {
+      const csrfError = validateCsrf(req)
+      if (csrfError) return addSecurityHeaders(csrfError)
+    }
+  }
+
+
   function addSecurityHeaders(response: NextResponse): NextResponse {
     response.headers.set('X-Frame-Options', 'DENY')
     response.headers.set('X-Content-Type-Options', 'nosniff')

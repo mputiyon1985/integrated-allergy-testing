@@ -6,6 +6,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/db'
 import { jsPDF } from 'jspdf'
+import { verifySession } from '@/lib/auth/session'
+import { HIPAA_HEADERS } from '@/lib/hipaaHeaders'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,6 +23,8 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const session = await verifySession(_request)
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: HIPAA_HEADERS })
   try {
     const { id } = (await params)
 

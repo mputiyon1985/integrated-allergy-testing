@@ -6,6 +6,7 @@
  * @security Requires authenticated session (iat_session cookie via proxy.ts)
  */
 import { NextRequest, NextResponse } from 'next/server'
+import { HIPAA_HEADERS } from '@/lib/hipaaHeaders'
 import prisma from '@/lib/db'
 import { requirePermission } from '@/lib/api-permissions'
 

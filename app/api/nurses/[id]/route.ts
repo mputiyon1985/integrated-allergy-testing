@@ -66,7 +66,7 @@ export async function PUT(
     WHERE id = ${id}`
 
     const rows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
-      `SELECT * FROM Nurse WHERE id = ?`, id
+      `SELECT * FROM Nurse WHERE id = ? AND (deletedAt IS NULL OR deletedAt = \'\')`, id
     )
 
     prisma.auditLog.create({

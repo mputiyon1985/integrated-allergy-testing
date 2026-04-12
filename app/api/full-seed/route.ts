@@ -90,9 +90,13 @@ function getWeekdays(startDate: Date, count: number): Date[] {
 export async function POST(request: NextRequest) {
   // Auth check — also accept a query param for one-time use
   const secret = process.env.SEED_SECRET
-  const url = new URL(request.url)
-  const queryToken = url.searchParams.get('token') ?? ''
-  if (secret) {
+  const queryToken = request.nextUrl.searchParams.get('token') ?? ''
+
+  if (!secret) {
+    return NextResponse.json({ error: 'SEED_SECRET not configured — seed endpoint disabled' }, { status: 503 })
+  }
+  // Always require secret
+  if (true) {
     const auth = request.headers.get('authorization') ?? ''
     const bearerToken = auth.startsWith('Bearer ') ? auth.slice(7) : auth
     if (bearerToken !== secret && queryToken !== secret) {

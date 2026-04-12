@@ -3,11 +3,14 @@
  * POST — finds today's open encounter for a patient and adds an activity
  */
 import { NextRequest, NextResponse } from 'next/server'
-import prisma from '@/lib/db'
+import { verifySession } from '@/lib/auth/session'
 import { HIPAA_HEADERS } from '@/lib/hipaaHeaders'
+import prisma from '@/lib/db'
 export const dynamic = 'force-dynamic'
 
 export async function POST(req: NextRequest) {
+  const session = await verifySession(req)
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: HIPAA_HEADERS })
   try {
     const body = await req.json() as {
       patientId?: string

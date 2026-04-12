@@ -18,7 +18,7 @@ const COOKIE_NAME = 'iat_session'
 // verification must use the same env var. Set JWT_SECRET on Vercel.
 function getSecretBytes(): Uint8Array {
   return new TextEncoder().encode(
-    process.env.JWT_SECRET ?? 'iat-dev-secret-change-in-production-32c'
+    (() => { if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') console.error('[SECURITY] JWT_SECRET not set — using insecure fallback!'); return process.env.JWT_SECRET ?? 'iat-dev-secret-change-in-production-32c'; })()
   );
 }
 
