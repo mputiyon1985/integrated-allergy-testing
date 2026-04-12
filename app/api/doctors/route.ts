@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (locationId) {
-      sql += ' AND (locationId = ? OR locationId IS NULL)'
+      sql += ' AND locationId = ?'
       values.push(locationId)
     } else if (practiceId) {
       // Get location IDs for this practice, then filter
@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
       )
       if (locs.length > 0) {
         const placeholders = locs.map(() => '?').join(',')
-        sql += ` AND (locationId IN (${placeholders}) OR locationId IS NULL)`
+        sql += ` AND locationId IN (${placeholders})`
         values.push(...locs.map(l => l.id))
       }
     }
