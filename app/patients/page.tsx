@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { getLocationParam } from '@/lib/location-params';
+import { apiFetch } from '@/lib/api-fetch';
 
 interface Patient {
   id: string;
@@ -33,7 +34,7 @@ export default function PatientsPage() {
 
   function loadPatients() {
     setLoading(true);
-    fetch(`/api/patients${getLocationParam()}`)
+    apiFetch(`/api/patients${getLocationParam()}`)
       .then(async (r) => {
         if (!r.ok) {
           const d = await r.json().catch(() => ({}));

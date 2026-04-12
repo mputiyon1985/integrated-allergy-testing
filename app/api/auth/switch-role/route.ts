@@ -13,29 +13,42 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json() as { targetEmail?: string; password?: string; returnToAdmin?: boolean }
 
-    // Return to admin: verify the stored admin session
+    // Return to admin: restore the backed-up admin session cookie
     if (body.returnToAdmin) {
       const session = await verifySession(req)
       if (!session) return NextResponse.json({ error: 'Not logged in' }, { status: 401 })
 
-      // Look up the actual admin user
-      const rows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
-        `SELECT id, email, name, role FROM StaffUser WHERE email=? LIMIT 1`,
-        'mputiyon@tipinc.ai'
-      )
-      if (!rows[0]) return NextResponse.json({ error: 'Admin not found' }, { status: 404 })
+      // Prefer restoring from backup cookie (set when switching to demo role)
+      const backupToken = req.cookies.get('iat_session_backup')?.value
 
-      const token = await signSession({
-        id: rows[0].id as string,
-        email: rows[0].email as string,
-        name: rows[0].name as string,
-        role: rows[0].role as string,
-      })
+      let token: string
+      if (backupToken) {
+        token = backupToken
+      } else {
+        // Fallback: look up admin by email env var or session's original admin
+        const adminEmail = process.env.ADMIN_EMAIL ?? 'mputiyon@tipinc.ai'
+        const rows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+          `SELECT id, email, name, role FROM StaffUser WHERE email=? LIMIT 1`,
+          adminEmail
+        )
+        if (!rows[0]) return NextResponse.json({ error: 'Admin not found' }, { status: 404 })
+        token = await signSession({
+          id: rows[0].id as string,
+          email: rows[0].email as string,
+          name: rows[0].name as string,
+          role: rows[0].role as string,
+        })
+      }
 
       const res = NextResponse.json({ ok: true })
       res.cookies.set('iat_session', token, {
         httpOnly: true, secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax', maxAge: 60 * 60 * 24 * 7, path: '/',
+      })
+      // Clear the backup cookie
+      res.cookies.set('iat_session_backup', '', {
+        httpOnly: true, secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax', maxAge: 0, path: '/',
       })
       return res
     }
@@ -66,6 +79,14 @@ export async function POST(req: NextRequest) {
       httpOnly: true, secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax', maxAge: 60 * 60 * 24 * 7, path: '/',
     })
+    // Back up the current admin session so "Back to Admin" can restore it
+    const currentSession = req.cookies.get('iat_session')?.value
+    if (currentSession) {
+      res.cookies.set('iat_session_backup', currentSession, {
+        httpOnly: true, secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax', maxAge: 60 * 60 * 24 * 7, path: '/',
+      })
+    }
     return res
   } catch (err) {
     console.error('switch-role error:', err)

@@ -110,9 +110,11 @@ export default function EncountersPage() {
 
   // ── Filters ──
   const today = new Date().toISOString().slice(0, 10);
-  const [dateFrom, setDateFrom] = useState(today);
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const [dateFrom, setDateFrom] = useState(thirtyDaysAgo.toISOString().slice(0, 10));
   const [dateTo, setDateTo] = useState(today);
-  const [rangePreset, setRangePreset] = useState<'today' | 'week' | 'month' | 'custom'>('today');
+  const [rangePreset, setRangePreset] = useState<'today' | 'week' | 'month' | 'custom'>('custom');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [doctorFilter, setDoctorFilter] = useState('');
@@ -205,10 +207,14 @@ export default function EncountersPage() {
   function clearFilters() {
     setSearch(''); setStatusFilter('all');
     setDoctorFilter(''); setNurseFilter(''); setInsuranceFilter(''); setServiceFilter('');
-    applyPreset('today');
+    const ago = new Date();
+    ago.setDate(ago.getDate() - 30);
+    setDateFrom(ago.toISOString().slice(0, 10));
+    setDateTo(new Date().toISOString().slice(0, 10));
+    setRangePreset('custom');
   }
 
-  const hasActiveFilters = search || statusFilter !== 'all' || doctorFilter || nurseFilter || insuranceFilter || serviceFilter || rangePreset !== 'today';
+  const hasActiveFilters = search || statusFilter !== 'all' || doctorFilter || nurseFilter || insuranceFilter || serviceFilter;
 
   return (
     <>
@@ -216,7 +222,7 @@ export default function EncountersPage() {
         <div>
           <div className="page-title">📋 Encounters</div>
           <div className="page-subtitle">
-            {loading ? 'Loading…' : `${encounters.length} encounter${encounters.length !== 1 ? 's' : ''} ${rangePreset === 'today' ? 'today' : `${fmtDate(dateFrom)} – ${fmtDate(dateTo)}`}`}
+            {loading ? 'Loading…' : `${encounters.length} encounter${encounters.length !== 1 ? 's' : ''} ${fmtDate(dateFrom)} – ${fmtDate(dateTo)}`}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
