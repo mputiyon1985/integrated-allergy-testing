@@ -9,8 +9,8 @@ export function useInactivityTimeout(
   onLogout: () => void,
   enabled = true
 ) {
-  const warnTimer = useRef<ReturnType<typeof setTimeout>>()
-  const logoutTimer = useRef<ReturnType<typeof setTimeout>>()
+  const warnTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const logoutTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   const reset = useCallback(() => {
     clearTimeout(warnTimer.current)
