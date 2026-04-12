@@ -12,7 +12,7 @@ import AppointmentsTile from '@/components/dashboard/AppointmentsTile';
 
 const DashboardGrid = dynamic(() => import('@/components/DashboardGrid'), { ssr: false });
 
-const LAYOUT_KEY = 'iat-dashboard-layout-v9'; // v9: waiting room compact, schedule full height
+const LAYOUT_KEY = 'iat-dashboard-layout-v10'; // v10: locked default for all users
 
 const DEFAULT_LAYOUTS: ResponsiveLayouts = {
   lg: [
@@ -55,9 +55,10 @@ const DEFAULT_LAYOUTS: ResponsiveLayouts = {
 function loadLayouts(): ResponsiveLayouts {
   try {
     // Purge all old layout keys
-    ['iat-dashboard-layout-v1','iat-dashboard-layout-v2','iat-dashboard-layout-v3','iat-dashboard-layout-v4','iat-dashboard-layout-v5','iat-dashboard-layout-v7'].forEach(k => {
-      try { localStorage.removeItem(k); } catch {}
-    });
+    // Purge ALL old layout versions so every user gets the fresh default
+    for (let v = 1; v <= 9; v++) {
+      try { localStorage.removeItem(`iat-dashboard-layout-v${v}`); } catch {}
+    }
     const saved = localStorage.getItem(LAYOUT_KEY);
     if (saved) return JSON.parse(saved);
   } catch {}
