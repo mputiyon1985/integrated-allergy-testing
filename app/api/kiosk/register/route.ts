@@ -67,14 +67,18 @@ export async function POST(request: NextRequest) {
 
     await prisma.$executeRaw`INSERT INTO Patient (
         id, patientId, name, dob, phone, email, street, apt, city, state, zip,
-        insuranceProvider, insuranceId, status, createdAt, updatedAt
+        insuranceProvider, insuranceId, status,
+        physician, clinicLocation, diagnosis, startDate,
+        createdAt, updatedAt
       ) VALUES (
         ${id}, ${patientId}, ${fullName}, ${dobStr},
         ${body.phone?.trim() || null}, ${body.email?.trim() || null},
         ${body.street?.trim() || null}, ${body.apt?.trim() || null},
         ${body.city?.trim() || null}, ${body.state?.trim() || null}, ${body.zip?.trim() || null},
         ${body.insuranceProvider?.trim() || null}, ${body.insuranceId?.trim() || null},
-        'active', ${nowStr}, ${nowStr}
+        'active',
+        '', '', '', ${nowStr},
+        ${nowStr}, ${nowStr}
       )`;
 
     const patient = { id, patientId, name: fullName, dob: dobStr };

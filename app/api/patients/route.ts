@@ -131,16 +131,16 @@ export async function POST(request: NextRequest) {
         physician, clinicLocation, diagnosis, insuranceId,
         insuranceProvider, insuranceGroup,
         emergencyName, emergencyPhone, emergencyRelation,
-        notes, doctorId, status, createdAt, updatedAt
+        notes, doctorId, status, startDate, createdAt, updatedAt
       ) VALUES (
         ${id}, ${patientId}, ${name}, ${dobStr},
         ${result.data.email ?? null}, ${result.data.phone ?? null}, ${bodyRaw.homePhone ?? null},
         ${bodyRaw.street ?? null}, ${bodyRaw.city ?? null}, ${bodyRaw.state ?? null}, ${bodyRaw.zip ?? null}, ${bodyRaw.apt ?? null},
-        ${result.data.physician ?? null}, ${result.data.clinicLocation ?? null}, ${result.data.diagnosis ?? null}, ${result.data.insuranceId ?? null},
+        ${result.data.physician ?? ''}, ${result.data.clinicLocation ?? ''}, ${result.data.diagnosis ?? ''}, ${result.data.insuranceId ?? null},
         ${bodyRaw.insuranceProvider ?? null}, ${bodyRaw.insuranceGroup ?? null},
         ${bodyRaw.emergencyName ?? null}, ${bodyRaw.emergencyPhone ?? null}, ${bodyRaw.emergencyRelation ?? null},
         ${result.data.notes ?? null}, ${(body as { doctorId?: string }).doctorId ?? null},
-        'active', ${now}, ${now}
+        'active', ${now}, ${now}, ${now}
       )`
 
     const rows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
