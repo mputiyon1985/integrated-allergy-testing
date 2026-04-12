@@ -94,6 +94,8 @@ export default function PatientDetailPage() {
   const id = params?.id as string;
 
   const [patient, setPatient] = useState<Patient | null>(null);
+  const [userRole, setUserRole] = useState<string>('');
+  useEffect(() => { try { const u = localStorage.getItem('iat_user'); if (u) setUserRole(JSON.parse(u)?.role ?? ''); } catch {} }, []);
   // Auto-switch to encounters tab if ?action=encounter in URL
   const [tab, setTab] = useState<Tab>(searchParams?.get('action') === 'encounter' ? 'encounters' : 'overview');
   const [loading, setLoading] = useState(true);
@@ -504,10 +506,12 @@ ${sectionsHtml}
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <Link href="/patients" style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #e2e8f0', background: '#fff', color: '#374151', fontSize: 14, fontWeight: 600, textDecoration: 'none' }}>← Patients</Link>
-          <button onClick={() => { setEditForm(patient); setEditing(true); }}
-            style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #0d9488', background: '#fff', color: '#0d9488', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
-            ✏️ Edit
-          </button>
+          {userRole !== 'clinical_staff' && (
+            <button onClick={() => { setEditForm(patient); setEditing(true); }}
+              style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid #0d9488', background: '#fff', color: '#0d9488', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+              ✏️ Edit
+            </button>
+          )}
           <Link href={`/testing?patientId=${patient.id}`}
             style={{ padding: '8px 16px', borderRadius: 8, background: '#0d9488', color: '#fff', fontSize: 14, fontWeight: 700, textDecoration: 'none' }}>
             🧪 Start Testing
